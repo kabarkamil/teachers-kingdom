@@ -151,7 +151,7 @@
 
         <div class="modules-grid">
           <!-- Card 1: German -->
-          <article class="module-card module-card-wide reveal">
+          <article class="module-card module-card-wide module-card-interactive reveal" id="german-module-card" data-open-german>
             <div class="card-top">
               <div class="card-icon" aria-hidden="true">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -160,15 +160,20 @@
                   <path d="M8 11h6"/>
                 </svg>
               </div>
-              <span class="card-tag card-tag-gold">CEFR A1–A2</span>
+              <div class="card-tags-group">
+                <span class="card-tag card-tag-gold">CEFR A1–A2</span>
+                <span class="card-tag card-tag-burgundy card-xp-badge" id="card-german-xp" hidden>0 XP</span>
+              </div>
             </div>
             <h3 class="card-title" data-i18n="modules.german.title">Almanca A1 &amp; A2 Modülleri</h3>
             <p class="card-desc" data-i18n="modules.german.desc">
               CEFR uyumlu, adım adım yapılandırılmış dersler. Temel dilbilgisinden günlük iletişime kadar sistematik ilerleme sunar.
             </p>
             <div class="card-footer">
-              <span class="card-meta" data-i18n="modules.german.meta">Adım Adım Müfredat</span>
-              <span class="card-arrow" aria-hidden="true">→</span>
+              <a href="#german-studio" class="card-cta" id="open-german-module" aria-expanded="false" aria-controls="german-studio">
+                <span class="card-meta" data-i18n="modules.german.meta">Adım Adım Müfredat</span>
+                <span class="card-arrow" aria-hidden="true">→</span>
+              </a>
             </div>
           </article>
 
@@ -248,6 +253,106 @@
               Seviye tespit ve pratik sınav havuzu. Anlık değerlendirme ve hedefe yönelik tekrarlarla sınavlara güvenle hazırlanın.
             </p>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive German A1 & A2 Modules Studio -->
+    <section class="section german-studio" id="german-studio" hidden aria-labelledby="german-studio-title">
+      <div class="container">
+        <div class="studio-shell">
+          <div class="studio-topbar">
+            <button type="button" class="studio-back-btn" id="close-german-studio">
+              <span aria-hidden="true">←</span>
+              <span data-i18n="german.backToModules">Modüllere Dön</span>
+            </button>
+            <div class="studio-brand-pills">
+              <span class="studio-motto-pill" data-i18n="hero.motto">Öğren. Öğret. Üret.</span>
+              <span class="studio-slogan-pill" data-i18n="hero.slogan">You can do it</span>
+            </div>
+          </div>
+
+          <div class="studio-header">
+            <div class="studio-header-copy">
+              <span class="section-eyebrow" data-i18n="german.eyebrow">Etkileşimli Modül Stüdyosu</span>
+              <h2 class="section-title" id="german-studio-title" tabindex="-1" data-i18n="german.title">
+                Almanca A1 &amp; A2 Modülleri
+              </h2>
+              <p class="section-subtitle" data-i18n="german.subtitle">
+                Seviyeni ve becerini seç, telaffuzları dinle, mini alıştırmaları çöz ve XP kazanarak ilerlemeni kaydet.
+              </p>
+            </div>
+
+            <div class="studio-xp-card" aria-live="polite">
+              <div class="xp-card-top">
+                <div>
+                  <span class="xp-label" data-i18n="german.totalXp">Toplam XP</span>
+                  <div class="xp-value-row">
+                    <span class="xp-number" id="studio-total-xp">0 XP</span>
+                    <span class="xp-rank" id="studio-rank">Yeni Kaşif</span>
+                  </div>
+                </div>
+                <span class="xp-level-pill" id="studio-level-pill">A1 · %0</span>
+              </div>
+              <div class="xp-progress-track" role="progressbar" id="studio-progress-bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="xp-progress-fill" id="studio-progress-fill"></div>
+              </div>
+              <div class="xp-progress-meta">
+                <span id="studio-progress-text">0 / 0 alıştırma tamamlandı</span>
+                <span class="xp-saved-note" data-i18n="german.savedLocal">Tarayıcıda kayıtlı</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Level & Skill Controls -->
+          <div class="studio-controls">
+            <div class="level-tabs" role="tablist" aria-label="CEFR Seviyesi">
+              <button type="button" class="level-tab is-active" role="tab" aria-selected="true" data-level="A1">
+                <span class="level-code">A1</span>
+                <span class="level-name" data-i18n="german.levelA1">Başlangıç</span>
+              </button>
+              <button type="button" class="level-tab" role="tab" aria-selected="false" data-level="A2">
+                <span class="level-code">A2</span>
+                <span class="level-name" data-i18n="german.levelA2">Temel</span>
+              </button>
+            </div>
+
+            <div class="skill-tabs" role="tablist" aria-label="Beceri Alanları" id="german-skill-tabs">
+              <button type="button" class="skill-tab is-active" role="tab" aria-selected="true" data-skill="vocab">
+                <span data-i18n="german.skill.vocab">Kelime (Wortschatz)</span>
+              </button>
+              <button type="button" class="skill-tab" role="tab" aria-selected="false" data-skill="reading">
+                <span data-i18n="german.skill.reading">Okuma &amp; Dinleme (Lesen &amp; Hören)</span>
+              </button>
+              <button type="button" class="skill-tab" role="tab" aria-selected="false" data-skill="grammar">
+                <span data-i18n="german.skill.grammar">Yazma &amp; Dil Bilgisi (Grammatik &amp; Schreiben)</span>
+              </button>
+              <button type="button" class="skill-tab" role="tab" aria-selected="false" data-skill="speaking">
+                <span data-i18n="german.skill.speaking">Konuşma &amp; Pratik (Sprechen)</span>
+              </button>
+              <button type="button" class="skill-tab skill-tab-exam" role="tab" aria-selected="false" data-skill="exam">
+                <span data-i18n="german.skill.exam">Mini Sınav / XP</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Speech Synthesis Notice -->
+          <div class="speech-notice" id="speech-notice" hidden role="status" aria-live="polite"></div>
+
+          <!-- Dynamic Module Content -->
+          <div class="studio-workspace" id="german-studio-content"></div>
+
+          <div class="studio-footer-bar">
+            <button type="button" class="studio-back-btn" id="bottom-back-to-modules">
+              <span aria-hidden="true">↑</span>
+              <span data-i18n="german.returnMain">Ana Sayfa Akışına Dön</span>
+            </button>
+            <div class="studio-reset-wrap">
+              <button type="button" class="studio-reset-btn" id="reset-german-progress" data-i18n="german.resetProgress">
+                İlerlemeyi Sıfırla
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
