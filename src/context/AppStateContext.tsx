@@ -34,7 +34,7 @@ import type {
   UserRole,
   WritingTaskKind,
 } from '../types';
-import { STARTER_A1_ASSIGNMENTS } from '../data/germanA1Teaching';
+import { STARTER_A1_ASSIGNMENTS } from '../data/curriculumMeta';
 import type { LocalUserPrefs, ProgressLoadOutcome } from '../services/contracts';
 import { DEFAULT_LOCAL_PREFS, platformServices } from '../services/localAdapters';
 import {

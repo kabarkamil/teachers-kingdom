@@ -2,9 +2,9 @@ import type {
   ProgressState,
   StudioDraft,
   StudioDraftKind,
-  TeachingAssignment,
   TeachingAssignmentModule,
 } from '../types';
+export { STARTER_A1_ASSIGNMENTS } from './curriculumMeta';
 import {
   ARENA_IDS,
   CHARADE_IDS,
@@ -296,52 +296,6 @@ export function getTargetLiveProgress(
     }
   }
 }
-
-/**
- * Curated starter A1 assignments (all start strictly as 'assigned' with 0 XP earned)
- * so learners and teachers have immediate, realistic CEFR A1 tasks tied to real modules.
- */
-export const STARTER_A1_ASSIGNMENTS: TeachingAssignment[] = [
-  {
-    id: 'assign-starter-selamlasma',
-    titleTr: 'Ünite 1: Tanışma Kelimeleri ve Artikel Tekrarı',
-    moduleRoute: 'kelime',
-    targetId: 'selamlasma-tanisma',
-    targetLabelTr: 'Selamlaşma ve Tanışma',
-    dueDateLabel: 'Hafta 1 Önerilen Görev',
-    instructionsTr:
-      'Selamlaşma ve Tanışma ünitesindeki 10 A1 sözcüğünü kartlardan dinleyin ve Artikel Seçme alıştırmasını tamamlayın.',
-    status: 'assigned',
-    createdAt: '2026-01-01T09:00:00.000Z',
-    isStarter: true,
-  },
-  {
-    id: 'assign-starter-horen',
-    titleTr: 'Hören Görevi: Tanışma Diyaloğu (Kulak Öncelikli)',
-    moduleRoute: 'dinleme',
-    targetId: 'horen-begrussung',
-    targetLabelTr: 'Tanışma ve Selamlaşma',
-    dueDateLabel: 'Hafta 2 Önerilen Görev',
-    instructionsTr:
-      'Önce metni gizli tutarak diyaloğu dinleyin; ardından Richtig/Falsch ve Lückentext sorularını çözün.',
-    status: 'assigned',
-    createdAt: '2026-01-01T09:05:00.000Z',
-    isStarter: true,
-  },
-  {
-    id: 'assign-starter-schreiben',
-    titleTr: 'Schreiben Görevi: Kişisel Kayıt Formu ve Kısa Tanışma Notu',
-    moduleRoute: 'yazma',
-    targetId: 'schreiben-alltag',
-    targetLabelTr: 'Kendini Tanıtma ve Kurs Kaydı',
-    dueDateLabel: 'Hafta 3 Önerilen Görev',
-    instructionsTr:
-      'Kurs kayıt formunu doldurun, Leitpunkte ölçütlerini karşılayan kısa A1 mesajınızı yerel kural denetleyicisiyle kontrol edin.',
-    status: 'assigned',
-    createdAt: '2026-01-01T09:10:00.000Z',
-    isStarter: true,
-  },
-];
 
 export interface ClassTemplatePreset {
   id: string;

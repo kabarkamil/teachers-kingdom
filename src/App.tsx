@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { AuthModal } from './components/AuthModal';
@@ -13,6 +13,12 @@ import { TopBar } from './components/TopBar';
 import { AppStateProvider, useAppState } from './context/AppStateContext';
 import { getLocale } from './i18n/tr';
 import type { ActiveCourseId, NavRouteId, TeachingAssignmentModule } from './types';
+import {
+  COURSE_SCOPED_ROUTES,
+  buildAppUrl,
+  buildDocumentTitle,
+  parseAppLocation,
+} from './utils/routing';
 
 const VocabModule = lazy(() =>
   import('./components/vocab/VocabModule').then((m) => ({ default: m.VocabModule }))
@@ -107,110 +113,259 @@ function TeachersKingdomShell() {
   const { activeCourse, setActiveCourse, uiLanguage, storageWarning, dismissStorageWarning } =
     useAppState();
   const locale = getLocale(uiLanguage);
-  const [activeRoute, setActiveRoute] = useState<NavRouteId>('home');
-  const [selectedVocabTopicId, setSelectedVocabTopicId] = useState<string | undefined>(undefined);
-  const [selectedA2TopicId, setSelectedA2TopicId] = useState<string | undefined>(undefined);
+
+  const initialLocation = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return parseAppLocation('/', '', activeCourse);
+    }
+    return parseAppLocation(window.location.pathname, window.location.search, activeCourse);
+    // Intentionally computed once on initial mount to capture the incoming URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [activeRoute, setActiveRoute] = useState<NavRouteId>(initialLocation.route);
+  const [selectedVocabTopicId, setSelectedVocabTopicId] = useState<string | undefined>(
+    initialLocation.course === 'de-A1' && initialLocation.route === 'kelime'
+      ? initialLocation.targetId
+      : undefined
+  );
+  const [selectedA2TopicId, setSelectedA2TopicId] = useState<string | undefined>(
+    initialLocation.course === 'de-A2' && initialLocation.route === 'kelime'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedA2ListeningScenarioId, setSelectedA2ListeningScenarioId] = useState<
     string | undefined
-  >(undefined);
+  >(
+    initialLocation.course === 'de-A2' && initialLocation.route === 'dinleme'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedA2ReadingScenarioId, setSelectedA2ReadingScenarioId] = useState<
     string | undefined
-  >(undefined);
+  >(
+    initialLocation.course === 'de-A2' && initialLocation.route === 'okuma'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedA2WritingScenarioId, setSelectedA2WritingScenarioId] = useState<
     string | undefined
-  >(undefined);
+  >(
+    initialLocation.course === 'de-A2' && initialLocation.route === 'yazma'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedA2SpeakingScenarioId, setSelectedA2SpeakingScenarioId] = useState<
     string | undefined
-  >(undefined);
+  >(
+    initialLocation.course === 'de-A2' && initialLocation.route === 'konusma'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedListeningScenarioId, setSelectedListeningScenarioId] = useState<
     string | undefined
-  >(undefined);
+  >(
+    initialLocation.course === 'de-A1' && initialLocation.route === 'dinleme'
+      ? initialLocation.targetId
+      : undefined
+  );
   const [selectedReadingScenarioId, setSelectedReadingScenarioId] = useState<string | undefined>(
-    undefined
+    initialLocation.course === 'de-A1' && initialLocation.route === 'okuma'
+      ? initialLocation.targetId
+      : undefined
   );
   const [selectedWritingScenarioId, setSelectedWritingScenarioId] = useState<string | undefined>(
-    undefined
+    initialLocation.course === 'de-A1' && initialLocation.route === 'yazma'
+      ? initialLocation.targetId
+      : undefined
   );
   const [selectedSpeakingScenarioId, setSelectedSpeakingScenarioId] = useState<string | undefined>(
-    undefined
+    initialLocation.course === 'de-A1' && initialLocation.route === 'konusma'
+      ? initialLocation.targetId
+      : undefined
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
+  const activeCourseRef = useRef<ActiveCourseId>(activeCourse);
+  activeCourseRef.current = activeCourse;
+  const activeRouteRef = useRef<NavRouteId>(activeRoute);
+  activeRouteRef.current = activeRoute;
+  const skipNextCourseUrlPushRef = useRef<boolean>(false);
+  const hasSyncedInitialCourseRef = useRef<boolean>(false);
+
+  const applyTargetSelection = useCallback(
+    (route: NavRouteId, course: ActiveCourseId, targetId?: string) => {
+      if (course === 'de-A2') {
+        if (route === 'kelime') setSelectedA2TopicId(targetId);
+        else if (route === 'dinleme') setSelectedA2ListeningScenarioId(targetId);
+        else if (route === 'okuma') setSelectedA2ReadingScenarioId(targetId);
+        else if (route === 'yazma') setSelectedA2WritingScenarioId(targetId);
+        else if (route === 'konusma') setSelectedA2SpeakingScenarioId(targetId);
+        return;
+      }
+      if (route === 'kelime') setSelectedVocabTopicId(targetId);
+      else if (route === 'dinleme') setSelectedListeningScenarioId(targetId);
+      else if (route === 'okuma') setSelectedReadingScenarioId(targetId);
+      else if (route === 'yazma') setSelectedWritingScenarioId(targetId);
+      else if (route === 'konusma') setSelectedSpeakingScenarioId(targetId);
+    },
+    []
+  );
+
+  // Apply explicit course from initial URL and normalize non-canonical/unknown paths on mount
+  useEffect(() => {
+    if (
+      initialLocation.explicitCourse &&
+      initialLocation.explicitCourse !== activeCourseRef.current
+    ) {
+      skipNextCourseUrlPushRef.current = true;
+      setActiveCourse(initialLocation.explicitCourse);
+    }
+
+    if (typeof window !== 'undefined' && initialLocation.needsCanonicalReplace) {
+      const canonical = buildAppUrl(
+        initialLocation.route,
+        initialLocation.course,
+        initialLocation.targetId
+      );
+      window.history.replaceState(
+        {
+          route: initialLocation.route,
+          course: initialLocation.course,
+          targetId: initialLocation.targetId,
+        },
+        '',
+        canonical
+      );
+    }
+  }, [initialLocation, setActiveCourse]);
+
+  // Keep URL synchronized when user switches A1/A2 directly in TopBar or HomeView
+  useEffect(() => {
+    if (!hasSyncedInitialCourseRef.current) {
+      hasSyncedInitialCourseRef.current = true;
+      return;
+    }
+    if (skipNextCourseUrlPushRef.current) {
+      skipNextCourseUrlPushRef.current = false;
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    const route = activeRouteRef.current;
+    if (route === 'home' || COURSE_SCOPED_ROUTES.has(route)) {
+      const nextUrl = buildAppUrl(route, activeCourse);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (nextUrl !== currentUrl) {
+        window.history.pushState({ route, course: activeCourse }, '', nextUrl);
+      }
+    }
+  }, [activeCourse]);
+
+  // Handle browser Back / Forward buttons cleanly via popstate
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const parsed = parseAppLocation(
+        window.location.pathname,
+        window.location.search,
+        activeCourseRef.current
+      );
+      if (parsed.course !== activeCourseRef.current) {
+        skipNextCourseUrlPushRef.current = true;
+        setActiveCourse(parsed.course);
+      }
+      applyTargetSelection(parsed.route, parsed.course, parsed.targetId);
+      setActiveRoute(parsed.route);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [applyTargetSelection, setActiveCourse]);
+
+  // Keep browser tab & history entry title synchronized with active module and CEFR level
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = buildDocumentTitle(activeRoute, activeCourse, uiLanguage);
+    }
+  }, [activeRoute, activeCourse, uiLanguage]);
+
+  const navigateTo = useCallback(
+    (
+      route: NavRouteId,
+      options?: { course?: ActiveCourseId; targetId?: string; replace?: boolean }
+    ) => {
+      const nextCourse = options?.course ?? activeCourseRef.current;
+      if (nextCourse !== activeCourseRef.current) {
+        skipNextCourseUrlPushRef.current = true;
+        setActiveCourse(nextCourse);
+      }
+      applyTargetSelection(route, nextCourse, options?.targetId);
+      setActiveRoute(route);
+
+      if (typeof window !== 'undefined') {
+        const nextUrl = buildAppUrl(route, nextCourse, options?.targetId);
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        if (nextUrl !== currentUrl) {
+          const statePayload = { route, course: nextCourse, targetId: options?.targetId };
+          if (options?.replace) {
+            window.history.replaceState(statePayload, '', nextUrl);
+          } else {
+            window.history.pushState(statePayload, '', nextUrl);
+          }
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [applyTargetSelection, setActiveCourse]
+  );
+
   const handleNavigate = (route: NavRouteId) => {
-    setActiveRoute(route);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo(route);
   };
 
   const handleOpenVocabTopic = (topicId: string) => {
-    setActiveCourse('de-A1');
-    setSelectedVocabTopicId(topicId);
-    setActiveRoute('kelime');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('kelime', { course: 'de-A1', targetId: topicId });
   };
 
   const handleOpenA2Topic = (topicId: string) => {
-    setActiveCourse('de-A2');
-    setSelectedA2TopicId(topicId);
-    setActiveRoute('kelime');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('kelime', { course: 'de-A2', targetId: topicId });
   };
 
   const handleOpenA2ListeningScenario = (scenarioId: string) => {
-    setActiveCourse('de-A2');
-    setSelectedA2ListeningScenarioId(scenarioId);
-    setActiveRoute('dinleme');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('dinleme', { course: 'de-A2', targetId: scenarioId });
   };
 
   const handleOpenA2ReadingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A2');
-    setSelectedA2ReadingScenarioId(scenarioId);
-    setActiveRoute('okuma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('okuma', { course: 'de-A2', targetId: scenarioId });
   };
 
   const handleOpenA2WritingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A2');
-    setSelectedA2WritingScenarioId(scenarioId);
-    setActiveRoute('yazma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('yazma', { course: 'de-A2', targetId: scenarioId });
   };
 
   const handleOpenA2SpeakingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A2');
-    setSelectedA2SpeakingScenarioId(scenarioId);
-    setActiveRoute('konusma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('konusma', { course: 'de-A2', targetId: scenarioId });
   };
 
   const handleOpenListeningScenario = (scenarioId: string) => {
-    setActiveCourse('de-A1');
-    setSelectedListeningScenarioId(scenarioId);
-    setActiveRoute('dinleme');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('dinleme', { course: 'de-A1', targetId: scenarioId });
   };
 
   const handleOpenReadingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A1');
-    setSelectedReadingScenarioId(scenarioId);
-    setActiveRoute('okuma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('okuma', { course: 'de-A1', targetId: scenarioId });
   };
 
   const handleOpenWritingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A1');
-    setSelectedWritingScenarioId(scenarioId);
-    setActiveRoute('yazma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('yazma', { course: 'de-A1', targetId: scenarioId });
   };
 
   const handleOpenSpeakingScenario = (scenarioId: string) => {
-    setActiveCourse('de-A1');
-    setSelectedSpeakingScenarioId(scenarioId);
-    setActiveRoute('konusma');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('konusma', { course: 'de-A1', targetId: scenarioId });
   };
 
   const handleLaunchAssignmentTarget = (
@@ -218,54 +373,7 @@ function TeachersKingdomShell() {
     targetId?: string,
     courseId: ActiveCourseId = 'de-A1'
   ) => {
-    if (courseId === 'de-A2') {
-      setActiveCourse('de-A2');
-      if (moduleRoute === 'kelime' && targetId) {
-        handleOpenA2Topic(targetId);
-        return;
-      }
-      if (moduleRoute === 'dinleme' && targetId) {
-        handleOpenA2ListeningScenario(targetId);
-        return;
-      }
-      if (moduleRoute === 'okuma' && targetId) {
-        handleOpenA2ReadingScenario(targetId);
-        return;
-      }
-      if (moduleRoute === 'yazma' && targetId) {
-        handleOpenA2WritingScenario(targetId);
-        return;
-      }
-      if (moduleRoute === 'konusma' && targetId) {
-        handleOpenA2SpeakingScenario(targetId);
-        return;
-      }
-      handleNavigate(moduleRoute);
-      return;
-    }
-
-    setActiveCourse('de-A1');
-    if (moduleRoute === 'kelime' && targetId) {
-      handleOpenVocabTopic(targetId);
-      return;
-    }
-    if (moduleRoute === 'dinleme' && targetId) {
-      handleOpenListeningScenario(targetId);
-      return;
-    }
-    if (moduleRoute === 'okuma' && targetId) {
-      handleOpenReadingScenario(targetId);
-      return;
-    }
-    if (moduleRoute === 'yazma' && targetId) {
-      handleOpenWritingScenario(targetId);
-      return;
-    }
-    if (moduleRoute === 'konusma' && targetId) {
-      handleOpenSpeakingScenario(targetId);
-      return;
-    }
-    handleNavigate(moduleRoute);
+    navigateTo(moduleRoute, { course: courseId, targetId });
   };
 
   const renderMainView = () => {

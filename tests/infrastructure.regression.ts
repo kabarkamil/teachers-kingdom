@@ -9,6 +9,41 @@ import type {
 } from '../src/types';
 import { STARTER_A1_ASSIGNMENTS } from '../src/data/germanA1Teaching';
 import {
+  A1_CURRICULUM_TOTALS,
+  A1_KARAOKE_IDS,
+  A2_ARENA_IDS_META,
+  A2_CHARADE_IDS_META,
+  A2_CURRICULUM_TOTALS,
+  A2_EXAM_IDS_META,
+  A2_KARAOKE_IDS_META,
+  A2_QUIZ_IDS_META,
+  A2_TOPIC_SUMMARIES,
+} from '../src/data/curriculumMeta';
+import { KARAOKE_IDS, TOTAL_ACTIVITY_ITEMS } from '../src/data/germanA1Activities';
+import { TOTAL_LISTENING_EXERCISES } from '../src/data/germanA1Listening';
+import { TOTAL_READING_EXERCISES } from '../src/data/germanA1Reading';
+import { TOTAL_SPEAKING_TASKS } from '../src/data/germanA1Speaking';
+import { ALL_A1_WORDS } from '../src/data/germanA1Vocab';
+import { TOTAL_WRITING_TASKS } from '../src/data/germanA1Writing';
+import {
+  A2_ARENA_IDS,
+  A2_CHARADE_IDS,
+  A2_EXAM_IDS,
+  A2_KARAOKE_IDS,
+  A2_QUIZ_IDS,
+  TOTAL_A2_ACTIVITY_ITEMS,
+} from '../src/data/germanA2Activities';
+import { TOTAL_A2_LISTENING_EXERCISES } from '../src/data/germanA2Listening';
+import { TOTAL_A2_READING_EXERCISES } from '../src/data/germanA2Reading';
+import { TOTAL_A2_SPEAKING_TASKS } from '../src/data/germanA2Speaking';
+import { ALL_A2_WORDS, GERMAN_A2_TOPICS } from '../src/data/germanA2Vocab';
+import { TOTAL_A2_WRITING_TASKS } from '../src/data/germanA2Writing';
+import {
+  buildAppUrl,
+  buildDocumentTitle,
+  parseAppLocation,
+} from '../src/utils/routing';
+import {
   canAutoPushToCloud,
   deleteCloudState,
   executeCloudReset,
@@ -613,6 +648,94 @@ const TESTS: Array<{ name: string; run: () => Promise<void> | void }> = [
       assert.equal(secondSync.mergedProgressA2.xp, 15);
       assert.equal(secondSync.shouldApplyToLocal, false);
       assert.equal(secondSync.shouldPushToRemote, false);
+    },
+  },
+  {
+    name: 'URL routing builds and parses shareable A1/A2 module, deep-link, and fallback URLs',
+    run: () => {
+      // Canonical course-scoped URLs
+      assert.equal(buildAppUrl('home', 'de-A1'), '/');
+      assert.equal(buildAppUrl('home', 'de-A2'), '/a2');
+      assert.equal(buildAppUrl('karaoke', 'de-A1'), '/a1/karaoke');
+      assert.equal(buildAppUrl('kelime', 'de-A2', 'a2-arbeit-alltag'), '/a2/kelime?target=a2-arbeit-alltag');
+      assert.equal(buildAppUrl('ayarlar', 'de-A2'), '/ayarlar');
+
+      // Parsing shareable URL preserves module, CEFR level, and target across page refresh
+      const parsedA2 = parseAppLocation('/a2/dinleme', '?target=a2-horen-termin', 'de-A1');
+      assert.equal(parsedA2.route, 'dinleme');
+      assert.equal(parsedA2.explicitCourse, 'de-A2');
+      assert.equal(parsedA2.course, 'de-A2');
+      assert.equal(parsedA2.targetId, 'a2-horen-termin');
+      assert.equal(parsedA2.needsCanonicalReplace, false);
+
+      // Shorthand URL (/karaoke) resolves using activeCourse and marks canonical normalization
+      const parsedShort = parseAppLocation('/karaoke', '', 'de-A1');
+      assert.equal(parsedShort.route, 'karaoke');
+      assert.equal(parsedShort.explicitCourse, null);
+      assert.equal(parsedShort.course, 'de-A1');
+      assert.equal(parsedShort.needsCanonicalReplace, true);
+
+      // Alias query param (?topic=...) resolves cleanly
+      const parsedAlias = parseAppLocation('/a1/kelime', '?topic=selamlasma-tanisma', 'de-A1');
+      assert.equal(parsedAlias.route, 'kelime');
+      assert.equal(parsedAlias.targetId, 'selamlasma-tanisma');
+
+      // Unknown path falls back safely to home
+      const parsedUnknown = parseAppLocation('/bilinmeyen-yol/test', '', 'de-A1');
+      assert.equal(parsedUnknown.route, 'home');
+      assert.equal(parsedUnknown.needsCanonicalReplace, true);
+
+      // Document title formatting reflects module, level, and UI language
+      assert.equal(
+        buildDocumentTitle('karaoke', 'de-A1', 'tr'),
+        'Karaoke Stüdyosu (A1) — Teachers Kingdom'
+      );
+      assert.equal(
+        buildDocumentTitle('kelime', 'de-A2', 'en'),
+        'Vocabulary (A2) — Teachers Kingdom'
+      );
+      assert.equal(buildDocumentTitle('ayarlar', 'de-A2', 'tr'), 'Ayarlar — Teachers Kingdom');
+    },
+  },
+  {
+    name: 'Lightweight curriculumMeta stays in exact parity with full A1 & A2 datasets',
+    run: () => {
+      assert.deepEqual(A1_CURRICULUM_TOTALS, {
+        words: ALL_A1_WORDS.length,
+        listening: TOTAL_LISTENING_EXERCISES,
+        reading: TOTAL_READING_EXERCISES,
+        writing: TOTAL_WRITING_TASKS,
+        speaking: TOTAL_SPEAKING_TASKS,
+        activities: TOTAL_ACTIVITY_ITEMS,
+      });
+      assert.deepEqual(A2_CURRICULUM_TOTALS, {
+        words: ALL_A2_WORDS.length,
+        listening: TOTAL_A2_LISTENING_EXERCISES,
+        reading: TOTAL_A2_READING_EXERCISES,
+        writing: TOTAL_A2_WRITING_TASKS,
+        speaking: TOTAL_A2_SPEAKING_TASKS,
+        activities: TOTAL_A2_ACTIVITY_ITEMS,
+      });
+      assert.deepEqual([...A1_KARAOKE_IDS], KARAOKE_IDS);
+      assert.deepEqual([...A2_KARAOKE_IDS_META], A2_KARAOKE_IDS);
+      assert.deepEqual([...A2_CHARADE_IDS_META], A2_CHARADE_IDS);
+      assert.deepEqual([...A2_ARENA_IDS_META], A2_ARENA_IDS);
+      assert.deepEqual([...A2_QUIZ_IDS_META], A2_QUIZ_IDS);
+      assert.deepEqual([...A2_EXAM_IDS_META], A2_EXAM_IDS);
+      assert.deepEqual(
+        A2_TOPIC_SUMMARIES.map((t) => ({
+          id: t.id,
+          titleDe: t.titleDe,
+          titleTr: t.titleTr,
+          wordIds: [...t.wordIds],
+        })),
+        GERMAN_A2_TOPICS.map((t) => ({
+          id: t.id,
+          titleDe: t.titleDe,
+          titleTr: t.titleTr,
+          wordIds: t.words.map((w) => w.id),
+        }))
+      );
     },
   },
 ];

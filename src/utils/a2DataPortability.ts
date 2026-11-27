@@ -1,4 +1,4 @@
-import { A2_KARAOKE_IDS } from '../data/germanA2Activities';
+import { A2_KARAOKE_IDS_META as A2_KARAOKE_IDS } from '../data/curriculumMeta';
 import type { A2ActivityLogEntry, A2ActivityMode, GermanA2ProgressState } from '../types';
 
 export const STORAGE_KEY_A2_STATE = 'tk_course_de_a2_progress_v1';

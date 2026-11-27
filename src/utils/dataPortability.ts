@@ -1,7 +1,7 @@
 import {
-  KARAOKE_IDS,
-} from '../data/germanA1Activities';
-import { STARTER_A1_ASSIGNMENTS } from '../data/germanA1Teaching';
+  A1_KARAOKE_IDS as KARAOKE_IDS,
+  STARTER_A1_ASSIGNMENTS,
+} from '../data/curriculumMeta';
 import type {
   ActiveCourseId,
   ActivityLogEntry,

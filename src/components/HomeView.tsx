@@ -8,26 +8,19 @@ import {
   GraduationCap,
   Layers,
 } from 'lucide-react';
+import heroAcademyImage from '../assets/images/hero_language_academy_1795362307909.jpg';
+import a2HeroImage from '../assets/images/a2_unit_arbeit_alltag_1795436305476.jpg';
 import { useAppState } from '../context/AppStateContext';
-import { TOTAL_LISTENING_EXERCISES } from '../data/germanA1Listening';
-import { TOTAL_READING_EXERCISES } from '../data/germanA1Reading';
-import { TOTAL_SPEAKING_TASKS } from '../data/germanA1Speaking';
-import { TOTAL_ACTIVITY_ITEMS } from '../data/germanA1Activities';
-import { TOTAL_WRITING_TASKS } from '../data/germanA1Writing';
-import { ALL_A1_WORDS, HERO_ACADEMY_IMAGE } from '../data/germanA1Vocab';
-import { ALL_A2_WORDS, GERMAN_A2_TOPICS } from '../data/germanA2Vocab';
-import { TOTAL_A2_LISTENING_EXERCISES } from '../data/germanA2Listening';
-import { TOTAL_A2_READING_EXERCISES } from '../data/germanA2Reading';
-import { TOTAL_A2_SPEAKING_TASKS } from '../data/germanA2Speaking';
-import { TOTAL_A2_WRITING_TASKS } from '../data/germanA2Writing';
 import {
-  A2_ARENA_IDS,
-  A2_CHARADE_IDS,
-  A2_EXAM_IDS,
-  A2_KARAOKE_IDS,
-  A2_QUIZ_IDS,
-  TOTAL_A2_ACTIVITY_ITEMS,
-} from '../data/germanA2Activities';
+  A1_CURRICULUM_TOTALS,
+  A2_ARENA_IDS_META as A2_ARENA_IDS,
+  A2_CHARADE_IDS_META as A2_CHARADE_IDS,
+  A2_CURRICULUM_TOTALS,
+  A2_EXAM_IDS_META as A2_EXAM_IDS,
+  A2_KARAOKE_IDS_META as A2_KARAOKE_IDS,
+  A2_QUIZ_IDS_META as A2_QUIZ_IDS,
+  A2_TOPIC_SUMMARIES,
+} from '../data/curriculumMeta';
 import { CORE_LEARNING_PATH } from '../data/navigation';
 import { getLocale } from '../i18n/tr';
 import type { A2ActivityMode, ActivityMode, NavRouteId } from '../types';
@@ -141,54 +134,54 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
     ? {
         kelime: {
           done: uniqueA2CompletedWordIds.length,
-          total: ALL_A2_WORDS.length,
+          total: A2_CURRICULUM_TOTALS.words,
           shortHintTr: '30 A2 sözcük, artikel ve çoğul pratiği.',
         },
         dinleme: {
           done: a2Progress.listeningMasteredIds.length,
-          total: TOTAL_A2_LISTENING_EXERCISES,
+          total: A2_CURRICULUM_TOTALS.listening,
           shortHintTr: '4 A2 senaryosu, 0.8×/1.0× de-DE seslendirme.',
         },
         okuma: {
           done: a2Progress.readingMasteredIds.length,
-          total: TOTAL_A2_READING_EXERCISES,
+          total: A2_CURRICULUM_TOTALS.reading,
           shortHintTr: '4 A2 metni, Richtig/Falsch/Yok ve Lückentext.',
         },
         yazma: {
           done: a2Progress.writingMasteredIds.length,
-          total: TOTAL_A2_WRITING_TASKS,
+          total: A2_CURRICULUM_TOTALS.writing,
           shortHintTr: '4 A2 yazma görevi ve yerel kural kontrolü.',
         },
         konusma: {
           done: a2Progress.speakingMasteredIds.length,
-          total: TOTAL_A2_SPEAKING_TASKS,
+          total: A2_CURRICULUM_TOTALS.speaking,
           shortHintTr: 'Kalıp tekrarı, kılavuzlu yanıt ve rol oyunları.',
         },
       }
     : {
         kelime: {
           done: uniqueCompletedWordIds.length,
-          total: ALL_A1_WORDS.length,
+          total: A1_CURRICULUM_TOTALS.words,
           shortHintTr: 'Artikel odaklı kartlar, test ve eşleştirme.',
         },
         dinleme: {
           done: progress.listeningMasteredIds.length,
-          total: TOTAL_LISTENING_EXERCISES,
+          total: A1_CURRICULUM_TOTALS.listening,
           shortHintTr: 'Günlük A1 diyalogları ve gizli transkript.',
         },
         okuma: {
           done: progress.readingMasteredIds.length,
-          total: TOTAL_READING_EXERCISES,
+          total: A1_CURRICULUM_TOTALS.reading,
           shortHintTr: 'E-posta, menü ve duyurularla anlama pratiği.',
         },
         yazma: {
           done: progress.writingMasteredIds.length,
-          total: TOTAL_WRITING_TASKS,
+          total: A1_CURRICULUM_TOTALS.writing,
           shortHintTr: 'Form, kısa mesaj ve yerel kural kontrolü.',
         },
         konusma: {
           done: progress.speakingMasteredIds.length,
-          total: TOTAL_SPEAKING_TASKS,
+          total: A1_CURRICULUM_TOTALS.speaking,
           shortHintTr: 'Telaffuz tekrarı, kısa yanıt ve rol oyunu.',
         },
       };
@@ -196,7 +189,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   const activityDone = isA2
     ? a2Progress.activityMasteredIds.length
     : progress.activityMasteredIds.length;
-  const activityTotal = isA2 ? TOTAL_A2_ACTIVITY_ITEMS : TOTAL_ACTIVITY_ITEMS;
+  const activityTotal = isA2 ? A2_CURRICULUM_TOTALS.activities : A1_CURRICULUM_TOTALS.activities;
   const activeXp = isA2 ? a2Progress.xp : progress.xp;
 
   const totalCompletedItems =
@@ -289,9 +282,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   };
 
   const resumeTarget = resolveResumeTarget();
-  const heroImage = isA2
-    ? GERMAN_A2_TOPICS[0]?.imageUrl ?? HERO_ACADEMY_IMAGE
-    : HERO_ACADEMY_IMAGE;
+  const heroImage = isA2 ? a2HeroImage : heroAcademyImage;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-8">
@@ -531,9 +522,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    {GERMAN_A2_TOPICS.map((topic, index) => {
-                      const doneCount = topic.words.filter((w) =>
-                        uniqueA2CompletedWordIds.includes(w.id)
+                    {A2_TOPIC_SUMMARIES.map((topic, index) => {
+                      const doneCount = topic.wordIds.filter((wordId) =>
+                        uniqueA2CompletedWordIds.includes(wordId)
                       ).length;
                       return (
                         <button
@@ -548,7 +539,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                                 Ünite 0{index + 1} · {topic.titleDe}
                               </span>
                               <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                                {doneCount}/{topic.words.length}
+                                {doneCount}/{topic.wordIds.length}
                               </span>
                             </div>
                             <h4 className="mt-2 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
