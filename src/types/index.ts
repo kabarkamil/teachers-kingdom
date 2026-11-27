@@ -444,15 +444,36 @@ export interface KaraokeLine {
   rhythmCueDe: string;
   focusWords: string[];
   speakerGender: SpeakerGender;
+  startSec?: number;
+  endSec?: number;
+  sectionLabelTr?: string;
+  sectionLabelEn?: string;
+}
+
+export interface KaraokeMiniQuizItem {
+  id: string;
+  questionTr: string;
+  questionEn: string;
+  promptDe: string;
+  options: [string, string, string, string];
+  correctIndex: number;
+  explanationTr: string;
+  explanationEn: string;
 }
 
 export interface KaraokeTrack {
   id: string;
+  cefrLevel?: 'A1' | 'A2';
+  audioUrl?: string;
   titleDe: string;
   titleTr: string;
+  titleEn?: string;
   themeTr: string;
+  themeEn?: string;
   tempoLabelTr: string;
+  tempoLabelEn?: string;
   lines: KaraokeLine[];
+  miniQuiz?: KaraokeMiniQuizItem[];
 }
 
 export interface CharadeItem {
