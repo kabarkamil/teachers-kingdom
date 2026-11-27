@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Poppins", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-obsidian: #0D0D0D;
+  --color-obsidian-deep: #0D0D0D;
+  --color-charcoal: #16161A;
+  --color-charcoal-elevated: #1E1E24;
+
+  --color-platinum: #F6F6F4;
+  --color-platinum-soft: #ECECE8;
+  --color-metallic: #52525B;
+  --color-metallic-light: #A1A1AA;
+  --color-hairline-light: #D9D9D3;
+  --color-hairline-dark: #282830;
+
+  --color-burgundy: #7A1C24;
+  --color-burgundy-hover: #62151C;
+  --color-burgundy-dark: #A62B36;
+
+  --color-gold: #9A6B16;
+  --color-gold-bright: #D4AF37;
+  --color-gold-hover: #E3C254;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    overflow-wrap: break-word;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  h1, h2 {
+    text-wrap: balance;
+  }
+
+  .dark body {
+    letter-spacing: 0.008em;
+  }
+
+  button, a, select, input, textarea, [tabindex]:not([tabindex="-1"]) {
+    outline-color: #9A6B16;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid #9A6B16;
+    outline-offset: 2px;
+  }
+
+  .dark button,
+  .dark a,
+  .dark select,
+  .dark input,
+  .dark textarea,
+  .dark [tabindex]:not([tabindex="-1"]) {
+    outline-color: #D9A13B;
+  }
+
+  .dark button:focus-visible,
+  .dark a:focus-visible,
+  .dark select:focus-visible,
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
+  .dark [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid #D9A13B;
+    outline-offset: 2px;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3D Flashcard Flip Utilities (compositor-only transform) */
+.tk-perspective {
+  perspective: 1200px;
+}
+
+.tk-preserve-3d {
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tk-backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.tk-rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-preserve-3d {
+    transition-duration: 1ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
