@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookText } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   GERMAN_A1_READING_SCENARIOS,
   TOTAL_READING_EXERCISES,
@@ -16,6 +17,7 @@ interface ReadingModuleProps {
 
 export const ReadingModule: React.FC<ReadingModuleProps> = ({ initialScenarioId }) => {
   const { progress, readingAccuracyPercent, rolePreview } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     initialScenarioId ?? GERMAN_A1_READING_SCENARIOS[0].id
   );
@@ -35,47 +37,56 @@ export const ReadingModule: React.FC<ReadingModuleProps> = ({ initialScenarioId 
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Lesen
+              {tx({ tr: 'Almanca A1 · Lesen', en: 'German A1 · Lesen' })}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>{tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}</span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A1 Okuma (Lesen) Atölyesi
+            {tx({
+              tr: 'Almanca A1 Okuma (Lesen) Atölyesi',
+              en: 'German A1 Reading (Lesen) Workshop',
+            })}
           </h1>
         </div>
 
         {/* Real Progress Strip (strictly from localStorage) */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Okuma Sorusu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Okuma Sorusu', en: 'Reading Items' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {progress.readingMasteredIds.length} / {TOTAL_READING_EXERCISES}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Okuma Doğruluğu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Okuma Doğruluğu', en: 'Reading Accuracy' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {readingAccuracyPercent === null ? '—' : `%${readingAccuracyPercent}`}
+              {readingAccuracyPercent === null
+                ? '—'
+                : tx({ tr: '%{pct}', en: '{pct}%' }, { pct: readingAccuracyPercent })}
             </p>
           </div>
         </div>
@@ -88,10 +99,16 @@ export const ReadingModule: React.FC<ReadingModuleProps> = ({ initialScenarioId 
             id="lesen-scenario-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. Okuma Metni Seçin
+            {tx({ tr: '1. Okuma Metni Seçin', en: '1. Choose a Reading Passage' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            4 Günlük Metin Türü · {TOTAL_READING_EXERCISES} Alıştırma
+            {tx(
+              {
+                tr: '4 Günlük Metin Türü · {count} Alıştırma',
+                en: '4 Everyday Text Types · {count} Exercises',
+              },
+              { count: TOTAL_READING_EXERCISES }
+            )}
           </span>
         </div>
 
@@ -167,7 +184,9 @@ export const ReadingModule: React.FC<ReadingModuleProps> = ({ initialScenarioId 
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili', en: 'Selected' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -178,18 +197,35 @@ export const ReadingModule: React.FC<ReadingModuleProps> = ({ initialScenarioId 
       </section>
 
       {/* Active Reading Passage + Optional Turkish Translation, Glossary & Verified TTS */}
-      <section aria-label="Okuma metni ve destek araçları">
+      <section
+        aria-label={tx({
+          tr: 'Okuma metni ve destek araçları',
+          en: 'Reading passage and study tools',
+        })}
+      >
         <ReadingPassageCard scenario={activeScenario} />
       </section>
 
       {/* Active Reading 3-Part Interactive Exercises */}
-      <section aria-label="Okuma anlama alıştırmaları" className="space-y-3">
+      <section
+        aria-label={tx({
+          tr: 'Okuma anlama alıştırmaları',
+          en: 'Reading comprehension exercises',
+        })}
+        className="space-y-3"
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. Etkileşimli Okuma Alıştırmaları
+            {tx({
+              tr: '2. Etkileşimli Okuma Alıştırmaları',
+              en: '2. Interactive Reading Exercises',
+            })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Her ilk doğru yanıt +10 XP kazandırır
+            {tx({
+              tr: 'Her ilk doğru yanıt +10 XP kazandırır',
+              en: 'Each first correct answer earns +10 XP',
+            })}
           </span>
         </div>
 

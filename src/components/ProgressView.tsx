@@ -83,7 +83,8 @@ import {
   STORAGE_KEY_A2_STATE,
   evaluateA2ProgressIntegrity,
 } from '../utils/a2DataPortability';
-import type { A2ActivityMode, ActivityMode, NavRouteId } from '../types';
+import { useI18n } from '../hooks/useI18n';
+import type { A2ActivityMode, ActivityMode, NavRouteId, UiLanguage } from '../types';
 
 interface ProgressViewProps {
   onOpenTopic: (topicId: string) => void;
@@ -99,68 +100,187 @@ interface ProgressViewProps {
   onOpenActivityRoute: (route: NavRouteId) => void;
 }
 
-const A2_MODE_LABELS: Record<A2ActivityMode, string> = {
-  'a2-flashcards': 'A2 · Kartlarla Öğren',
-  'a2-articles-plural': 'A2 · Artikel & Çoğul Avı',
-  'a2-meaning': 'A2 · Anlam Eşleştirme',
-  'a2-context': 'A2 · Cümle İçi Kullanım',
-  'a2-horen-tf': 'A2 Dinleme · Richtig / Falsch',
-  'a2-horen-cloze': 'A2 Dinleme · Lückentext',
-  'a2-horen-mc': 'A2 Dinleme · Anlama Testi',
-  'a2-lesen-tf': 'A2 Okuma · Richtig / Falsch / Yok',
-  'a2-lesen-cloze': 'A2 Okuma · Lückentext',
-  'a2-lesen-mc': 'A2 Okuma · Anlama & Çıkarım',
-  'a2-schreiben-message': 'A2 Yazma · Kılavuzlu E-Posta / Mesaj',
-  'a2-schreiben-controlled': 'A2 Yazma · Satzbau & Lückentext',
-  'a2-sprechen-repeat': 'A2 Konuşma · Telaffuz & Kalıp Tekrarı',
-  'a2-sprechen-prompt': 'A2 Konuşma · Kılavuzlu Yanıt & Deneyim',
-  'a2-sprechen-roleplay': 'A2 Konuşma · Çok Turlu Rol Oyunu',
-  'a2-activity-karaoke': 'A2 Etkinlik · Karaoke Stüdyosu',
-  'a2-activity-charades': 'A2 Etkinlik · Sessiz Sinema',
-  'a2-activity-arena': 'A2 Etkinlik · Arena',
-  'a2-activity-quiz': 'A2 Etkinlik · Quiz Merkezi',
-  'a2-activity-exam': 'A2 Etkinlik · A2 Sınav Modu',
+const A2_MODE_LABELS: Record<A2ActivityMode, Record<UiLanguage, string>> = {
+  'a2-flashcards': {
+    tr: 'A2 · Kartlarla Öğren',
+    en: 'A2 · Learn with Flashcards',
+  },
+  'a2-articles-plural': {
+    tr: 'A2 · Artikel & Çoğul Avı',
+    en: 'A2 · Article & Plural Hunt',
+  },
+  'a2-meaning': {
+    tr: 'A2 · Anlam Eşleştirme',
+    en: 'A2 · Meaning Match',
+  },
+  'a2-context': {
+    tr: 'A2 · Cümle İçi Kullanım',
+    en: 'A2 · In-Context Usage',
+  },
+  'a2-horen-tf': {
+    tr: 'A2 Dinleme · Richtig / Falsch',
+    en: 'A2 Listening · Richtig / Falsch',
+  },
+  'a2-horen-cloze': {
+    tr: 'A2 Dinleme · Lückentext',
+    en: 'A2 Listening · Lückentext',
+  },
+  'a2-horen-mc': {
+    tr: 'A2 Dinleme · Anlama Testi',
+    en: 'A2 Listening · Comprehension Quiz',
+  },
+  'a2-lesen-tf': {
+    tr: 'A2 Okuma · Richtig / Falsch / Yok',
+    en: 'A2 Reading · Richtig / Falsch / Not Mentioned',
+  },
+  'a2-lesen-cloze': {
+    tr: 'A2 Okuma · Lückentext',
+    en: 'A2 Reading · Lückentext',
+  },
+  'a2-lesen-mc': {
+    tr: 'A2 Okuma · Anlama & Çıkarım',
+    en: 'A2 Reading · Comprehension & Inference',
+  },
+  'a2-schreiben-message': {
+    tr: 'A2 Yazma · Kılavuzlu E-Posta / Mesaj',
+    en: 'A2 Writing · Guided Email / Message',
+  },
+  'a2-schreiben-controlled': {
+    tr: 'A2 Yazma · Satzbau & Lückentext',
+    en: 'A2 Writing · Satzbau & Lückentext',
+  },
+  'a2-sprechen-repeat': {
+    tr: 'A2 Konuşma · Telaffuz & Kalıp Tekrarı',
+    en: 'A2 Speaking · Pronunciation & Pattern Repeat',
+  },
+  'a2-sprechen-prompt': {
+    tr: 'A2 Konuşma · Kılavuzlu Yanıt & Deneyim',
+    en: 'A2 Speaking · Guided Response & Experience',
+  },
+  'a2-sprechen-roleplay': {
+    tr: 'A2 Konuşma · Çok Turlu Rol Oyunu',
+    en: 'A2 Speaking · Multi-Turn Roleplay',
+  },
+  'a2-activity-karaoke': {
+    tr: 'A2 Etkinlik · Karaoke Stüdyosu',
+    en: 'A2 Activity · Karaoke Studio',
+  },
+  'a2-activity-charades': {
+    tr: 'A2 Etkinlik · Sessiz Sinema',
+    en: 'A2 Activity · Charades',
+  },
+  'a2-activity-arena': {
+    tr: 'A2 Etkinlik · Arena',
+    en: 'A2 Activity · Arena',
+  },
+  'a2-activity-quiz': {
+    tr: 'A2 Etkinlik · Quiz Merkezi',
+    en: 'A2 Activity · Quiz Center',
+  },
+  'a2-activity-exam': {
+    tr: 'A2 Etkinlik · A2 Sınav Modu',
+    en: 'A2 Activity · A2 Exam Mode',
+  },
 };
 
-const MODE_LABELS: Record<ActivityMode, string> = {
-  flashcards: 'Kelime Kartları',
-  articles: 'Artikel Seçme',
-  quiz: 'Doğru Anlamı Bulma',
-  memory: 'Hafıza Eşleştirme',
-  'horen-tf': 'Dinleme · Richtig / Falsch',
-  'horen-cloze': 'Dinleme · Lückentext',
-  'horen-mc': 'Dinleme · Anlama Testi',
-  'lesen-tf': 'Okuma · Richtig / Falsch',
-  'lesen-cloze': 'Okuma · Lückentext',
-  'lesen-mc': 'Okuma · Anlama Testi',
-  'schreiben-form': 'Yazma · Formular ausfüllen',
-  'schreiben-message': 'Yazma · Kısa Mesaj / Not',
-  'schreiben-controlled': 'Yazma · Satzbau & Lückentext',
-  'sprechen-repeat': 'Konuşma · Nachsprechen',
-  'sprechen-prompt': 'Konuşma · Leitfragen',
-  'sprechen-roleplay': 'Konuşma · Dialog / Rollenspiel',
-  'activity-karaoke': 'Etkinlik · Karaoke Stüdyosu',
-  'activity-charades': 'Etkinlik · Sessiz Sinema',
-  'activity-arena': 'Etkinlik · Arena',
-  'activity-quiz': 'Etkinlik · Quiz Merkezi',
-  'activity-exam': 'Etkinlik · A1 Sınav Modu',
-  'teaching-class': 'Sınıflarım · Yerel Grup',
-  'teaching-assignment': 'Ödevler · A1 Görev',
-  'teaching-studio': 'Öğretmen Stüdyosu · Taslak',
+const MODE_LABELS: Record<ActivityMode, Record<UiLanguage, string>> = {
+  flashcards: {
+    tr: 'Kelime Kartları',
+    en: 'Flashcards',
+  },
+  articles: {
+    tr: 'Artikel Seçme',
+    en: 'Article Selection',
+  },
+  quiz: {
+    tr: 'Doğru Anlamı Bulma',
+    en: 'Meaning Quiz',
+  },
+  memory: {
+    tr: 'Hafıza Eşleştirme',
+    en: 'Memory Match',
+  },
+  'horen-tf': {
+    tr: 'Dinleme · Richtig / Falsch',
+    en: 'Listening · Richtig / Falsch',
+  },
+  'horen-cloze': {
+    tr: 'Dinleme · Lückentext',
+    en: 'Listening · Lückentext',
+  },
+  'horen-mc': {
+    tr: 'Dinleme · Anlama Testi',
+    en: 'Listening · Comprehension Quiz',
+  },
+  'lesen-tf': {
+    tr: 'Okuma · Richtig / Falsch',
+    en: 'Reading · Richtig / Falsch',
+  },
+  'lesen-cloze': {
+    tr: 'Okuma · Lückentext',
+    en: 'Reading · Lückentext',
+  },
+  'lesen-mc': {
+    tr: 'Okuma · Anlama Testi',
+    en: 'Reading · Comprehension Quiz',
+  },
+  'schreiben-form': {
+    tr: 'Yazma · Formular ausfüllen',
+    en: 'Writing · Formular ausfüllen',
+  },
+  'schreiben-message': {
+    tr: 'Yazma · Kısa Mesaj / Not',
+    en: 'Writing · Short Message / Note',
+  },
+  'schreiben-controlled': {
+    tr: 'Yazma · Satzbau & Lückentext',
+    en: 'Writing · Satzbau & Lückentext',
+  },
+  'sprechen-repeat': {
+    tr: 'Konuşma · Nachsprechen',
+    en: 'Speaking · Nachsprechen',
+  },
+  'sprechen-prompt': {
+    tr: 'Konuşma · Leitfragen',
+    en: 'Speaking · Leitfragen',
+  },
+  'sprechen-roleplay': {
+    tr: 'Konuşma · Dialog / Rollenspiel',
+    en: 'Speaking · Dialog / Rollenspiel',
+  },
+  'activity-karaoke': {
+    tr: 'Etkinlik · Karaoke Stüdyosu',
+    en: 'Activity · Karaoke Studio',
+  },
+  'activity-charades': {
+    tr: 'Etkinlik · Sessiz Sinema',
+    en: 'Activity · Charades',
+  },
+  'activity-arena': {
+    tr: 'Etkinlik · Arena',
+    en: 'Activity · Arena',
+  },
+  'activity-quiz': {
+    tr: 'Etkinlik · Quiz Merkezi',
+    en: 'Activity · Quiz Center',
+  },
+  'activity-exam': {
+    tr: 'Etkinlik · A1 Sınav Modu',
+    en: 'Activity · A1 Exam Mode',
+  },
+  'teaching-class': {
+    tr: 'Sınıflarım · Yerel Grup',
+    en: 'My Classes · Local Group',
+  },
+  'teaching-assignment': {
+    tr: 'Ödevler · A1 Görev',
+    en: 'Assignments · A1 Task',
+  },
+  'teaching-studio': {
+    tr: 'Öğretmen Stüdyosu · Taslak',
+    en: 'Teacher Studio · Draft',
+  },
 };
-
-function formatTimeTr(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('tr-TR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: 'short',
-    }).format(new Date(iso));
-  } catch {
-    return '';
-  }
-}
 
 export const ProgressView: React.FC<ProgressViewProps> = ({
   onOpenTopic,
@@ -175,6 +295,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
   onOpenSpeakingScenario,
   onOpenActivityRoute,
 }) => {
+  const { locale, tx, formatDateTime } = useI18n();
+  const fmtPct = (value: number) =>
+    tx({ tr: '%{{value}}', en: '{{value}}%' }, { value });
   const {
     theme,
     rolePreview,
@@ -199,7 +322,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
     activityAccuracyPercent,
   } = useAppState();
 
-  const [backupNotice, setBackupNotice] = useState<string | null>(null);
+  const [backupFilename, setBackupFilename] = useState<string | null>(null);
   const integrity = useMemo(() => evaluateProgressIntegrity(progress), [progress]);
   const a2Integrity = useMemo(() => evaluateA2ProgressIntegrity(a2Progress), [a2Progress]);
   const storageDiag = useMemo(
@@ -219,8 +342,8 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       },
       a2Progress
     );
-    setBackupNotice(`JSON yedeği (A1 + A2) indirildi: ${filename}`);
-    window.setTimeout(() => setBackupNotice(null), 4000);
+    setBackupFilename(filename);
+    window.setTimeout(() => setBackupFilename(null), 4000);
   };
 
   if (activeCourse === 'de-A2') {
@@ -336,11 +459,18 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <div className="flex flex-col gap-3 border-b border-[#D9D9D3] pb-6 sm:flex-row sm:items-end sm:justify-between dark:border-[#282830]">
           <div>
             <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-              Kişisel Alan · Almanca CEFR A2 · İzole Yerel Kayıt (
-              <span className="font-mono">{STORAGE_KEY_A2_STATE}</span>)
+              {locale.navGroups.personal} ·{' '}
+              {tx({
+                tr: 'Almanca CEFR A2 · İzole Yerel Kayıt',
+                en: 'German CEFR A2 · Isolated Local Storage',
+              })}{' '}
+              (<span className="font-mono">{STORAGE_KEY_A2_STATE}</span>)
             </p>
             <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Almanca A2 — Öğrenme Yolum ve İlerlemem
+              {tx({
+                tr: 'Almanca A2 — Öğrenme Yolum ve İlerlemem',
+                en: 'German A2 — Learning Path & Progress',
+              })}
             </h1>
           </div>
 
@@ -350,7 +480,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               onClick={() => openA2Unit(GERMAN_A2_TOPICS[0].id)}
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
-              <span>A2 Kelime</span>
+              <span>{tx({ tr: 'A2 Kelime', en: 'A2 Vocabulary' })}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -359,7 +489,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#7C1D2E]/40 bg-[#FDF2F4]/60 px-3.5 text-xs sm:text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FDF2F4] dark:border-[#D9A13B]/50 dark:bg-[#1E1E24] dark:text-[#D9A13B] dark:hover:bg-[#27272F] whitespace-nowrap"
             >
               <Headphones className="h-4 w-4" />
-              <span>A2 Dinleme</span>
+              <span>{tx({ tr: 'A2 Dinleme', en: 'A2 Listening' })}</span>
             </button>
             <button
               type="button"
@@ -367,7 +497,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#7C1D2E]/40 bg-[#FDF2F4]/60 px-3.5 text-xs sm:text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FDF2F4] dark:border-[#D9A13B]/50 dark:bg-[#1E1E24] dark:text-[#D9A13B] dark:hover:bg-[#27272F] whitespace-nowrap"
             >
               <BookText className="h-4 w-4" />
-              <span>A2 Okuma</span>
+              <span>{tx({ tr: 'A2 Okuma', en: 'A2 Reading' })}</span>
             </button>
             <button
               type="button"
@@ -375,7 +505,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#7C1D2E]/40 bg-[#FDF2F4]/60 px-3.5 text-xs sm:text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FDF2F4] dark:border-[#D9A13B]/50 dark:bg-[#1E1E24] dark:text-[#D9A13B] dark:hover:bg-[#27272F] whitespace-nowrap"
             >
               <PenTool className="h-4 w-4" />
-              <span>A2 Yazma</span>
+              <span>{tx({ tr: 'A2 Yazma', en: 'A2 Writing' })}</span>
             </button>
             <button
               type="button"
@@ -383,7 +513,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#7C1D2E]/40 bg-[#FDF2F4]/60 px-3.5 text-xs sm:text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FDF2F4] dark:border-[#D9A13B]/50 dark:bg-[#1E1E24] dark:text-[#D9A13B] dark:hover:bg-[#27272F] whitespace-nowrap"
             >
               <MessageSquare className="h-4 w-4" />
-              <span>A2 Konuşma</span>
+              <span>{tx({ tr: 'A2 Konuşma', en: 'A2 Speaking' })}</span>
             </button>
             <button
               type="button"
@@ -391,14 +521,19 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#7C1D2E]/40 bg-[#FDF2F4]/60 px-3.5 text-xs sm:text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FDF2F4] dark:border-[#D9A13B]/50 dark:bg-[#1E1E24] dark:text-[#D9A13B] dark:hover:bg-[#27272F] whitespace-nowrap"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>A2 Sınav Modu</span>
+              <span>{tx({ tr: 'A2 Sınav Modu', en: 'A2 Exam Mode' })}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveCourse('de-A1')}
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
             >
-              <span>A1 İlerlemesi ({progress.xp} XP)</span>
+              <span>
+                {tx(
+                  { tr: 'A1 İlerlemesi ({{xp}} XP)', en: 'A1 Progress ({{xp}} XP)' },
+                  { xp: progress.xp }
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -406,82 +541,119 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         {/* A2 Real KPI Summary Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam A2 XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Toplam A2 XP', en: 'Total A2 XP' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
               {a2Progress.xp} XP
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              Aşama 1–6 · Tekil XP
+              {tx({ tr: 'Aşama 1–6 · Tekil XP', en: 'Stages 1–6 · Unique XP' })}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Kelime</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Kelime', en: 'A2 Vocabulary' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2Count} / {totalA2Words}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2WordPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2WordPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Dinleme</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Dinleme', en: 'A2 Listening' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2ListeningCount} / {TOTAL_A2_LISTENING_EXERCISES}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2ListeningPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2ListeningPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Okuma</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Okuma', en: 'A2 Reading' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2ReadingCount} / {TOTAL_A2_READING_EXERCISES}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2ReadingPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2ReadingPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Yazma</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Yazma', en: 'A2 Writing' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2WritingCount} / {TOTAL_A2_WRITING_TASKS}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2WritingPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2WritingPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Konuşma</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Konuşma', en: 'A2 Speaking' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2SpeakingCount} / {TOTAL_A2_SPEAKING_TASKS}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2SpeakingPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2SpeakingPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Etkinlik &amp; Sınav</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Etkinlik & Sınav', en: 'A2 Activities & Exam' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedA2ActivityCount} / {TOTAL_A2_ACTIVITY_ITEMS}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Tamamlanma: %{a2ActivityPct}
+              {tx(
+                { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+                { pct: fmtPct(a2ActivityPct) }
+              )}
             </p>
           </div>
 
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Doğruluk</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Doğruluk', en: 'A2 Accuracy' })}
+            </p>
             <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {a2OverallAccuracyPercent === null ? '—' : `%${a2OverallAccuracyPercent}`}
+              {a2OverallAccuracyPercent === null ? '—' : fmtPct(a2OverallAccuracyPercent)}
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {totalA2GradedAttempts} puanlı yanıt
+              {tx(
+                { tr: '{{count}} puanlı yanıt', en: '{{count}} graded responses' },
+                { count: totalA2GradedAttempts }
+              )}
             </p>
           </div>
         </div>
@@ -491,10 +663,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-7 text-center dark:border-[#282830] dark:bg-[#16161A]">
             <BookOpen className="mx-auto h-7 w-7 text-[#7C1D2E] dark:text-[#D9A13B]" />
             <h2 className="mt-3 font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Henüz Almanca A2 çalışma kaydınız yok
+              {tx({
+                tr: 'Henüz Almanca A2 çalışma kaydınız yok',
+                en: 'No German A2 study activity yet',
+              })}
             </h2>
             <p className="mx-auto mt-2 max-w-lg text-sm text-[#52525B] dark:text-[#A1A1AA]">
-              A2 Kelime, Dinleme, Okuma, Yazma, Konuşma veya A2 Etkinlikler / Sınav Modu çalışmalarını başlattığınızda gerçek A2 XP, doğruluk ve ilerlemeniz burada anlık güncellenir.
+              {tx({
+                tr: 'A2 Kelime, Dinleme, Okuma, Yazma, Konuşma veya A2 Etkinlikler / Sınav Modu çalışmalarını başlattığınızda gerçek A2 XP, doğruluk ve ilerlemeniz burada anlık güncellenir.',
+                en: 'Once you start A2 Vocabulary, Listening, Reading, Writing, Speaking, or A2 Activities / Exam Mode, your real A2 XP, accuracy, and progress update live here.',
+              })}
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <button
@@ -502,7 +680,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 onClick={() => openA2Unit(GERMAN_A2_TOPICS[0].id)}
                 className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#111113] px-5 text-sm font-medium text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
               >
-                <span>A2 Kelime Çalışmasını Başlat</span>
+                <span>
+                  {tx({
+                    tr: 'A2 Kelime Çalışmasını Başlat',
+                    en: 'Start A2 Vocabulary Practice',
+                  })}
+                </span>
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button
@@ -511,7 +694,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <Headphones className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>A2 Dinleme (Hören) Başlat</span>
+                <span>
+                  {tx({
+                    tr: 'A2 Dinleme (Hören) Başlat',
+                    en: 'Start A2 Listening (Hören)',
+                  })}
+                </span>
               </button>
               <button
                 type="button"
@@ -519,7 +707,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <BookText className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>A2 Okuma (Lesen) Başlat</span>
+                <span>
+                  {tx({
+                    tr: 'A2 Okuma (Lesen) Başlat',
+                    en: 'Start A2 Reading (Lesen)',
+                  })}
+                </span>
               </button>
               <button
                 type="button"
@@ -527,7 +720,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <PenTool className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>A2 Yazma (Schreiben) Başlat</span>
+                <span>
+                  {tx({
+                    tr: 'A2 Yazma (Schreiben) Başlat',
+                    en: 'Start A2 Writing (Schreiben)',
+                  })}
+                </span>
               </button>
               <button
                 type="button"
@@ -535,7 +733,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <MessageSquare className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>A2 Konuşma (Sprechen) Başlat</span>
+                <span>
+                  {tx({
+                    tr: 'A2 Konuşma (Sprechen) Başlat',
+                    en: 'Start A2 Speaking (Sprechen)',
+                  })}
+                </span>
               </button>
               <button
                 type="button"
@@ -543,7 +746,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <FileSpreadsheet className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>A2 Sınav Modunu Aç</span>
+                <span>
+                  {tx({ tr: 'A2 Sınav Modunu Aç', en: 'Open A2 Exam Mode' })}
+                </span>
               </button>
             </div>
           </div>
@@ -553,10 +758,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              01. Almanca A2 Kelime (Wortschatz) — Ünite İlerlemesi
+              {tx({
+                tr: '01. Almanca A2 Kelime (Wortschatz) — Ünite İlerlemesi',
+                en: '01. German A2 Vocabulary (Wortschatz) — Unit Progress',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2Count} / {totalA2Words} kelime
+              {tx(
+                { tr: '{{done}} / {{total}} kelime', en: '{{done}} / {{total}} words' },
+                { done: completedA2Count, total: totalA2Words }
+              )}
             </span>
           </div>
 
@@ -591,14 +802,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => openA2Unit(topic.id)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      {doneInTopic > 0 ? 'Çalışmaya Devam Et' : 'Üniteyi Başlat'}
+                      {doneInTopic > 0
+                        ? tx({ tr: 'Çalışmaya Devam Et', en: 'Continue Studying' })
+                        : tx({ tr: 'Üniteyi Başlat', en: 'Start Unit' })}
                     </button>
                   </div>
                 </div>
@@ -611,10 +824,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              02. Almanca A2 Dinleme (Hören) — Senaryo İlerlemesi
+              {tx({
+                tr: '02. Almanca A2 Dinleme (Hören) — Senaryo İlerlemesi',
+                en: '02. German A2 Listening (Hören) — Scenario Progress',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2ListeningCount} / {TOTAL_A2_LISTENING_EXERCISES} alıştırma
+              {tx(
+                { tr: '{{done}} / {{total}} alıştırma', en: '{{done}} / {{total}} exercises' },
+                { done: completedA2ListeningCount, total: TOTAL_A2_LISTENING_EXERCISES }
+              )}
             </span>
           </div>
 
@@ -654,14 +873,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => openA2Scenario(scenario.id)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      {doneInScenario > 0 ? 'Dinlemeye Devam Et' : 'Senaryoyu Başlat'}
+                      {doneInScenario > 0
+                        ? tx({ tr: 'Dinlemeye Devam Et', en: 'Continue Listening' })
+                        : tx({ tr: 'Senaryoyu Başlat', en: 'Start Scenario' })}
                     </button>
                   </div>
                 </div>
@@ -674,10 +895,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              03. Almanca A2 Okuma (Lesen) — Metin İlerlemesi
+              {tx({
+                tr: '03. Almanca A2 Okuma (Lesen) — Metin İlerlemesi',
+                en: '03. German A2 Reading (Lesen) — Text Progress',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2ReadingCount} / {TOTAL_A2_READING_EXERCISES} alıştırma
+              {tx(
+                { tr: '{{done}} / {{total}} alıştırma', en: '{{done}} / {{total}} exercises' },
+                { done: completedA2ReadingCount, total: TOTAL_A2_READING_EXERCISES }
+              )}
             </span>
           </div>
 
@@ -717,14 +944,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => openA2ReadingScenario(scenario.id)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      {doneInScenario > 0 ? 'Okumaya Devam Et' : 'Metni Başlat'}
+                      {doneInScenario > 0
+                        ? tx({ tr: 'Okumaya Devam Et', en: 'Continue Reading' })
+                        : tx({ tr: 'Metni Başlat', en: 'Start Text' })}
                     </button>
                   </div>
                 </div>
@@ -737,10 +966,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              04. Almanca A2 Yazma (Schreiben) — Senaryo İlerlemesi
+              {tx({
+                tr: '04. Almanca A2 Yazma (Schreiben) — Senaryo İlerlemesi',
+                en: '04. German A2 Writing (Schreiben) — Scenario Progress',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2WritingCount} / {TOTAL_A2_WRITING_TASKS} görev
+              {tx(
+                { tr: '{{done}} / {{total}} görev', en: '{{done}} / {{total}} tasks' },
+                { done: completedA2WritingCount, total: TOTAL_A2_WRITING_TASKS }
+              )}
             </span>
           </div>
 
@@ -780,14 +1015,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => openA2WritingScenario(scenario.id)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      {doneInScenario > 0 ? 'Yazmaya Devam Et' : 'Görevi Başlat'}
+                      {doneInScenario > 0
+                        ? tx({ tr: 'Yazmaya Devam Et', en: 'Continue Writing' })
+                        : tx({ tr: 'Görevi Başlat', en: 'Start Task' })}
                     </button>
                   </div>
                 </div>
@@ -800,10 +1037,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              05. Almanca A2 Konuşma (Sprechen) — Senaryo İlerlemesi
+              {tx({
+                tr: '05. Almanca A2 Konuşma (Sprechen) — Senaryo İlerlemesi',
+                en: '05. German A2 Speaking (Sprechen) — Scenario Progress',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2SpeakingCount} / {TOTAL_A2_SPEAKING_TASKS} pratik
+              {tx(
+                { tr: '{{done}} / {{total}} pratik', en: '{{done}} / {{total}} practices' },
+                { done: completedA2SpeakingCount, total: TOTAL_A2_SPEAKING_TASKS }
+              )}
             </span>
           </div>
 
@@ -843,14 +1086,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => openA2SpeakingScenario(scenario.id)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      {doneInScenario > 0 ? 'Konuşmaya Devam Et' : 'Senaryoyu Başlat'}
+                      {doneInScenario > 0
+                        ? tx({ tr: 'Konuşmaya Devam Et', en: 'Continue Speaking' })
+                        : tx({ tr: 'Senaryoyu Başlat', en: 'Start Scenario' })}
                     </button>
                   </div>
                 </div>
@@ -863,10 +1108,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              06. Almanca A2 Etkinlikler ve Sınav Bankası
+              {tx({
+                tr: '06. Almanca A2 Etkinlikler ve Sınav Bankası',
+                en: '06. German A2 Activities & Exam Bank',
+              })}
             </h2>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {completedA2ActivityCount} / {TOTAL_A2_ACTIVITY_ITEMS} öğe
+              {tx(
+                { tr: '{{done}} / {{total}} öğe', en: '{{done}} / {{total}} items' },
+                { done: completedA2ActivityCount, total: TOTAL_A2_ACTIVITY_ITEMS }
+              )}
             </span>
           </div>
 
@@ -875,36 +1126,57 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               [
                 {
                   routeId: 'karaoke' as NavRouteId,
-                  titleTr: 'Karaoke Stüdyosu',
+                  titleLabel: tx({ tr: 'Karaoke Stüdyosu', en: 'Karaoke Studio' }),
                   ids: A2_KARAOKE_IDS,
-                  extraTr: 'Ritmik tekrar (+15 XP)',
+                  extraLabel: tx({
+                    tr: 'Ritmik tekrar (+15 XP)',
+                    en: 'Rhythmic drill (+15 XP)',
+                  }),
                 },
                 {
                   routeId: 'sessiz-sinema' as NavRouteId,
-                  titleTr: 'Sessiz Sinema',
+                  titleLabel: tx({ tr: 'Sessiz Sinema', en: 'Charades' }),
                   ids: A2_CHARADE_IDS,
-                  extraTr: 'Bireysel + 45 sn sınıf',
+                  extraLabel: tx({
+                    tr: 'Bireysel + 45 sn sınıf',
+                    en: 'Solo + 45s classroom',
+                  }),
                 },
                 {
                   routeId: 'arena' as NavRouteId,
-                  titleTr: 'Arena (A2)',
+                  titleLabel: 'Arena (A2)',
                   ids: A2_ARENA_IDS,
-                  extraTr: `En İyi Seri: ${a2Progress.a2ArenaBestStreak}`,
+                  extraLabel: `${locale.common.bestStreak}: ${a2Progress.a2ArenaBestStreak}`,
                 },
                 {
                   routeId: 'quiz-merkezi' as NavRouteId,
-                  titleTr: 'Quiz Merkezi',
+                  titleLabel: tx({ tr: 'Quiz Merkezi', en: 'Quiz Center' }),
                   ids: A2_QUIZ_IDS,
-                  extraTr: '4 A2 konu filtresi',
+                  extraLabel: tx({
+                    tr: '4 A2 konu filtresi',
+                    en: '4 A2 topic filters',
+                  }),
                 },
                 {
                   routeId: 'sinav-modu' as NavRouteId,
-                  titleTr: 'Sınav Modu',
+                  titleLabel: tx({ tr: 'Sınav Modu', en: 'Exam Mode' }),
                   ids: A2_EXAM_IDS,
-                  extraTr:
+                  extraLabel:
                     a2Progress.a2ExamBestScorePercent === null
-                      ? `${a2Progress.a2ExamCompletedCount} deneme`
-                      : `En İyi: %${a2Progress.a2ExamBestScorePercent} (${a2Progress.a2ExamCompletedCount} deneme)`,
+                      ? tx(
+                          { tr: '{{count}} deneme', en: '{{count}} attempts' },
+                          { count: a2Progress.a2ExamCompletedCount }
+                        )
+                      : tx(
+                          {
+                            tr: 'En İyi: {{pct}} ({{count}} deneme)',
+                            en: 'Best: {{pct}} ({{count}} attempts)',
+                          },
+                          {
+                            pct: fmtPct(a2Progress.a2ExamBestScorePercent),
+                            count: a2Progress.a2ExamCompletedCount,
+                          }
+                        ),
                 },
               ] as const
             ).map((mod) => {
@@ -927,10 +1199,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                       </span>
                     </div>
                     <h3 className="mt-1.5 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                      {mod.titleTr}
+                      {mod.titleLabel}
                     </h3>
                     <p className="mt-0.5 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      {mod.extraTr}
+                      {mod.extraLabel}
                     </p>
                     <div className="mt-3.5 h-2 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
                       <div
@@ -941,14 +1213,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                   </div>
                   <div className="mt-3.5 flex items-center justify-between text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{pct}
+                      {fmtPct(pct)}
                     </span>
                     <button
                       type="button"
                       onClick={() => onOpenActivityRoute(mod.routeId)}
                       className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                     >
-                      Modülü Aç
+                      {tx({ tr: 'Modülü Aç', en: 'Open Module' })}
                     </button>
                   </div>
                 </div>
@@ -961,84 +1233,105 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <section className="lg:col-span-5 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 dark:border-[#282830] dark:bg-[#16161A]">
             <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              A2 Mod Bazlı Özet
+              {tx({ tr: 'A2 Mod Bazlı Özet', en: 'A2 Mode Breakdown' })}
             </h2>
             <dl className="mt-4 divide-y divide-[#ECECE8] text-sm dark:divide-[#24242C]">
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Kartlarla Öğren</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Kartlarla Öğren', en: 'Learn with Flashcards' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {a2Progress.studiedFlashcards.length} / {totalA2Words}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Artikel &amp; Çoğul Avı</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Artikel & Çoğul Avı', en: 'Article & Plural Hunt' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                   {articlePluralAcc === null
                     ? '—'
-                    : `%${articlePluralAcc} (${a2Progress.articlePluralCorrect}/${a2Progress.articlePluralAttempts})`}
+                    : `${fmtPct(articlePluralAcc)} (${a2Progress.articlePluralCorrect}/${a2Progress.articlePluralAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Anlam Eşleştirme</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Anlam Eşleştirme', en: 'Meaning Match' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {meaningAcc === null
                     ? '—'
-                    : `%${meaningAcc} (${a2Progress.meaningCorrect}/${a2Progress.meaningAttempts})`}
+                    : `${fmtPct(meaningAcc)} (${a2Progress.meaningCorrect}/${a2Progress.meaningAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Cümle İçi Kullanım</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Cümle İçi Kullanım', en: 'In-Context Usage' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {contextAcc === null
                     ? '—'
-                    : `%${contextAcc} (${a2Progress.contextCorrect}/${a2Progress.contextAttempts})`}
+                    : `${fmtPct(contextAcc)} (${a2Progress.contextCorrect}/${a2Progress.contextAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 Dinleme (Hören)</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 Dinleme (Hören)', en: 'A2 Listening (Hören)' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                   {a2ListeningAccuracyPercent === null
                     ? '—'
-                    : `%${a2ListeningAccuracyPercent} (${a2Progress.listeningCorrect}/${a2Progress.listeningAttempts})`}
+                    : `${fmtPct(a2ListeningAccuracyPercent)} (${a2Progress.listeningCorrect}/${a2Progress.listeningAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 Okuma (Lesen)</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 Okuma (Lesen)', en: 'A2 Reading (Lesen)' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                   {a2ReadingAccuracyPercent === null
                     ? '—'
-                    : `%${a2ReadingAccuracyPercent} (${a2Progress.readingCorrect}/${a2Progress.readingAttempts})`}
+                    : `${fmtPct(a2ReadingAccuracyPercent)} (${a2Progress.readingCorrect}/${a2Progress.readingAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 Yazma (Schreiben)</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 Yazma (Schreiben)', en: 'A2 Writing (Schreiben)' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                   {a2WritingAccuracyPercent === null
                     ? '—'
-                    : `%${a2WritingAccuracyPercent} (${a2Progress.writingCorrect}/${a2Progress.writingAttempts})`}
+                    : `${fmtPct(a2WritingAccuracyPercent)} (${a2Progress.writingCorrect}/${a2Progress.writingAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 Konuşma (Sprechen)</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 Konuşma (Sprechen)', en: 'A2 Speaking (Sprechen)' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                  {completedA2SpeakingCount} / {TOTAL_A2_SPEAKING_TASKS} · öz-değerlendirme
+                  {completedA2SpeakingCount} / {TOTAL_A2_SPEAKING_TASKS} ·{' '}
+                  {tx({ tr: 'öz-değerlendirme', en: 'self-check' })}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 Etkinlikler &amp; Sınav</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 Etkinlikler & Sınav', en: 'A2 Activities & Exam' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                   {a2ActivityAccuracyPercent === null
                     ? '—'
-                    : `%${a2ActivityAccuracyPercent} (${a2Progress.activityCorrect}/${a2Progress.activityAttempts})`}
+                    : `${fmtPct(a2ActivityAccuracyPercent)} (${a2Progress.activityCorrect}/${a2Progress.activityAttempts})`}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-3">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">A2 En Yüksek Sınav / Seri</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'A2 En Yüksek Sınav / Seri', en: 'A2 Best Exam / Streak' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {a2Progress.a2ExamBestScorePercent === null
                     ? '—'
-                    : `%${a2Progress.a2ExamBestScorePercent}`}{' '}
-                  · Seri {a2Progress.a2ArenaBestStreak}
+                    : fmtPct(a2Progress.a2ExamBestScorePercent)}{' '}
+                  · {locale.common.streak} {a2Progress.a2ArenaBestStreak}
                 </dd>
               </div>
             </dl>
@@ -1046,12 +1339,15 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
           <section className="lg:col-span-7 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 dark:border-[#282830] dark:bg-[#16161A]">
             <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Son A2 Çalışma Kayıtları
+              {tx({ tr: 'Son A2 Çalışma Kayıtları', en: 'Recent A2 Study Activity' })}
             </h2>
 
             {a2Progress.recentActivities.length === 0 ? (
               <p className="mt-4 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                Henüz kayıtlı bir A2 beceri, etkinlik veya deneme sınavı hareketi bulunmuyor.
+                {tx({
+                  tr: 'Henüz kayıtlı bir A2 beceri, etkinlik veya deneme sınavı hareketi bulunmuyor.',
+                  en: 'No A2 skill, activity, or practice exam activity recorded yet.',
+                })}
               </p>
             ) : (
               <ul className="mt-4 divide-y divide-[#ECECE8] dark:divide-[#24242C]">
@@ -1071,8 +1367,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                           {entry.summaryTr}
                         </p>
                         <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                          {A2_MODE_LABELS[entry.mode] ?? entry.mode} ·{' '}
-                          {formatTimeTr(entry.timestamp)}
+                          {A2_MODE_LABELS[entry.mode]
+                            ? tx(A2_MODE_LABELS[entry.mode])
+                            : entry.mode}{' '}
+                          · {formatDateTime(entry.timestamp)}
                         </p>
                       </div>
                     </div>
@@ -1099,17 +1397,49 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               />
               <div className="space-y-1">
                 <h2 className="font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  A2 Yerel Veri Bütünlüğü ve JSON Yedekleme
+                  {tx({
+                    tr: 'A2 Yerel Veri Bütünlüğü ve JSON Yedekleme',
+                    en: 'A2 Local Data Integrity & JSON Backup',
+                  })}
                 </h2>
                 <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                   {a2Integrity.isHealthy
-                    ? `A2 kaydı tutarlı (${a2Integrity.totalUniqueMasteredWords} benzersiz A2 kelimesi · ${a2Integrity.totalUniqueListeningItems} A2 dinleme · ${a2Integrity.totalUniqueReadingItems} A2 okuma · ${a2Integrity.totalUniqueWritingTasks} A2 yazma · ${a2Integrity.totalUniqueSpeakingTasks} A2 konuşma · ${a2Integrity.totalUniqueActivityItems} A2 etkinlik/sınav · ${formatBytesTr(storageDiag.a2ProgressBytes)} A2 depolama alanı).`
-                    : a2Integrity.issuesTr.join(' ')}{' '}
-                  JSON yedek dosyası hem Almanca A1 hem de Almanca A2 ilerlemenizi birlikte korur.
+                    ? tx(
+                        {
+                          tr: 'A2 kaydı tutarlı ({{words}} benzersiz A2 kelimesi · {{listening}} A2 dinleme · {{reading}} A2 okuma · {{writing}} A2 yazma · {{speaking}} A2 konuşma · {{activities}} A2 etkinlik/sınav · {{bytes}} A2 depolama alanı).',
+                          en: 'A2 record is consistent ({{words}} unique A2 words · {{listening}} A2 listening · {{reading}} A2 reading · {{writing}} A2 writing · {{speaking}} A2 speaking · {{activities}} A2 activities/exam · {{bytes}} A2 storage).',
+                        },
+                        {
+                          words: a2Integrity.totalUniqueMasteredWords,
+                          listening: a2Integrity.totalUniqueListeningItems,
+                          reading: a2Integrity.totalUniqueReadingItems,
+                          writing: a2Integrity.totalUniqueWritingTasks,
+                          speaking: a2Integrity.totalUniqueSpeakingTasks,
+                          activities: a2Integrity.totalUniqueActivityItems,
+                          bytes: formatBytesTr(storageDiag.a2ProgressBytes),
+                        }
+                      )
+                    : tx(
+                        {
+                          tr: a2Integrity.issuesTr.join(' '),
+                          en: '{{count}} integrity warning(s) detected in local A2 progress; use Settings to import or reset.',
+                        },
+                        { count: a2Integrity.issuesTr.length }
+                      )}{' '}
+                  {tx({
+                    tr: 'JSON yedek dosyası hem Almanca A1 hem de Almanca A2 ilerlemenizi birlikte korur.',
+                    en: 'The JSON backup file preserves both your German A1 and German A2 progress together.',
+                  })}
                 </p>
-                {backupNotice && (
+                {backupFilename && (
                   <p className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
-                    {backupNotice}
+                    {tx(
+                      {
+                        tr: 'JSON yedeği (A1 + A2) indirildi: {{filename}}',
+                        en: 'JSON backup (A1 + A2) downloaded: {{filename}}',
+                      },
+                      { filename: backupFilename }
+                    )}
                   </p>
                 )}
               </div>
@@ -1122,7 +1452,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs font-medium text-white transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
               >
                 <Download className="h-3.5 w-3.5" />
-                <span>JSON Yedeği İndir</span>
+                <span>{tx({ tr: 'JSON Yedeği İndir', en: 'Download JSON Backup' })}</span>
               </button>
               <button
                 type="button"
@@ -1130,7 +1460,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#F4F4F5] dark:hover:bg-[#282830] whitespace-nowrap"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>İçe Aktar / Sıfırla</span>
+                <span>{tx({ tr: 'İçe Aktar / Sıfırla', en: 'Import / Reset' })}</span>
               </button>
             </div>
           </div>
@@ -1224,48 +1554,60 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
   const masteredActivitySet = new Set(progress.activityMasteredIds);
   const activityBreakdownCards: Array<{
     routeId: NavRouteId;
-    titleTr: string;
-    subtitleDe: string;
+    titleLabel: string;
+    subtitleLabel: string;
     ids: string[];
     actionLabel: string;
   }> = [
     {
       routeId: 'karaoke',
-      titleTr: 'Karaoke Stüdyosu',
-      subtitleDe: 'Ritmik A1 Satır Takibi',
+      titleLabel: tx({ tr: 'Karaoke Stüdyosu', en: 'Karaoke Studio' }),
+      subtitleLabel: tx({
+        tr: 'Ritmik A1 Satır Takibi',
+        en: 'Rhythmic A1 Line Follow',
+      }),
       ids: KARAOKE_IDS,
-      actionLabel: 'Karaokeyi Aç',
+      actionLabel: tx({ tr: 'Karaokeyi Aç', en: 'Open Karaoke' }),
     },
     {
       routeId: 'sessiz-sinema',
-      titleTr: 'Sessiz Sinema',
-      subtitleDe: 'Scharade · İpucu Kartları',
+      titleLabel: tx({ tr: 'Sessiz Sinema', en: 'Charades' }),
+      subtitleLabel: tx({
+        tr: 'Scharade · İpucu Kartları',
+        en: 'Scharade · Cue Cards',
+      }),
       ids: CHARADE_IDS,
-      actionLabel: 'Kartları Aç',
+      actionLabel: tx({ tr: 'Kartları Aç', en: 'Open Cards' }),
     },
     {
       routeId: 'arena',
-      titleTr: 'Arena',
-      subtitleDe: `En iyi seri: ${progress.arenaBestStreak}`,
+      titleLabel: 'Arena',
+      subtitleLabel: tx(
+        { tr: 'En iyi seri: {{streak}}', en: 'Best streak: {{streak}}' },
+        { streak: progress.arenaBestStreak }
+      ),
       ids: ARENA_IDS,
-      actionLabel: 'Arenaya Gir',
+      actionLabel: tx({ tr: 'Arenaya Gir', en: 'Enter Arena' }),
     },
     {
       routeId: 'quiz-merkezi',
-      titleTr: 'Quiz Merkezi',
-      subtitleDe: 'Karma A1 Tarama',
+      titleLabel: tx({ tr: 'Quiz Merkezi', en: 'Quiz Center' }),
+      subtitleLabel: tx({ tr: 'Karma A1 Tarama', en: 'Mixed A1 Review' }),
       ids: QUIZ_IDS,
-      actionLabel: 'Quiz Çöz',
+      actionLabel: tx({ tr: 'Quiz Çöz', en: 'Take Quiz' }),
     },
     {
       routeId: 'sinav-modu',
-      titleTr: 'Sınav Modu',
-      subtitleDe:
+      titleLabel: tx({ tr: 'Sınav Modu', en: 'Exam Mode' }),
+      subtitleLabel:
         progress.examBestScorePercent === null
-          ? '15 Soruluk Deneme'
-          : `En iyi skor: %${progress.examBestScorePercent}`,
+          ? tx({ tr: '15 Soruluk Deneme', en: '15-Question Practice' })
+          : tx(
+              { tr: 'En iyi skor: {{pct}}', en: 'Best score: {{pct}}' },
+              { pct: fmtPct(progress.examBestScorePercent) }
+            ),
       ids: EXAM_IDS,
-      actionLabel: 'Sınavı Aç',
+      actionLabel: tx({ tr: 'Sınavı Aç', en: 'Open Exam' }),
     },
   ];
 
@@ -1275,10 +1617,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <div className="flex flex-col gap-3 border-b border-[#D9D9D3] pb-6 sm:flex-row sm:items-end sm:justify-between dark:border-[#282830]">
         <div>
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            Kişisel Alan · Almanca A1 · Yerel Oturum Verisi
+            {locale.navGroups.personal} · {locale.course.a1Label} ·{' '}
+            {tx({ tr: 'Yerel Oturum Verisi', en: 'Local Session Data' })}
           </p>
           <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Öğrenme Yolum ve İlerlemem
+            {tx({
+              tr: 'Öğrenme Yolum ve İlerlemem',
+              en: 'My Learning Path & Progress',
+            })}
           </h1>
         </div>
 
@@ -1288,7 +1634,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             onClick={() => onOpenTopic(GERMAN_A1_TOPICS[0].id)}
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-3.5 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
           >
-            <span>A1 Kelime</span>
+            <span>{tx({ tr: 'A1 Kelime', en: 'A1 Vocabulary' })}</span>
             <ArrowRight className="h-4 w-4" />
           </button>
           <button
@@ -1297,7 +1643,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <Headphones className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-            <span>Dinleme</span>
+            <span>{tx({ tr: 'Dinleme', en: 'Listening' })}</span>
           </button>
           <button
             type="button"
@@ -1305,7 +1651,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <BookText className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-            <span>Okuma</span>
+            <span>{tx({ tr: 'Okuma', en: 'Reading' })}</span>
           </button>
           <button
             type="button"
@@ -1313,7 +1659,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <PenTool className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-            <span>Yazma</span>
+            <span>{tx({ tr: 'Yazma', en: 'Writing' })}</span>
           </button>
           <button
             type="button"
@@ -1321,7 +1667,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <MessageSquare className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-            <span>Konuşma</span>
+            <span>{tx({ tr: 'Konuşma', en: 'Speaking' })}</span>
           </button>
           <button
             type="button"
@@ -1329,7 +1675,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <ClipboardCheck className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-            <span>Etkinlik &amp; Sınav</span>
+            <span>{tx({ tr: 'Etkinlik & Sınav', en: 'Activities & Exam' })}</span>
           </button>
         </div>
       </div>
@@ -1337,82 +1683,119 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       {/* Real KPI Summary Strip (starts strictly at 0) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {locale.common.totalXp}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
             {progress.xp} XP
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Tüm Aktif Modüller
+            {tx({ tr: 'Tüm Aktif Modüller', en: 'All Active Modules' })}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Kelime</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'A1 Kelime', en: 'A1 Vocabulary' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedWordCount} / {totalWords}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Tamamlanma: %{wordCompletionPct}
+            {tx(
+              { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+              { pct: fmtPct(wordCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Dinleme (Hören)</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Dinleme (Hören)', en: 'Listening (Hören)' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedListeningCount} / {TOTAL_LISTENING_EXERCISES}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Tamamlanma: %{listeningCompletionPct}
+            {tx(
+              { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+              { pct: fmtPct(listeningCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Okuma (Lesen)</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Okuma (Lesen)', en: 'Reading (Lesen)' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedReadingCount} / {TOTAL_READING_EXERCISES}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Tamamlanma: %{readingCompletionPct}
+            {tx(
+              { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+              { pct: fmtPct(readingCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Yazma (Schreiben)</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Yazma (Schreiben)', en: 'Writing (Schreiben)' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedWritingCount} / {TOTAL_WRITING_TASKS}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Tamamlanma: %{writingCompletionPct}
+            {tx(
+              { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+              { pct: fmtPct(writingCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Konuşma (Sprechen)</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Konuşma (Sprechen)', en: 'Speaking (Sprechen)' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedSpeakingCount} / {TOTAL_SPEAKING_TASKS}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Öz-Değerlendirme: %{speakingCompletionPct}
+            {tx(
+              { tr: 'Öz-Değerlendirme: {{pct}}', en: 'Self-Check: {{pct}}' },
+              { pct: fmtPct(speakingCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Etkinlikler &amp; Sınav</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Etkinlikler & Sınav', en: 'Activities & Exam' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
             {completedActivityCount} / {TOTAL_ACTIVITY_ITEMS}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Tamamlanma: %{activityCompletionPct}
+            {tx(
+              { tr: 'Tamamlanma: {{pct}}', en: 'Completion: {{pct}}' },
+              { pct: fmtPct(activityCompletionPct) }
+            )}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 dark:border-[#282830] dark:bg-[#16161A]">
-          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Genel Doğruluk</p>
+          <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+            {tx({ tr: 'Genel Doğruluk', en: 'Overall Accuracy' })}
+          </p>
           <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-            {overallAccuracyPercent === null ? '—' : `%${overallAccuracyPercent}`}
+            {overallAccuracyPercent === null ? '—' : fmtPct(overallAccuracyPercent)}
           </p>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {totalGradedAttempts} puanlı yanıt
+            {tx(
+              { tr: '{{count}} puanlı yanıt', en: '{{count}} graded responses' },
+              { count: totalGradedAttempts }
+            )}
           </p>
         </div>
       </div>
@@ -1422,10 +1805,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-7 text-center dark:border-[#282830] dark:bg-[#16161A]">
           <BookOpen className="mx-auto h-7 w-7 text-[#7C1D2E] dark:text-[#D9A13B]" />
           <h2 className="mt-3 font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Henüz tamamlanmış bir çalışma kaydınız yok
+            {tx({
+              tr: 'Henüz tamamlanmış bir çalışma kaydınız yok',
+              en: 'No completed study activity yet',
+            })}
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm text-[#52525B] dark:text-[#A1A1AA]">
-            Almanca A1 Kelime, Dinleme (Hören), Okuma (Lesen), Yazma (Schreiben) veya Konuşma (Sprechen) modüllerinde pratik yaptığınızda gerçek XP ve ilerlemeniz burada anlık olarak güncellenir.
+            {tx({
+              tr: 'Almanca A1 Kelime, Dinleme (Hören), Okuma (Lesen), Yazma (Schreiben) veya Konuşma (Sprechen) modüllerinde pratik yaptığınızda gerçek XP ve ilerlemeniz burada anlık olarak güncellenir.',
+              en: 'Once you practice in German A1 Vocabulary, Listening (Hören), Reading (Lesen), Writing (Schreiben), or Speaking (Sprechen), your real XP and progress update live here.',
+            })}
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <button
@@ -1433,7 +1822,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               onClick={() => onOpenTopic(GERMAN_A1_TOPICS[0].id)}
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#111113] px-5 text-sm font-medium text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
-              <span>Kelime Çalışmasını Başlat</span>
+              <span>
+                {tx({
+                  tr: 'Kelime Çalışmasını Başlat',
+                  en: 'Start Vocabulary Practice',
+                })}
+              </span>
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -1441,28 +1835,28 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               onClick={() => onOpenListeningScenario(GERMAN_A1_LISTENING_SCENARIOS[0].id)}
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
             >
-              <span>Dinleme</span>
+              <span>{tx({ tr: 'Dinleme', en: 'Listening' })}</span>
             </button>
             <button
               type="button"
               onClick={() => onOpenReadingScenario(GERMAN_A1_READING_SCENARIOS[0].id)}
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
             >
-              <span>Okuma</span>
+              <span>{tx({ tr: 'Okuma', en: 'Reading' })}</span>
             </button>
             <button
               type="button"
               onClick={() => onOpenWritingScenario(GERMAN_A1_WRITING_SCENARIOS[0].id)}
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
             >
-              <span>Yazma</span>
+              <span>{tx({ tr: 'Yazma', en: 'Writing' })}</span>
             </button>
             <button
               type="button"
               onClick={() => onOpenSpeakingScenario(GERMAN_A1_SPEAKING_SCENARIOS[0].id)}
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
             >
-              <span>Konuşma</span>
+              <span>{tx({ tr: 'Konuşma', en: 'Speaking' })}</span>
             </button>
           </div>
         </div>
@@ -1472,10 +1866,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            01. Almanca A1 Kelime — Ünite İlerlemesi
+            {tx({
+              tr: '01. Almanca A1 Kelime — Ünite İlerlemesi',
+              en: '01. German A1 Vocabulary — Unit Progress',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedWordCount} / {totalWords} kelime
+            {tx(
+              { tr: '{{done}} / {{total}} kelime', en: '{{done}} / {{total}} words' },
+              { done: completedWordCount, total: totalWords }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1509,14 +1909,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenTopic(topic.id)}
                     className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                   >
-                    {doneInTopic > 0 ? 'Çalışmaya Devam Et' : 'Üniteyi Başlat'}
+                    {doneInTopic > 0
+                      ? tx({ tr: 'Çalışmaya Devam Et', en: 'Continue Studying' })
+                      : tx({ tr: 'Üniteyi Başlat', en: 'Start Unit' })}
                   </button>
                 </div>
               </div>
@@ -1529,10 +1931,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            02. Almanca A1 Dinleme (Hören) — Senaryo İlerlemesi
+            {tx({
+              tr: '02. Almanca A1 Dinleme (Hören) — Senaryo İlerlemesi',
+              en: '02. German A1 Listening (Hören) — Scenario Progress',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedListeningCount} / {TOTAL_LISTENING_EXERCISES} soru
+            {tx(
+              { tr: '{{done}} / {{total}} soru', en: '{{done}} / {{total}} questions' },
+              { done: completedListeningCount, total: TOTAL_LISTENING_EXERCISES }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1568,14 +1976,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenListeningScenario(scenario.id)}
                     className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                   >
-                    {doneInScenario > 0 ? 'Devam Et' : 'Dinlemeye Başla'}
+                    {doneInScenario > 0
+                      ? locale.home.continueLabel
+                      : tx({ tr: 'Dinlemeye Başla', en: 'Start Listening' })}
                   </button>
                 </div>
               </div>
@@ -1588,10 +1998,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            03. Almanca A1 Okuma (Lesen) — Metin İlerlemesi
+            {tx({
+              tr: '03. Almanca A1 Okuma (Lesen) — Metin İlerlemesi',
+              en: '03. German A1 Reading (Lesen) — Text Progress',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedReadingCount} / {TOTAL_READING_EXERCISES} soru
+            {tx(
+              { tr: '{{done}} / {{total}} soru', en: '{{done}} / {{total}} questions' },
+              { done: completedReadingCount, total: TOTAL_READING_EXERCISES }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1627,14 +2043,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenReadingScenario(scenario.id)}
                     className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                   >
-                    {doneInScenario > 0 ? 'Devam Et' : 'Okumaya Başla'}
+                    {doneInScenario > 0
+                      ? locale.home.continueLabel
+                      : tx({ tr: 'Okumaya Başla', en: 'Start Reading' })}
                   </button>
                 </div>
               </div>
@@ -1647,10 +2065,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            04. Almanca A1 Yazma (Schreiben) — Bağlam İlerlemesi
+            {tx({
+              tr: '04. Almanca A1 Yazma (Schreiben) — Bağlam İlerlemesi',
+              en: '04. German A1 Writing (Schreiben) — Context Progress',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedWritingCount} / {TOTAL_WRITING_TASKS} görev
+            {tx(
+              { tr: '{{done}} / {{total}} görev', en: '{{done}} / {{total}} tasks' },
+              { done: completedWritingCount, total: TOTAL_WRITING_TASKS }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1686,14 +2110,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenWritingScenario(scenario.id)}
                     className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                   >
-                    {doneInScenario > 0 ? 'Devam Et' : 'Yazmaya Başla'}
+                    {doneInScenario > 0
+                      ? locale.home.continueLabel
+                      : tx({ tr: 'Yazmaya Başla', en: 'Start Writing' })}
                   </button>
                 </div>
               </div>
@@ -1706,10 +2132,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            05. Almanca A1 Konuşma (Sprechen) — Senaryo İlerlemesi
+            {tx({
+              tr: '05. Almanca A1 Konuşma (Sprechen) — Senaryo İlerlemesi',
+              en: '05. German A1 Speaking (Sprechen) — Scenario Progress',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedSpeakingCount} / {TOTAL_SPEAKING_TASKS} pratik
+            {tx(
+              { tr: '{{done}} / {{total}} pratik', en: '{{done}} / {{total}} practices' },
+              { done: completedSpeakingCount, total: TOTAL_SPEAKING_TASKS }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1745,14 +2177,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenSpeakingScenario(scenario.id)}
                     className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                   >
-                    {doneInScenario > 0 ? 'Devam Et' : 'Konuşmaya Başla'}
+                    {doneInScenario > 0
+                      ? locale.home.continueLabel
+                      : tx({ tr: 'Konuşmaya Başla', en: 'Start Speaking' })}
                   </button>
                 </div>
               </div>
@@ -1765,10 +2199,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            06. Almanca A1 Etkinlikler ve Sınav Bankası
+            {tx({
+              tr: '06. Almanca A1 Etkinlikler ve Sınav Bankası',
+              en: '06. German A1 Activities & Exam Bank',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedActivityCount} / {TOTAL_ACTIVITY_ITEMS} kazanım
+            {tx(
+              { tr: '{{done}} / {{total}} kazanım', en: '{{done}} / {{total}} items' },
+              { done: completedActivityCount, total: TOTAL_ACTIVITY_ITEMS }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
@@ -1782,13 +2222,13 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="truncate">{card.subtitleDe}</span>
+                    <span className="truncate">{card.subtitleLabel}</span>
                     <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums shrink-0">
                       {done} / {card.ids.length}
                     </span>
                   </div>
                   <h3 className="mt-1.5 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    {card.titleTr}
+                    {card.titleLabel}
                   </h3>
                   <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
                     <div
@@ -1799,7 +2239,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 </div>
                 <div className="mt-4 flex items-center justify-between text-xs">
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    %{pct}
+                    {fmtPct(pct)}
                   </span>
                   <button
                     type="button"
@@ -1819,38 +2259,61 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            07. Öğretim, Sınıflarım ve Ödev Takibi (Yerel)
+            {tx({
+              tr: '07. Öğretim, Sınıflarım ve Ödev Takibi (Yerel)',
+              en: '07. Teaching, My Classes & Assignment Tracking (Local)',
+            })}
           </h2>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            {completedAssignmentsCount} / {totalAssignmentsCount} ödev tamamlandı
+            {tx(
+              {
+                tr: '{{done}} / {{total}} ödev tamamlandı',
+                en: '{{done}} / {{total}} assignments completed',
+              },
+              { done: completedAssignmentsCount, total: totalAssignmentsCount }
+            )}
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex flex-col justify-between rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 dark:border-[#282830] dark:bg-[#16161A]">
             <div>
               <div className="flex items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                <span>Yerel A1 Grupları</span>
+                <span>{tx({ tr: 'Yerel A1 Grupları', en: 'Local A1 Groups' })}</span>
                 <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                  {progress.teachingClasses.length} sınıf
+                  {tx(
+                    { tr: '{{count}} sınıf', en: '{{count}} classes' },
+                    { count: progress.teachingClasses.length }
+                  )}
                 </span>
               </div>
               <h3 className="mt-1.5 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Sınıflarım
+                {tx({ tr: 'Sınıflarım', en: 'My Classes' })}
               </h3>
               <p className="mt-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
                 {totalRosterNotesCount > 0
-                  ? `${totalRosterNotesCount} manuel katılımcı notu kayıtlı (yalnızca bu tarayıcıda).`
-                  : 'Yerel A1 sınıf gruplarınızı ve manuel yoklama notlarınızı yönetin.'}
+                  ? tx(
+                      {
+                        tr: '{{count}} manuel katılımcı notu kayıtlı (yalnızca bu tarayıcıda).',
+                        en: '{{count}} manual roster notes saved (in this browser only).',
+                      },
+                      { count: totalRosterNotesCount }
+                    )
+                  : tx({
+                      tr: 'Yerel A1 sınıf gruplarınızı ve manuel yoklama notlarınızı yönetin.',
+                      en: 'Manage your local A1 class groups and manual attendance notes.',
+                    })}
               </p>
             </div>
             <div className="mt-4 flex items-center justify-between text-xs">
-              <span className="text-[#52525B] dark:text-[#A1A1AA]">Yerel Depolama</span>
+              <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Yerel Depolama', en: 'Local Storage' })}
+              </span>
               <button
                 type="button"
                 onClick={() => onOpenActivityRoute('siniflarim')}
                 className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
               >
-                Sınıfları Aç
+                {tx({ tr: 'Sınıfları Aç', en: 'Open Classes' })}
               </button>
             </div>
           </div>
@@ -1858,13 +2321,18 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           <div className="flex flex-col justify-between rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 dark:border-[#282830] dark:bg-[#16161A]">
             <div>
               <div className="flex items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                <span>Modüllere Bağlı A1 Görevler</span>
+                <span>
+                  {tx({
+                    tr: 'Modüllere Bağlı A1 Görevler',
+                    en: 'Module-Linked A1 Tasks',
+                  })}
+                </span>
                 <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {completedAssignmentsCount} / {totalAssignmentsCount}
                 </span>
               </div>
               <h3 className="mt-1.5 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Ödevler
+                {tx({ tr: 'Ödevler', en: 'Assignments' })}
               </h3>
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
                 <div
@@ -1875,14 +2343,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             </div>
             <div className="mt-4 flex items-center justify-between text-xs">
               <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                %{assignmentsCompletionPct}
+                {fmtPct(assignmentsCompletionPct)}
               </span>
               <button
                 type="button"
                 onClick={() => onOpenActivityRoute('odevler')}
                 className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
               >
-                Ödevleri Aç
+                {tx({ tr: 'Ödevleri Aç', en: 'Open Assignments' })}
               </button>
             </div>
           </div>
@@ -1890,26 +2358,39 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           <div className="flex flex-col justify-between rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 dark:border-[#282830] dark:bg-[#16161A]">
             <div>
               <div className="flex items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                <span>Ders &amp; Quiz Taslakları</span>
+                <span>
+                  {tx({
+                    tr: 'Ders & Quiz Taslakları',
+                    en: 'Lesson & Quiz Drafts',
+                  })}
+                </span>
                 <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                  {progress.studioDrafts.length} taslak
+                  {tx(
+                    { tr: '{{count}} taslak', en: '{{count}} drafts' },
+                    { count: progress.studioDrafts.length }
+                  )}
                 </span>
               </div>
               <h3 className="mt-1.5 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Öğretmen Stüdyosu
+                {tx({ tr: 'Öğretmen Stüdyosu', en: 'Teacher Studio' })}
               </h3>
               <p className="mt-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Tahta önizlemesi, kopyalanabilir/yazdırılabilir A1 kontrol listeleri ve de-DE ses testi.
+                {tx({
+                  tr: 'Tahta önizlemesi, kopyalanabilir/yazdırılabilir A1 kontrol listeleri ve de-DE ses testi.',
+                  en: 'Board preview, copyable/printable A1 checklists, and de-DE speech test.',
+                })}
               </p>
             </div>
             <div className="mt-4 flex items-center justify-between text-xs">
-              <span className="text-[#52525B] dark:text-[#A1A1AA]">Yerel Stüdyo</span>
+              <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Yerel Stüdyo', en: 'Local Studio' })}
+              </span>
               <button
                 type="button"
                 onClick={() => onOpenActivityRoute('ogretmen-studyosu')}
                 className="font-semibold text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
               >
-                Stüdyoyu Aç
+                {tx({ tr: 'Stüdyoyu Aç', en: 'Open Studio' })}
               </button>
             </div>
           </div>
@@ -1921,90 +2402,127 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         {/* Mode Breakdown */}
         <section className="lg:col-span-5 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 dark:border-[#282830] dark:bg-[#16161A]">
           <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Beceri ve Mod Bazlı Özet
+            {tx({ tr: 'Beceri ve Mod Bazlı Özet', en: 'Skill & Mode Breakdown' })}
           </h2>
           <dl className="mt-4 divide-y divide-[#ECECE8] text-sm dark:divide-[#24242C]">
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Kelime Kartları (Öğrenilen)</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Kelime Kartları (Öğrenilen)', en: 'Flashcards (Studied)' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.studiedFlashcards.length} / {totalWords}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Artikel Seçme Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Artikel Seçme Doğruluğu', en: 'Article Selection Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {articleAcc === null
                   ? '—'
-                  : `%${articleAcc} (${progress.articleCorrect}/${progress.articleAttempts})`}
+                  : `${fmtPct(articleAcc)} (${progress.articleCorrect}/${progress.articleAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Anlam Testi Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Anlam Testi Doğruluğu', en: 'Meaning Quiz Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {quizAcc === null
                   ? '—'
-                  : `%${quizAcc} (${progress.quizCorrect}/${progress.quizAttempts})`}
+                  : `${fmtPct(quizAcc)} (${progress.quizCorrect}/${progress.quizAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Hafıza Eşleştirme</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Hafıza Eşleştirme', en: 'Memory Match' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {progress.memoryGamesCompleted} tur
+                {tx(
+                  { tr: '{{count}} tur', en: '{{count}} rounds' },
+                  { count: progress.memoryGamesCompleted }
+                )}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Dinleme (Hören) Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Dinleme (Hören) Doğruluğu', en: 'Listening (Hören) Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                 {listeningAccuracyPercent === null
                   ? '—'
-                  : `%${listeningAccuracyPercent} (${progress.listeningCorrect}/${progress.listeningAttempts})`}
+                  : `${fmtPct(listeningAccuracyPercent)} (${progress.listeningCorrect}/${progress.listeningAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Okuma (Lesen) Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Okuma (Lesen) Doğruluğu', en: 'Reading (Lesen) Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                 {readingAccuracyPercent === null
                   ? '—'
-                  : `%${readingAccuracyPercent} (${progress.readingCorrect}/${progress.readingAttempts})`}
+                  : `${fmtPct(readingAccuracyPercent)} (${progress.readingCorrect}/${progress.readingAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Yazma (Schreiben) Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Yazma (Schreiben) Doğruluğu', en: 'Writing (Schreiben) Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                 {writingAccuracyPercent === null
                   ? '—'
-                  : `%${writingAccuracyPercent} (${progress.writingCorrect}/${progress.writingAttempts})`}
+                  : `${fmtPct(writingAccuracyPercent)} (${progress.writingCorrect}/${progress.writingAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
               <dt className="text-[#52525B] dark:text-[#A1A1AA]">
-                Konuşma (Sprechen) Öz-Değerlendirme
+                {tx({
+                  tr: 'Konuşma (Sprechen) Öz-Değerlendirme',
+                  en: 'Speaking (Sprechen) Self-Check',
+                })}
               </dt>
               <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
-                {completedSpeakingCount} / {TOTAL_SPEAKING_TASKS} (%{speakingCompletionPct})
+                {completedSpeakingCount} / {TOTAL_SPEAKING_TASKS} ({fmtPct(speakingCompletionPct)})
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-[#52525B] dark:text-[#A1A1AA]">Etkinlikler Doğruluğu</dt>
+              <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Etkinlikler Doğruluğu', en: 'Activities Accuracy' })}
+              </dt>
               <dd className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                 {activityAccuracyPercent === null
                   ? '—'
-                  : `%${activityAccuracyPercent} (${progress.activityCorrect}/${progress.activityAttempts})`}
+                  : `${fmtPct(activityAccuracyPercent)} (${progress.activityCorrect}/${progress.activityAttempts})`}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
               <dt className="text-[#52525B] dark:text-[#A1A1AA]">
-                A1 Sınav Bankası En İyi Skor
+                {tx({
+                  tr: 'A1 Sınav Bankası En İyi Skor',
+                  en: 'A1 Exam Bank Best Score',
+                })}
               </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.examBestScorePercent === null
                   ? '—'
-                  : `%${progress.examBestScorePercent} (${progress.examCompletedCount} deneme)`}
+                  : tx(
+                      {
+                        tr: '{{pct}} ({{count}} deneme)',
+                        en: '{{pct}} ({{count}} attempts)',
+                      },
+                      {
+                        pct: fmtPct(progress.examBestScorePercent),
+                        count: progress.examCompletedCount,
+                      }
+                    )}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
               <dt className="text-[#52525B] dark:text-[#A1A1AA]">
-                Tamamlanan A1 Ödevleri (Yerel)
+                {tx({
+                  tr: 'Tamamlanan A1 Ödevleri (Yerel)',
+                  en: 'Completed A1 Assignments (Local)',
+                })}
               </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {completedAssignmentsCount} / {totalAssignmentsCount}
@@ -2012,10 +2530,22 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             </div>
             <div className="flex items-center justify-between py-3">
               <dt className="text-[#52525B] dark:text-[#A1A1AA]">
-                Yerel Sınıf / Stüdyo Taslağı
+                {tx({
+                  tr: 'Yerel Sınıf / Stüdyo Taslağı',
+                  en: 'Local Classes / Studio Drafts',
+                })}
               </dt>
               <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {progress.teachingClasses.length} sınıf · {progress.studioDrafts.length} taslak
+                {tx(
+                  {
+                    tr: '{{classes}} sınıf · {{drafts}} taslak',
+                    en: '{{classes}} classes · {{drafts}} drafts',
+                  },
+                  {
+                    classes: progress.teachingClasses.length,
+                    drafts: progress.studioDrafts.length,
+                  }
+                )}
               </dd>
             </div>
           </dl>
@@ -2024,12 +2554,18 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         {/* Recent Real Activity Log */}
         <section className="lg:col-span-7 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 dark:border-[#282830] dark:bg-[#16161A]">
           <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Son Gerçek Çalışma Kayıtları
+            {tx({
+              tr: 'Son Gerçek Çalışma Kayıtları',
+              en: 'Recent Real Study Activity',
+            })}
           </h2>
 
           {progress.recentActivities.length === 0 ? (
             <p className="mt-4 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-              Henüz kayıtlı bir alıştırma hareketi bulunmuyor.
+              {tx({
+                tr: 'Henüz kayıtlı bir alıştırma hareketi bulunmuyor.',
+                en: 'No practice activity recorded yet.',
+              })}
             </p>
           ) : (
             <ul className="mt-4 divide-y divide-[#ECECE8] dark:divide-[#24242C]">
@@ -2049,7 +2585,8 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                         {entry.summaryTr}
                       </p>
                       <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                        {MODE_LABELS[entry.mode] ?? entry.mode} · {formatTimeTr(entry.timestamp)}
+                        {MODE_LABELS[entry.mode] ? tx(MODE_LABELS[entry.mode]) : entry.mode} ·{' '}
+                        {formatDateTime(entry.timestamp)}
                       </p>
                     </div>
                   </div>
@@ -2076,17 +2613,44 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             />
             <div className="space-y-1">
               <h2 className="font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Yerel Veri Bütünlüğü ve JSON Yedekleme
+                {tx({
+                  tr: 'Yerel Veri Bütünlüğü ve JSON Yedekleme',
+                  en: 'Local Data Integrity & JSON Backup',
+                })}
               </h2>
               <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                 {integrity.isHealthy
-                  ? `Kayıt yapısı tutarlı (${integrity.totalUniqueMasteredItems} benzersiz tamamlanan kazanım · ${formatBytesTr(storageDiag.totalBytes)} yerel tarayıcı alanı).`
-                  : `Kayıt kontrolünde ${integrity.issuesTr.length} uyarı algılandı; içe aktarma veya sıfırlama için Ayarlar ekranını kullanabilirsiniz.`}{' '}
-                Verileriniz yalnızca bu tarayıcıda tutulur; bulut senkronizasyonu bağlı değildir.
+                  ? tx(
+                      {
+                        tr: 'Kayıt yapısı tutarlı ({{items}} benzersiz tamamlanan kazanım · {{bytes}} yerel tarayıcı alanı).',
+                        en: 'Record structure is consistent ({{items}} unique completed items · {{bytes}} local browser storage).',
+                      },
+                      {
+                        items: integrity.totalUniqueMasteredItems,
+                        bytes: formatBytesTr(storageDiag.totalBytes),
+                      }
+                    )
+                  : tx(
+                      {
+                        tr: 'Kayıt kontrolünde {{count}} uyarı algılandı; içe aktarma veya sıfırlama için Ayarlar ekranını kullanabilirsiniz.',
+                        en: '{{count}} warning(s) detected during integrity check; you can use the Settings screen to import or reset.',
+                      },
+                      { count: integrity.issuesTr.length }
+                    )}{' '}
+                {tx({
+                  tr: 'Verileriniz yalnızca bu tarayıcıda tutulur; bulut senkronizasyonu bağlı değildir.',
+                  en: 'Your data is stored only in this browser; no cloud sync is connected.',
+                })}
               </p>
-              {backupNotice && (
+              {backupFilename && (
                 <p className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
-                  {backupNotice}
+                  {tx(
+                    {
+                      tr: 'JSON yedeği (A1 + A2) indirildi: {{filename}}',
+                      en: 'JSON backup (A1 + A2) downloaded: {{filename}}',
+                    },
+                    { filename: backupFilename }
+                  )}
                 </p>
               )}
             </div>
@@ -2099,7 +2663,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs font-medium text-white transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>JSON Yedeği İndir</span>
+              <span>{tx({ tr: 'JSON Yedeği İndir', en: 'Download JSON Backup' })}</span>
             </button>
             <button
               type="button"
@@ -2107,7 +2671,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#F4F4F5] dark:hover:bg-[#282830] whitespace-nowrap"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>İçe Aktar / Sıfırla</span>
+              <span>{tx({ tr: 'İçe Aktar / Sıfırla', en: 'Import / Reset' })}</span>
             </button>
           </div>
         </div>

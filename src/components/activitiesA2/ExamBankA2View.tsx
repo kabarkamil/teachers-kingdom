@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { A2_EXAM_IDS, GERMAN_A2_EXAM_QUESTIONS } from '../../data/germanA2Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { ExamSectionId, NavRouteId } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivityA2SubNav } from './ActivityA2SubNav';
@@ -39,6 +40,7 @@ function formatCountdown(totalSec: number): string {
 
 export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) => {
   const { a2Progress, recordA2ExamSubmission } = useAppState();
+  const { locale, tx } = useI18n();
   const [phase, setPhase] = useState<ExamPhase>('intro');
   const [useTimer, setUseTimer] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
@@ -110,36 +112,51 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A2 · Sınav Modu / Sınav Bankası
+              {tx({
+                tr: 'Almanca A2 · Sınav Modu / Sınav Bankası',
+                en: 'German A2 · Exam Mode / Exam Bank',
+              })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            CEFR A2 Deneme Sınavı (4 Bölüm · 16 Soru)
+            {tx({
+              tr: 'CEFR A2 Deneme Sınavı (4 Bölüm · 16 Soru)',
+              en: 'CEFR A2 Practice Exam (4 Sections · 16 Questions)',
+            })}
           </h1>
         </div>
 
         <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">En Yüksek A2 Skor</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'En Yüksek A2 Skor', en: 'Highest A2 Score' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
               {a2Progress.a2ExamBestScorePercent === null
                 ? '—'
-                : `%${a2Progress.a2ExamBestScorePercent}`}
+                : tx(
+                    { tr: '%{{pct}}', en: '{{pct}}%' },
+                    { pct: a2Progress.a2ExamBestScorePercent }
+                  )}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tamamlanan Sınav</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanan Sınav', en: 'Completed Exams' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {a2Progress.a2ExamCompletedCount}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Ustalaşılan Soru</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Ustalaşılan Soru', en: 'Mastered Questions' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {masteredExamCount} / {GERMAN_A2_EXAM_QUESTIONS.length}
             </p>
@@ -159,13 +176,13 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                   className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]"
                 >
                   <p className="font-mono text-xs text-[#9A6B16] dark:text-[#D9A13B]">
-                    Bölüm 0{idx + 1}
+                    {tx({ tr: 'Bölüm 0{{num}}', en: 'Section 0{{num}}' }, { num: idx + 1 })}
                   </p>
                   <h2 className="mt-1 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
                     {sec.labelTr}
                   </h2>
                   <p className="mt-1 font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                    {count} A2 sorusu
+                    {tx({ tr: '{{count}} A2 sorusu', en: '{{count}} A2 questions' }, { count })}
                   </p>
                 </div>
               );
@@ -180,7 +197,12 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                 onChange={(e) => setUseTimer(e.target.checked)}
                 className="h-4 w-4 rounded border-[#D9D9D3] accent-[#7C1D2E] dark:accent-[#D9A13B]"
               />
-              <span>20 dakikalık gerçek sınav sayacı kullan (isteğe bağlı)</span>
+              <span>
+                {tx({
+                  tr: '20 dakikalık gerçek sınav sayacı kullan (isteğe bağlı)',
+                  en: 'Use 20-minute exam countdown timer (optional)',
+                })}
+              </span>
             </label>
 
             <button
@@ -189,7 +211,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#7C1D2E] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
               <Play className="h-4 w-4 fill-current" />
-              <span>A2 Deneme Sınavını Başlat</span>
+              <span>{tx({ tr: 'A2 Deneme Sınavını Başlat', en: 'Start A2 Practice Exam' })}</span>
             </button>
           </div>
         </section>
@@ -201,8 +223,11 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
           <section className="lg:col-span-8 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 sm:p-7 space-y-6 dark:border-[#282830] dark:bg-[#16161A]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
               <span className="font-mono text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                Soru {currentIdx + 1} / {GERMAN_A2_EXAM_QUESTIONS.length} ·{' '}
-                {currentQuestion.sectionLabelTr}
+                {tx(
+                  { tr: 'Soru {{current}} / {{total}}', en: 'Question {{current}} / {{total}}' },
+                  { current: currentIdx + 1, total: GERMAN_A2_EXAM_QUESTIONS.length }
+                )}{' '}
+                · {currentQuestion.sectionLabelTr}
               </span>
               {useTimer && (
                 <span
@@ -222,7 +247,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
               {currentQuestion.contextBoxDe && (
                 <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 space-y-3 dark:border-[#24242C] dark:bg-[#111113]">
                   <p className="text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                    A2 Okuma / Bağlam Metni
+                    {tx({ tr: 'A2 Okuma / Bağlam Metni', en: 'A2 Reading / Context Passage' })}
                   </p>
                   <p className="text-sm sm:text-base leading-relaxed text-[#111113] dark:text-[#F4F4F5]">
                     {currentQuestion.contextBoxDe}
@@ -233,6 +258,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                       currentQuestion.contextBoxDe.replace(/___+/g, '...')
                     }
                     labelTr="Metni Dinle (de-DE)"
+                    labelEn="Listen to Passage (de-DE)"
                     compact
                   />
                 </div>
@@ -254,6 +280,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                         currentQuestion.promptDe.replace(/___+/g, '...')
                       }
                       labelTr="İfadeyi Dinle (de-DE)"
+                      labelEn="Listen to Phrase (de-DE)"
                       compact
                     />
                   )}
@@ -297,7 +324,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                 className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs font-medium text-[#111113] disabled:opacity-40 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
               >
                 <ChevronLeft className="h-4 w-4" />
-                <span>Önceki</span>
+                <span>{locale.common.previous}</span>
               </button>
 
               {currentIdx < GERMAN_A2_EXAM_QUESTIONS.length - 1 ? (
@@ -308,7 +335,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                   }
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#111113] px-4 text-xs font-semibold text-white hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
                 >
-                  <span>Sonraki Soru</span>
+                  <span>{tx({ tr: 'Sonraki Soru', en: 'Next Question' })}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : (
@@ -318,7 +345,9 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                   className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  <span>A2 Sınavını Bitir ve Değerlendir</span>
+                  <span>
+                    {tx({ tr: 'A2 Sınavını Bitir ve Değerlendir', en: 'Finish & Grade A2 Exam' })}
+                  </span>
                 </button>
               )}
             </div>
@@ -328,10 +357,13 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
           <aside className="lg:col-span-4 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 space-y-5 self-start dark:border-[#282830] dark:bg-[#16161A]">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Soru Haritası
+                {tx({ tr: 'Soru Haritası', en: 'Question Map' })}
               </span>
               <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                {answeredCount} / {GERMAN_A2_EXAM_QUESTIONS.length} işaretli
+                {tx(
+                  { tr: '{{done}} / {{total}} işaretli', en: '{{done}} / {{total}} answered' },
+                  { done: answeredCount, total: GERMAN_A2_EXAM_QUESTIONS.length }
+                )}
               </span>
             </div>
 
@@ -344,6 +376,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                     key={q.id}
                     type="button"
                     onClick={() => setCurrentIdx(idx)}
+                    aria-label={tx({ tr: 'Soru {{num}}', en: 'Question {{num}}' }, { num: idx + 1 })}
                     className={`h-10 rounded-lg border font-mono text-xs font-semibold transition-colors tabular-nums ${
                       isCurrent
                         ? 'border-[#7C1D2E] bg-[#7C1D2E] text-white dark:border-[#D9A13B] dark:bg-[#D9A13B] dark:text-[#111113]'
@@ -363,7 +396,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
               onClick={() => submitExam(selectedAnswers)}
               className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#7C1D2E] bg-[#FDF2F4] px-4 text-xs font-semibold text-[#7C1D2E] hover:bg-[#FCE7EB] dark:border-[#D9A13B] dark:bg-[#231D11] dark:text-[#D9A13B]"
             >
-              <span>Sınavı Şimdi Teslim Et</span>
+              <span>{tx({ tr: 'Sınavı Şimdi Teslim Et', en: 'Submit Exam Now' })}</span>
             </button>
           </aside>
         </div>
@@ -384,20 +417,45 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                 />
                 <div>
                   <h2 className="font-display text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    A2 Deneme Sınavı Karnesi — %{lastSubmissionSummary.scorePercent}
+                    {tx(
+                      {
+                        tr: 'A2 Deneme Sınavı Karnesi — %{{pct}}',
+                        en: 'A2 Practice Exam Report — {{pct}}%',
+                      },
+                      { pct: lastSubmissionSummary.scorePercent }
+                    )}
                   </h2>
                   <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                    {lastSubmissionSummary.correctCount} / {lastSubmissionSummary.totalCount} doğru yanıt ·{' '}
+                    {tx(
+                      {
+                        tr: '{{correct}} / {{total}} doğru yanıt',
+                        en: '{{correct}} / {{total}} correct answers',
+                      },
+                      {
+                        correct: lastSubmissionSummary.correctCount,
+                        total: lastSubmissionSummary.totalCount,
+                      }
+                    )}{' '}
+                    ·{' '}
                     {lastSubmissionSummary.scorePercent >= 60
-                      ? 'CEFR A2 hedef barajı (%60) aşıldı.'
-                      : 'CEFR A2 barajı (%60) için eksik bölümleri tekrar etmeniz önerilir.'}
+                      ? tx({
+                          tr: 'CEFR A2 hedef barajı (%60) aşıldı.',
+                          en: 'CEFR A2 target threshold (60%) passed.',
+                        })
+                      : tx({
+                          tr: 'CEFR A2 barajı (%60) için eksik bölümleri tekrar etmeniz önerilir.',
+                          en: 'Review the weaker sections below to reach the CEFR A2 threshold (60%).',
+                        })}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-mono text-sm font-semibold text-[#15803D] dark:text-[#4ADE80] tabular-nums">
-                  +{lastSubmissionSummary.xpAwarded} Yeni A2 XP
+                  {tx(
+                    { tr: '+{{xp}} Yeni A2 XP', en: '+{{xp}} New A2 XP' },
+                    { xp: lastSubmissionSummary.xpAwarded }
+                  )}
                 </span>
                 <button
                   type="button"
@@ -405,7 +463,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                   className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] whitespace-nowrap"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  <span>Sınavı Tekrarla</span>
+                  <span>{tx({ tr: 'Sınavı Tekrarla', en: 'Retake Exam' })}</span>
                 </button>
               </div>
             </div>
@@ -441,7 +499,7 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                       />
                     </div>
                     <p className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      %{secPct}
+                      {tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct: secPct })}
                     </p>
                   </div>
                 );
@@ -452,7 +510,10 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
           {/* Full Answer Review */}
           <section className="space-y-3">
             <h3 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Ayrıntılı A2 Cevap Anahtarı ve Türkçe Açıklamalar
+              {tx({
+                tr: 'Ayrıntılı A2 Cevap Anahtarı ve Türkçe Açıklamalar',
+                en: 'Detailed A2 Answer Key & Explanations',
+              })}
             </h3>
             {GERMAN_A2_EXAM_QUESTIONS.map((q, idx) => {
               const userIdx = selectedAnswers[q.id];
@@ -465,7 +526,8 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <p className="font-mono text-xs text-[#9A6B16] dark:text-[#D9A13B]">
-                        Soru {idx + 1} · {q.sectionLabelTr}
+                        {tx({ tr: 'Soru {{num}}', en: 'Question {{num}}' }, { num: idx + 1 })} ·{' '}
+                        {q.sectionLabelTr}
                       </p>
                       <p className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
                         {q.questionTr}
@@ -491,13 +553,16 @@ export const ExamBankA2View: React.FC<ExamBankA2ViewProps> = ({ onNavigate }) =>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                     <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                      Yanıtınız:{' '}
+                      {tx({ tr: 'Yanıtınız:', en: 'Your answer:' })}{' '}
                       <strong className="text-[#111113] dark:text-[#F4F4F5]">
-                        {userIdx !== undefined ? q.options[userIdx] : 'Boş bırakıldı'}
+                        {userIdx !== undefined
+                          ? q.options[userIdx]
+                          : tx({ tr: 'Boş bırakıldı', en: 'Unanswered' })}
                       </strong>
                     </span>
                     <span className="text-[#15803D] dark:text-[#4ADE80]">
-                      Doğru yanıt: <strong>{q.options[q.correctIndex]}</strong>
+                      {tx({ tr: 'Doğru yanıt:', en: 'Correct answer:' })}{' '}
+                      <strong>{q.options[q.correctIndex]}</strong>
                     </span>
                   </div>
 

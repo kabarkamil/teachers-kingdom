@@ -13,6 +13,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
+import { useI18n } from '../../hooks/useI18n';
 import type { A2ReadingDocumentFormat, A2ReadingScenario } from '../../types';
 import {
   getGermanVoiceInfo,
@@ -28,6 +29,7 @@ interface A2ReadingPassageCardProps {
 
 type ReadAloudStatus = 'idle' | 'starting' | 'playing' | 'ended' | 'unavailable';
 type ReadAloudRate = 0.8 | 1.0;
+type UnavailableReasonCode = 'unsupported_initial' | 'unsupported' | 'timeout' | 'error';
 
 const FORMAT_ICONS: Record<
   A2ReadingDocumentFormat,
@@ -81,16 +83,16 @@ function renderParagraphWithHighlights(
 }
 
 export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scenario }) => {
+  const { locale, tx } = useI18n();
   const [speechSupported] = useState<boolean>(() => isSpeechSynthesisSupported());
   const [voiceName, setVoiceName] = useState<string | null>(() => getGermanVoiceInfo().voiceName);
   const [readStatus, setReadStatus] = useState<ReadAloudStatus>(() =>
     isSpeechSynthesisSupported() ? 'idle' : 'unavailable'
   );
-  const [unavailableReason, setUnavailableReason] = useState<string | null>(() =>
-    isSpeechSynthesisSupported()
-      ? null
-      : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor; metni sessiz okuma ile çalışabilirsiniz.'
-  );
+  const [unavailableReasonCode, setUnavailableReasonCode] =
+    useState<UnavailableReasonCode | null>(() =>
+      isSpeechSynthesisSupported() ? null : 'unsupported_initial'
+    );
   const [rate, setRate] = useState<ReadAloudRate>(1.0);
   const [activeGlossarySpeechId, setActiveGlossarySpeechId] = useState<string | null>(null);
   const [showTurkish, setShowTurkish] = useState<boolean>(false);
@@ -116,11 +118,7 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
     setHighlightKeyPhrases(false);
     setActiveGlossarySpeechId(null);
     setReadStatus(speechSupported ? 'idle' : 'unavailable');
-    setUnavailableReason(
-      speechSupported
-        ? null
-        : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor; metni sessiz okuma ile çalışabilirsiniz.'
-    );
+    setUnavailableReasonCode(speechSupported ? null : 'unsupported_initial');
   }, [scenario.id, speechSupported]);
 
   useEffect(() => {
@@ -131,17 +129,11 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
     setActiveGlossarySpeechId(null);
     setReadStatus('unavailable');
     if (reason === 'unsupported') {
-      setUnavailableReason(
-        'Bu tarayıcıda Almanca (de-DE) seslendirme desteklenmiyor. Sahte oynatma yapılmaz; metni doğrudan okuyarak devam edebilirsiniz.'
-      );
+      setUnavailableReasonCode('unsupported');
     } else if (reason === 'timeout') {
-      setUnavailableReason(
-        'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; metin ve sözlük desteğiyle çalışabilirsiniz.'
-      );
+      setUnavailableReasonCode('timeout');
     } else {
-      setUnavailableReason(
-        'Tarayıcı ses sentezleyicisi metni okurken bir hata döndürdü. Cihazınızın ses ayarlarını kontrol edebilir veya okumaya devam edebilirsiniz.'
-      );
+      setUnavailableReasonCode('error');
     }
   };
 
@@ -159,7 +151,7 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
     }
 
     setActiveGlossarySpeechId(null);
-    setUnavailableReason(null);
+    setUnavailableReasonCode(null);
     setReadStatus('starting');
 
     const res = speakGermanText(
@@ -203,7 +195,7 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
       handleSpeechFailure('unsupported');
       return;
     }
-    setUnavailableReason(null);
+    setUnavailableReasonCode(null);
     setReadStatus('idle');
     setActiveGlossarySpeechId(itemId);
 
@@ -229,17 +221,53 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
   const readStatusLabel = (() => {
     switch (readStatus) {
       case 'starting':
-        return 'Ses motoru başlatılıyor…';
+        return tx({ tr: 'Ses motoru başlatılıyor…', en: 'Starting speech engine…' });
       case 'playing':
-        return 'A2 Almanca metin seslendiriliyor';
+        return tx({
+          tr: 'A2 Almanca metin seslendiriliyor',
+          en: 'Reading A2 German passage aloud',
+        });
       case 'ended':
-        return 'Sesli okuma tamamlandı';
+        return tx({ tr: 'Sesli okuma tamamlandı', en: 'Read-aloud completed' });
       case 'unavailable':
-        return 'Sesli okuma kullanılamıyor';
+        return tx({ tr: 'Sesli okuma kullanılamıyor', en: 'Read-aloud unavailable' });
       default:
         return voiceName
-          ? `İsteğe bağlı sesli okuma (${voiceName})`
-          : 'İsteğe bağlı sesli okuma (de-DE)';
+          ? tx(
+              { tr: 'İsteğe bağlı sesli okuma ({voice})', en: 'Optional read-aloud ({voice})' },
+              { voice: voiceName }
+            )
+          : tx({ tr: 'İsteğe bağlı sesli okuma (de-DE)', en: 'Optional read-aloud (de-DE)' });
+    }
+  })();
+
+  const unavailableMessage = (() => {
+    switch (unavailableReasonCode) {
+      case 'unsupported_initial':
+        return tx({
+          tr: 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor; metni sessiz okuma ile çalışabilirsiniz.',
+          en: 'Web Speech API speech synthesis is not supported in this browser; you can study the passage by reading silently.',
+        });
+      case 'unsupported':
+        return tx({
+          tr: 'Bu tarayıcıda Almanca (de-DE) seslendirme desteklenmiyor. Sahte oynatma yapılmaz; metni doğrudan okuyarak devam edebilirsiniz.',
+          en: 'German (de-DE) speech synthesis is not supported in this browser. No simulated playback is used; you can continue reading the text directly.',
+        });
+      case 'timeout':
+        return tx({
+          tr: 'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; metin ve sözlük desteğiyle çalışabilirsiniz.',
+          en: 'The browser speech engine (de-DE) could not start playback here. No simulated playback is used; you can study with the passage and glossary.',
+        });
+      case 'error':
+        return tx({
+          tr: 'Tarayıcı ses sentezleyicisi metni okurken bir hata döndürdü. Cihazınızın ses ayarlarını kontrol edebilir veya okumaya devam edebilirsiniz.',
+          en: 'The browser speech synthesizer returned an error while reading the passage. Check your device audio settings or continue reading.',
+        });
+      default:
+        return tx({
+          tr: 'Bu tarayıcıda Almanca (de-DE) seslendirme kullanılamıyor. Sahte oynatma yapılmaz; metni doğrudan okuyarak devam edebilirsiniz.',
+          en: 'German (de-DE) speech synthesis is unavailable in this browser. No simulated playback is used; you can continue reading directly.',
+        });
     }
   })();
 
@@ -256,13 +284,20 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
               CEFR A2 · {scenario.titleDe}
             </span>
             <span aria-hidden="true">·</span>
-            <span className="tabular-nums">~{scenario.estimatedMinutes} dk okuma</span>
+            <span className="tabular-nums">
+              {tx(
+                { tr: '~{min} dk okuma', en: '~{min} min read' },
+                { min: scenario.estimatedMinutes }
+              )}
+            </span>
           </div>
           <h2 className="mt-1.5 font-display text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
             {scenario.titleTr}
           </h2>
           <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            <span className="font-semibold text-[#111113] dark:text-[#F4F4F5]">A2 Odak:</span>{' '}
+            <span className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
+              {tx({ tr: 'A2 Odak:', en: 'A2 Focus:' })}
+            </span>{' '}
             {scenario.cefrFocusTr}
           </p>
         </div>
@@ -280,7 +315,11 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
             }`}
           >
             <Highlighter className="h-3.5 w-3.5 shrink-0" />
-            <span>{highlightKeyPhrases ? 'Vurguyu Kapat' : 'İfadeleri Vurgula'}</span>
+            <span>
+              {highlightKeyPhrases
+                ? tx({ tr: 'Vurguyu Kapat', en: 'Clear Highlights' })
+                : tx({ tr: 'İfadeleri Vurgula', en: 'Highlight Phrases' })}
+            </span>
           </button>
 
           <button
@@ -294,7 +333,11 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
             }`}
           >
             <BookMarked className="h-3.5 w-3.5 shrink-0" />
-            <span>{showGlossary ? 'Sözlüğü Gizle' : 'A2 Sözlük'}</span>
+            <span>
+              {showGlossary
+                ? tx({ tr: 'Sözlüğü Gizle', en: 'Hide Glossary' })
+                : tx({ tr: 'A2 Sözlük', en: 'A2 Glossary' })}
+            </span>
           </button>
 
           <button
@@ -308,7 +351,11 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
             }`}
           >
             <Languages className="h-3.5 w-3.5 shrink-0" />
-            <span>{showTurkish ? 'Türkçeyi Gizle' : 'Türkçe Çeviri'}</span>
+            <span>
+              {showTurkish
+                ? locale.common.hideTurkish
+                : tx({ tr: 'Türkçe Çeviri', en: 'Turkish Gloss' })}
+            </span>
           </button>
         </div>
       </div>
@@ -325,12 +372,12 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
             {readStatus === 'playing' || readStatus === 'starting' ? (
               <>
                 <Square className="h-3.5 w-3.5" />
-                <span>Durdur</span>
+                <span>{locale.audio.stop}</span>
               </>
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                <span>Metni Sesli Dinle</span>
+                <span>{tx({ tr: 'Metni Sesli Dinle', en: 'Listen to Passage' })}</span>
               </>
             )}
           </button>
@@ -343,7 +390,7 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
 
         <div
           role="group"
-          aria-label="Sesli okuma hızı"
+          aria-label={tx({ tr: 'Sesli okuma hızı', en: 'Read-aloud speed' })}
           className="flex items-center self-start sm:self-auto rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] p-0.5 dark:border-[#282830] dark:bg-[#16161A] shrink-0"
         >
           <button
@@ -376,16 +423,13 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
       </div>
 
       {/* Honest TTS Unavailable / Watchdog Timeout Notice */}
-      {(readStatus === 'unavailable' || unavailableReason) && (
+      {(readStatus === 'unavailable' || unavailableReasonCode) && (
         <div
           role="status"
           className="mt-3 flex items-start gap-2.5 rounded-xl border border-[#9A6B16]/40 bg-[#FEF9EB] px-4 py-3 text-xs leading-relaxed text-[#713F12] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#FDE68A]"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            {unavailableReason ??
-              'Bu tarayıcıda Almanca (de-DE) seslendirme kullanılamıyor. Sahte oynatma yapılmaz; metni doğrudan okuyarak devam edebilirsiniz.'}
-          </p>
+          <p>{unavailableMessage}</p>
         </div>
       )}
 
@@ -477,14 +521,23 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Metindeki Anahtar A2 Sözcük ve Kalıplar
+                {tx({
+                  tr: 'Metindeki Anahtar A2 Sözcük ve Kalıplar',
+                  en: 'Key A2 Words & Phrases in This Passage',
+                })}
               </h3>
               <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Telaffuzu dinlemek için ses simgesine tıklayabilirsiniz; sözlük incelemesi doğruluk puanını değiştirmez.
+                {tx({
+                  tr: 'Telaffuzu dinlemek için ses simgesine tıklayabilirsiniz; sözlük incelemesi doğruluk puanını değiştirmez.',
+                  en: 'Click the speaker icon to hear pronunciation; using the glossary does not affect accuracy.',
+                })}
               </p>
             </div>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {scenario.glossary.length} ifade
+              {tx(
+                { tr: '{count} ifade', en: '{count} expressions' },
+                { count: scenario.glossary.length }
+              )}
             </span>
           </div>
 
@@ -520,8 +573,14 @@ export const A2ReadingPassageCard: React.FC<A2ReadingPassageCardProps> = ({ scen
                     type="button"
                     disabled={!speechSupported}
                     onClick={() => handleSpeakGlossaryWord(item.id, speakText)}
-                    aria-label={`${speakText} telaffuzunu dinle`}
-                    title="Telaffuzu dinle"
+                    aria-label={tx(
+                      {
+                        tr: '{word} telaffuzunu dinle',
+                        en: 'Listen to pronunciation of {word}',
+                      },
+                      { word: speakText }
+                    )}
+                    title={tx({ tr: 'Telaffuzu dinle', en: 'Listen to pronunciation' })}
                     className={`inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg border transition-colors disabled:opacity-40 shrink-0 ${
                       isSpeakingItem
                         ? 'border-[#7C1D2E] bg-[#FDF2F4] text-[#7C1D2E] dark:border-[#D9A13B] dark:bg-[#231D11] dark:text-[#D9A13B]'

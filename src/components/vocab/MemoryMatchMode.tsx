@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, RotateCcw, Volume2 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
 import type { VocabTopic, VocabWord } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
@@ -58,6 +59,7 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
   onSpeechError,
 }) => {
   const { speechSpeed, recordMemoryRoundComplete } = useAppState();
+  const { isEn, tx } = useI18n();
   const [board, setBoard] = useState(() => createBoard(topic));
   const [flippedUids, setFlippedUids] = useState<string[]>([]);
   const [matchedWordIds, setMatchedWordIds] = useState<string[]>([]);
@@ -163,10 +165,15 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
           </span>
           <span aria-hidden="true">·</span>
           <span className="font-mono tabular-nums">
-            Eşleşme: {matchedWordIds.length} / {board.chosenWords.length}
+            {tx(
+              { tr: 'Eşleşme: {{matched}} / {{total}}', en: 'Matches: {{matched}} / {{total}}' },
+              { matched: matchedWordIds.length, total: board.chosenWords.length }
+            )}
           </span>
           <span aria-hidden="true">·</span>
-          <span className="font-mono tabular-nums">Hamle: {moves}</span>
+          <span className="font-mono tabular-nums">
+            {tx({ tr: 'Hamle: {{moves}}', en: 'Moves: {{moves}}' }, { moves })}
+          </span>
         </div>
 
         <button
@@ -175,7 +182,7 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
           className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          <span>Yeni Kart Dağıt</span>
+          <span>{tx({ tr: 'Yeni Kart Dağıt', en: 'Deal New Cards' })}</span>
         </button>
       </div>
 
@@ -185,11 +192,23 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Tebrikler! Tüm Almanca–Türkçe çiftleri eşleştirdiniz (+25 XP)
+                {tx({
+                  tr: 'Tebrikler! Tüm Almanca–Türkçe çiftleri eşleştirdiniz (+25 XP)',
+                  en: 'Congratulations! You matched all German–Turkish pairs (+25 XP)',
+                })}
               </p>
               <p className="mt-1 text-xs text-[#52525B] dark:text-[#D4D4D8]">
-                Toplam <span className="font-mono font-semibold tabular-nums">{moves}</span> hamlede{' '}
-                {board.chosenWords.length} çift tamamlandı.
+                {isEn ? (
+                  <>
+                    Completed {board.chosenWords.length} pairs in{' '}
+                    <span className="font-mono font-semibold tabular-nums">{moves}</span> moves.
+                  </>
+                ) : (
+                  <>
+                    Toplam <span className="font-mono font-semibold tabular-nums">{moves}</span>{' '}
+                    hamlede {board.chosenWords.length} çift tamamlandı.
+                  </>
+                )}
               </p>
             </div>
             <button
@@ -198,7 +217,7 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Yeni Tur Oyna</span>
+              <span>{tx({ tr: 'Yeni Tur Oyna', en: 'Play New Round' })}</span>
             </button>
           </div>
         </div>
@@ -229,7 +248,9 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
               {isRevealed ? (
                 <>
                   <span className="text-[11px] font-medium opacity-70">
-                    {card.lang === 'de' ? 'Almanca' : 'Türkçe'}
+                    {card.lang === 'de'
+                      ? tx({ tr: 'Almanca', en: 'German' })
+                      : tx({ tr: 'Türkçe', en: 'Turkish' })}
                   </span>
                   <span className="mt-1.5 text-sm sm:text-base font-semibold leading-snug">
                     {card.lang === 'de' && card.article && articleTok ? (
@@ -250,7 +271,9 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
               ) : (
                 <div className="flex flex-col items-center gap-1">
                   <span className="font-display text-base font-semibold text-[#D9A13B]">TK</span>
-                  <span className="text-[11px] text-[#A1A1AA]">Kartı Aç</span>
+                  <span className="text-[11px] text-[#A1A1AA]">
+                    {tx({ tr: 'Kartı Aç', en: 'Flip Card' })}
+                  </span>
                 </div>
               )}
             </button>
@@ -262,7 +285,10 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
       {matchedWordIds.length > 0 && (
         <div className="border-t border-[#D9D9D3] pt-5 dark:border-[#282830]">
           <p className="mb-3 text-xs font-semibold text-[#52525B] dark:text-[#A1A1AA]">
-            Eşleştirilen Çiftler ({matchedWordIds.length})
+            {tx(
+              { tr: 'Eşleştirilen Çiftler ({{count}})', en: 'Matched Pairs ({{count}})' },
+              { count: matchedWordIds.length }
+            )}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {board.chosenWords
@@ -284,7 +310,13 @@ export const MemoryMatchMode: React.FC<MemoryMatchModeProps> = ({
                       type="button"
                       disabled={!speechSupported}
                       onClick={() => handleListenWord(w)}
-                      aria-label={`${w.article} ${w.word} dinle`}
+                      aria-label={tx(
+                        {
+                          tr: '{{article}} {{word}} dinle',
+                          en: 'Listen to {{article}} {{word}}',
+                        },
+                        { article: w.article, word: w.word }
+                      )}
                       className="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-md border border-[#D9D9D3] text-[#52525B] hover:bg-[#ECECE8] hover:text-[#111113] disabled:opacity-45 dark:border-[#282830] dark:text-[#A1A1AA] dark:hover:bg-[#1E1E24] shrink-0"
                     >
                       <Volume2 className="h-4 w-4" />

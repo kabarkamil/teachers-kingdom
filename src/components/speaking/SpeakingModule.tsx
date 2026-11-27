@@ -7,6 +7,7 @@ import {
   getSpeakingScenarioById,
   getSpeakingScenarioExerciseIds,
 } from '../../data/germanA1Speaking';
+import { useI18n } from '../../hooks/useI18n';
 import type { SpeakingTaskKind } from '../../types';
 import { stopGermanSpeech } from '../../utils/speech';
 import { SpeakingPromptTab } from './SpeakingPromptTab';
@@ -19,6 +20,7 @@ interface SpeakingModuleProps {
 
 export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioId }) => {
   const { progress, rolePreview } = useAppState();
+  const { isEn, locale, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     initialScenarioId ?? GERMAN_A1_SPEAKING_SCENARIOS[0].id
   );
@@ -59,47 +61,56 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Sprechen
+              {locale.course.a1Label} · Sprechen
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>
+                  {tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}
+                </span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A1 Konuşma (Sprechen) Atölyesi
+            {tx({
+              tr: 'Almanca A1 Konuşma (Sprechen) Atölyesi',
+              en: 'German A1 Speaking (Sprechen) Studio',
+            })}
           </h1>
         </div>
 
         {/* Real Progress Strip (strictly from localStorage, honest completion %) */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Konuşma Pratiği</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Konuşma Pratiği', en: 'Speaking Practice' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {progress.speakingMasteredIds.length} / {TOTAL_SPEAKING_TASKS}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tamamlanma</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanma', en: 'Completion' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              %{speakingCompletionPct}
+              {isEn ? `${speakingCompletionPct}%` : `%${speakingCompletionPct}`}
             </p>
           </div>
         </div>
@@ -112,10 +123,16 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
             id="sprechen-scenario-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. Konuşma Bağlamı Seçin
+            {tx({ tr: '1. Konuşma Bağlamı Seçin', en: '1. Select a Speaking Context' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            4 Günlük A1 Bağlamı · {TOTAL_SPEAKING_TASKS} Konuşma Görevi
+            {tx(
+              {
+                tr: '4 Günlük A1 Bağlamı · {{total}} Konuşma Görevi',
+                en: '4 Everyday A1 Contexts · {{total}} Speaking Tasks',
+              },
+              { total: TOTAL_SPEAKING_TASKS }
+            )}
           </span>
         </div>
 
@@ -189,7 +206,9 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili', en: 'Selected' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -200,13 +219,22 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
       </section>
 
       {/* 2. Interactive 3-Format Speaking Studio */}
-      <section aria-label="Konuşma görevleri" className="space-y-4">
+      <section aria-label={tx({ tr: 'Konuşma görevleri', en: 'Speaking tasks' })} className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. A1 Konuşma Pratiği · {activeScenario.titleTr}
+            {tx(
+              {
+                tr: '2. A1 Konuşma Pratiği · {{title}}',
+                en: '2. A1 Speaking Practice · {{title}}',
+              },
+              { title: isEn ? activeScenario.titleDe : activeScenario.titleTr }
+            )}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Her ilk tamamlanan konuşma görevi +10 XP kazandırır (çift sayım yapılmaz)
+            {tx({
+              tr: 'Her ilk tamamlanan konuşma görevi +10 XP kazandırır (çift sayım yapılmaz)',
+              en: 'Each newly completed speaking task earns +10 XP (no double counting)',
+            })}
           </span>
         </div>
 
@@ -214,7 +242,7 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
           {/* 3-Tab Format Switcher */}
           <div
             role="tablist"
-            aria-label="Konuşma görev türü"
+            aria-label={tx({ tr: 'Konuşma görev türü', en: 'Speaking task format' })}
             className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-1.5 dark:border-[#24242C] dark:bg-[#111113]"
           >
             <button
@@ -230,7 +258,12 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
             >
               <span className="flex items-center gap-2 min-w-0">
                 <Volume2 className="h-4 w-4 shrink-0" />
-                <span className="truncate">1. Nachsprechen &amp; Aussprache</span>
+                <span className="truncate">
+                  {tx({
+                    tr: '1. Nachsprechen & Aussprache',
+                    en: '1. Repeat & Pronunciation (Nachsprechen)',
+                  })}
+                </span>
               </span>
               <span className="font-mono text-[11px] tabular-nums opacity-85 shrink-0">
                 {repeatDoneCount}/{activeScenario.repeatItems.length}
@@ -250,7 +283,12 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
             >
               <span className="flex items-center gap-2 min-w-0">
                 <MessageSquare className="h-4 w-4 shrink-0" />
-                <span className="truncate">2. Leitfragen / Kurze Antwort</span>
+                <span className="truncate">
+                  {tx({
+                    tr: '2. Leitfragen / Kurze Antwort',
+                    en: '2. Guided Prompt / Short Answer',
+                  })}
+                </span>
               </span>
               <span className="font-mono text-[11px] tabular-nums opacity-85 shrink-0">
                 {promptDoneCount}/{activeScenario.promptItems.length}
@@ -270,7 +308,12 @@ export const SpeakingModule: React.FC<SpeakingModuleProps> = ({ initialScenarioI
             >
               <span className="flex items-center gap-2 min-w-0">
                 <MessagesSquare className="h-4 w-4 shrink-0" />
-                <span className="truncate">3. Dialog / Rollenspiel</span>
+                <span className="truncate">
+                  {tx({
+                    tr: '3. Dialog / Rollenspiel',
+                    en: '3. Dialogue / Roleplay',
+                  })}
+                </span>
               </span>
               {roleplayDone ? (
                 <CheckCircle2

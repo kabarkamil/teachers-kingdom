@@ -7,9 +7,16 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
-import type { A2VocabTopic } from '../../types';
+import type { A2VocabTopic, GermanArticle, UiLanguage } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
+
+const GENDER_LABELS: Record<GermanArticle, Record<UiLanguage, string>> = {
+  der: { tr: 'Eril', en: 'Masculine' },
+  die: { tr: 'Dişil', en: 'Feminine' },
+  das: { tr: 'Nötr', en: 'Neuter' },
+};
 
 interface A2FlashcardsModeProps {
   topic: A2VocabTopic;
@@ -23,6 +30,7 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
   onSpeechError,
 }) => {
   const { a2Progress, speechSpeed, recordA2FlashcardStudied } = useAppState();
+  const { locale, tx } = useI18n();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [speakingTarget, setSpeakingTarget] = useState<'word' | 'sentence' | null>(null);
@@ -119,16 +127,25 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           </span>
           <span aria-hidden="true">·</span>
           <span className="font-mono tabular-nums">
-            Kart {index + 1} / {topic.words.length}
+            {tx(
+              { tr: 'Kart {{current}} / {{total}}', en: 'Card {{current}} / {{total}}' },
+              { current: index + 1, total: topic.words.length }
+            )}
           </span>
           <span aria-hidden="true">·</span>
           <span className="font-mono tabular-nums text-[#7C1D2E] dark:text-[#D9A13B]">
-            Öğrenilen: {learnedInTopic} / {topic.words.length}
+            {tx(
+              { tr: 'Öğrenilen: {{learned}} / {{total}}', en: 'Learned: {{learned}} / {{total}}' },
+              { learned: learnedInTopic, total: topic.words.length }
+            )}
           </span>
         </div>
 
         <p className="hidden sm:block text-xs text-[#52525B] dark:text-[#A1A1AA]">
-          Klavye: Boşluk (çevir) · ← / → (geç)
+          {tx({
+            tr: 'Klavye: Boşluk (çevir) · ← / → (geç)',
+            en: 'Keyboard: Space (flip) · ← / → (navigate)',
+          })}
         </p>
       </div>
 
@@ -148,8 +165,14 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           }}
           aria-label={
             flipped
-              ? 'Kartın ön yüzünü görmek için tıklayın'
-              : 'Türkçe anlamı ve A2 örnek cümleyi görmek için kartı çevirin'
+              ? tx({
+                  tr: 'Kartın ön yüzünü görmek için tıklayın',
+                  en: 'Click to view the front of the card',
+                })
+              : tx({
+                  tr: 'Türkçe anlamı ve A2 örnek cümleyi görmek için kartı çevirin',
+                  en: 'Flip card to see Turkish meaning and A2 example sentence',
+                })
           }
           className={`tk-preserve-3d relative min-h-[350px] sm:min-h-[370px] w-full cursor-pointer select-none ${
             flipped ? 'tk-rotate-y-180' : ''
@@ -159,10 +182,10 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           <div className="tk-backface-hidden absolute inset-0 flex flex-col justify-between rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 sm:p-8 dark:border-[#282830] dark:bg-[#16161A]">
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className={`font-mono font-semibold ${articleToken.textClass}`}>
-                {articleToken.article} · {articleToken.genderLabelTr} ({articleToken.genderLabelDe})
+                {articleToken.article} · {tx(GENDER_LABELS[currentWord.article])} ({articleToken.genderLabelDe})
               </span>
               <span className="font-mono text-[#71717A] dark:text-[#8E8E98]">
-                CEFR A2 · Ön Yüz
+                {tx({ tr: 'CEFR A2 · Ön Yüz', en: 'CEFR A2 · Front' })}
               </span>
             </div>
 
@@ -175,7 +198,7 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
               </p>
 
               <p className="font-mono text-sm sm:text-base text-[#52525B] dark:text-[#A1A1AA]">
-                Çoğul (Plural):{' '}
+                {tx({ tr: 'Çoğul (Plural):', en: 'Plural:' })}{' '}
                 <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
                   {currentWord.plural}
                 </strong>
@@ -188,7 +211,13 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
                   onClick={(e) =>
                     handleSpeak(`${currentWord.article} ${currentWord.word}. ${currentWord.plural}.`, 'word', e)
                   }
-                  aria-label={`${currentWord.article} ${currentWord.word} kelimesini dinle`}
+                  aria-label={tx(
+                    {
+                      tr: '{{article}} {{word}} kelimesini dinle',
+                      en: 'Listen to {{article}} {{word}}',
+                    },
+                    { article: currentWord.article, word: currentWord.word }
+                  )}
                   className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-xs font-semibold text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
                 >
                   <Volume2
@@ -199,17 +228,27 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
                     }`}
                   />
                   <span>
-                    {speakingTarget === 'word' ? 'Okunuyor…' : 'Tekil & Çoğul Dinle (de-DE)'}
+                    {speakingTarget === 'word'
+                      ? tx({ tr: 'Okunuyor…', en: 'Speaking…' })
+                      : tx({
+                          tr: 'Tekil & Çoğul Dinle (de-DE)',
+                          en: 'Listen Singular & Plural (de-DE)',
+                        })}
                   </span>
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-[#ECECE8] pt-4 text-xs text-[#52525B] dark:border-[#24242C] dark:text-[#A1A1AA]">
-              <span>Anlam ve A2 bağlam cümlesi için kartı çevirin</span>
+              <span>
+                {tx({
+                  tr: 'Anlam ve A2 bağlam cümlesi için kartı çevirin',
+                  en: 'Flip card for meaning and A2 context sentence',
+                })}
+              </span>
               <span className="inline-flex items-center gap-1 font-medium text-[#7C1D2E] dark:text-[#D9A13B]">
                 <RotateCw className="h-3.5 w-3.5" />
-                <span>Çevir</span>
+                <span>{tx({ tr: 'Çevir', en: 'Flip' })}</span>
               </span>
             </div>
           </div>
@@ -221,12 +260,16 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
                 <span className={articleToken.textClass}>{currentWord.article}</span> {currentWord.word} ·{' '}
                 {currentWord.plural}
               </span>
-              <span className="font-mono text-[#7C1D2E] dark:text-[#D9A13B]">Türkçe &amp; Bağlam</span>
+              <span className="font-mono text-[#7C1D2E] dark:text-[#D9A13B]">
+                {tx({ tr: 'Türkçe & Bağlam', en: 'Turkish & Context' })}
+              </span>
             </div>
 
             <div className="my-auto space-y-4 py-2">
               <div>
-                <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">Türkçe Karşılığı</p>
+                <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Türkçe Karşılığı', en: 'Turkish Meaning' })}
+                </p>
                 <p className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
                   {currentWord.turkish}
                 </p>
@@ -241,7 +284,10 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
                     type="button"
                     disabled={!speechSupported}
                     onClick={(e) => handleSpeak(currentWord.exampleDe, 'sentence', e)}
-                    aria-label="Örnek A2 cümleyi dinle"
+                    aria-label={tx({
+                      tr: 'Örnek A2 cümleyi dinle',
+                      en: 'Listen to A2 example sentence',
+                    })}
                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] text-[#7C1D2E] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#D9A13B] dark:hover:bg-[#1E1E24]"
                   >
                     <Volume2 className="h-4 w-4" />
@@ -254,17 +300,22 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
 
               <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                 <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  Artikel &amp; Çoğul İpucu:{' '}
+                  {tx({ tr: 'Artikel & Çoğul İpucu:', en: 'Article & Plural Tip:' })}{' '}
                 </strong>
                 {currentWord.articlePluralTipTr}
               </p>
             </div>
 
             <div className="flex items-center justify-between border-t border-[#ECECE8] pt-3.5 text-xs text-[#52525B] dark:border-[#24242C] dark:text-[#A1A1AA]">
-              <span>Ön yüze dönmek için karta tıklayın</span>
+              <span>
+                {tx({
+                  tr: 'Ön yüze dönmek için karta tıklayın',
+                  en: 'Click card to return to front',
+                })}
+              </span>
               <span className="inline-flex items-center gap-1 font-medium text-[#7C1D2E] dark:text-[#D9A13B]">
                 <RotateCw className="h-3.5 w-3.5" />
-                <span>Ön Yüz</span>
+                <span>{tx({ tr: 'Ön Yüz', en: 'Front' })}</span>
               </span>
             </div>
           </div>
@@ -279,7 +330,7 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Önceki</span>
+          <span>{locale.common.previous}</span>
         </button>
 
         <button
@@ -293,7 +344,11 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           }`}
         >
           <Check className="h-4 w-4" />
-          <span>{isLearned ? 'Öğrenildi (+5 XP Alındı)' : 'Kartı Öğrendim (+5 XP)'}</span>
+          <span>
+            {isLearned
+              ? tx({ tr: 'Öğrenildi (+5 XP Alındı)', en: 'Learned (+5 XP Earned)' })
+              : tx({ tr: 'Kartı Öğrendim (+5 XP)', en: 'Mark Card Learned (+5 XP)' })}
+          </span>
         </button>
 
         <button
@@ -301,7 +356,7 @@ export const A2FlashcardsMode: React.FC<A2FlashcardsModeProps> = ({
           onClick={goNext}
           className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
         >
-          <span>Sonraki</span>
+          <span>{locale.common.next}</span>
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>

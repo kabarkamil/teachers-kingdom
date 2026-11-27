@@ -23,7 +23,7 @@ import {
 import { NAVIGATION_GROUPS } from '../data/navigation';
 import { useAppState } from '../context/AppStateContext';
 import { useDialogFocus } from '../hooks/useDialogFocus';
-import { getLocale } from '../i18n/tr';
+import { useI18n } from '../hooks/useI18n';
 import type { NavRouteId } from '../types';
 import { BrandMark } from './BrandMark';
 
@@ -67,9 +67,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setRolePreview,
     activeCourse,
     setActiveCourse,
-    uiLanguage,
   } = useAppState();
-  const locale = getLocale(uiLanguage);
+  const { locale, isEn, tx } = useI18n();
   const mobileDrawerRef = useDialogFocus(mobileOpen, onCloseMobile);
   const isA2 = activeCourse === 'de-A2';
 
@@ -97,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={onCloseMobile}
-          aria-label="Close menu"
+          aria-label={tx({ tr: 'Menüyü kapat', en: 'Close menu' })}
           className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#52525B] hover:bg-[#ECECE8] dark:text-[#A1A1AA] dark:hover:bg-[#1E1E24]"
         >
           <X className="h-5 w-5" />
@@ -107,11 +106,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile CEFR Level Switcher */}
       <div className="border-b border-[#D9D9D3] px-4 py-3 sm:hidden dark:border-[#282830]">
         <p className="mb-1.5 text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-          {uiLanguage === 'en' ? 'Active German Level' : 'Aktif Almanca Seviyesi'}
+          {tx({ tr: 'Aktif Almanca Seviyesi', en: 'Active German Level' })}
         </p>
         <div
           role="group"
-          aria-label="CEFR Level"
+          aria-label={locale.course.levelSwitcherAria}
           className="grid grid-cols-2 gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#16161A]"
         >
           <button
@@ -179,7 +178,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Scrollable Navigation Tree */}
-      <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      <nav
+        aria-label={tx({ tr: 'Ana gezinme', en: 'Main navigation' })}
+        className="flex-1 overflow-y-auto px-3 py-4 space-y-5"
+      >
         {/* Home */}
         <div>
           <button
@@ -204,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div key={group.id} className="space-y-1">
             {!isCompact ? (
               <p className="px-3 pb-1 text-xs font-semibold text-[#52525B] dark:text-[#A1A1AA]">
-                {uiLanguage === 'en' ? group.titleEn : group.titleTr}
+                {isEn ? group.titleEn : group.titleTr}
               </p>
             ) : (
               <div className="mx-2 my-2 border-t border-[#D9D9D3] dark:border-[#282830]" />
@@ -213,7 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {group.items.map((item) => {
               const Icon = ROUTE_ICONS[item.id] ?? LayoutGrid;
               const isActive = activeRoute === item.id;
-              const label = uiLanguage === 'en' ? item.labelEn : item.labelTr;
+              const label = isEn ? item.labelEn : item.labelTr;
 
               return (
                 <button
@@ -292,7 +294,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
             <div
               role="group"
-              aria-label="Quick level switch"
+              aria-label={tx({ tr: 'Hızlı seviye geçişi', en: 'Quick level switch' })}
               className="inline-flex shrink-0 items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#16161A]"
             >
               <button
@@ -343,7 +345,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="fixed inset-0 z-50 lg:hidden"
           role="dialog"
           aria-modal="true"
-          aria-label="Navigation menu"
+          aria-label={tx({ tr: 'Gezinme menüsü', en: 'Navigation menu' })}
         >
           <div
             className="fixed inset-0 bg-[#0D0D0D]/60 backdrop-blur-[2px]"

@@ -21,7 +21,7 @@ import {
   A2_KARAOKE_IDS,
   A2_QUIZ_IDS,
 } from '../../data/germanA2Activities';
-import { getLocale } from '../../i18n/tr';
+import { useI18n } from '../../hooks/useI18n';
 import type { NavRouteId } from '../../types';
 
 interface ActivityA2SubNavProps {
@@ -57,15 +57,17 @@ const CORE_SKILL_LINKS: Array<{
 ];
 
 export const ActivityA2SubNav: React.FC<ActivityA2SubNavProps> = ({ activeRoute, onNavigate }) => {
-  const { a2Progress, activeCourse, setActiveCourse, uiLanguage } = useAppState();
-  const locale = getLocale(uiLanguage);
-  const isEn = uiLanguage === 'en';
+  const { a2Progress, activeCourse, setActiveCourse } = useAppState();
+  const { locale, isEn, tx } = useI18n();
   const masteredSet = new Set(a2Progress.activityMasteredIds);
 
   return (
     <div className="space-y-2.5">
       <nav
-        aria-label={isEn ? 'A2 activity submodules' : 'Almanca A2 etkinlik alt modülleri'}
+        aria-label={tx({
+          tr: 'Almanca A2 etkinlik alt modülleri',
+          en: 'German A2 activity submodules',
+        })}
         className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#ECECE8] bg-[#FFFFFF] p-1.5 dark:border-[#24242C] dark:bg-[#16161A]"
       >
         <div className="flex flex-wrap items-center gap-1.5">
@@ -103,7 +105,7 @@ export const ActivityA2SubNav: React.FC<ActivityA2SubNavProps> = ({ activeRoute,
         {/* Quick A1 / A2 Course Switcher */}
         <div
           role="group"
-          aria-label={isEn ? 'Switch CEFR level' : 'CEFR seviyesi değiştir'}
+          aria-label={locale.course.levelSwitcherAria}
           className="inline-flex items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#0D0D0D] shrink-0"
         >
           <button

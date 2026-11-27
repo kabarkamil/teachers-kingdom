@@ -44,6 +44,14 @@ import {
   parseAppLocation,
 } from '../src/utils/routing';
 import {
+  TRANSLATIONS,
+  UI_LANGUAGE_OPTIONS,
+  formatMessage,
+  getBcp47Locale,
+  getLocale,
+  pickLocalized,
+} from '../src/i18n';
+import {
   canAutoPushToCloud,
   deleteCloudState,
   executeCloudReset,
@@ -735,6 +743,56 @@ const TESTS: Array<{ name: string; run: () => Promise<void> | void }> = [
           titleTr: t.titleTr,
           wordIds: t.words.map((w) => w.id),
         }))
+      );
+    },
+  },
+  {
+    name: 'i18n dictionaries (TR & EN) have exact key parity, non-empty values, and working helpers',
+    run: () => {
+      const collectLeafKeys = (obj: Record<string, unknown>, prefix = ''): Map<string, string> => {
+        const out = new Map<string, string>();
+        for (const [k, v] of Object.entries(obj)) {
+          const full = prefix ? `${prefix}.${k}` : k;
+          if (typeof v === 'string') {
+            out.set(full, v);
+          } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+            for (const [subK, subV] of collectLeafKeys(v as Record<string, unknown>, full)) {
+              out.set(subK, subV);
+            }
+          }
+        }
+        return out;
+      };
+
+      const trKeys = collectLeafKeys(TRANSLATIONS.tr as unknown as Record<string, unknown>);
+      const enKeys = collectLeafKeys(TRANSLATIONS.en as unknown as Record<string, unknown>);
+
+      assert.ok(trKeys.size >= 40, 'Expected substantial shared i18n dictionary');
+      assert.deepEqual(
+        Array.from(trKeys.keys()).sort(),
+        Array.from(enKeys.keys()).sort(),
+        'TR and EN i18n dictionaries must expose identical keys'
+      );
+
+      for (const [key, val] of trKeys) {
+        assert.ok(val.trim().length > 0, `TR i18n key "${key}" must be non-empty`);
+      }
+      for (const [key, val] of enKeys) {
+        assert.ok(val.trim().length > 0, `EN i18n key "${key}" must be non-empty`);
+      }
+
+      assert.deepEqual(
+        UI_LANGUAGE_OPTIONS.map((o) => o.code),
+        ['tr', 'en']
+      );
+      assert.equal(getLocale('tr').brand.philosophy, 'Öğren. Öğret. Üret.');
+      assert.equal(getLocale('en').brand.philosophy, 'Learn. Teach. Create.');
+      assert.equal(getBcp47Locale('tr'), 'tr-TR');
+      assert.equal(getBcp47Locale('en'), 'en-US');
+      assert.equal(formatMessage('{{done}} / {{total}} XP', { done: 3, total: 10 }), '3 / 10 XP');
+      assert.equal(
+        pickLocalized('en', { tr: '{{n}} soru', en: '{{n}} questions' }, { n: 5 }),
+        '5 questions'
       );
     },
   },

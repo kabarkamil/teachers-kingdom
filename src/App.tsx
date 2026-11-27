@@ -11,7 +11,7 @@ import { HomeView } from './components/HomeView';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AppStateProvider, useAppState } from './context/AppStateContext';
-import { getLocale } from './i18n/tr';
+import { useI18n } from './hooks/useI18n';
 import type { ActiveCourseId, NavRouteId, TeachingAssignmentModule } from './types';
 import {
   COURSE_SCOPED_ROUTES,
@@ -112,7 +112,7 @@ const SettingsView = lazy(() =>
 function TeachersKingdomShell() {
   const { activeCourse, setActiveCourse, uiLanguage, storageWarning, dismissStorageWarning } =
     useAppState();
-  const locale = getLocale(uiLanguage);
+  const { locale } = useI18n();
 
   const initialLocation = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -534,14 +534,14 @@ function TeachersKingdomShell() {
                       onClick={() => handleNavigate('ayarlar')}
                       className="font-semibold text-[#7A1C24] underline underline-offset-2 dark:text-[#D4AF37]"
                     >
-                      Ayarlar ve Veri Yedekleme ekranını aç
+                      {locale.common.openSettingsBackup}
                     </button>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={dismissStorageWarning}
-                  aria-label="Depolama uyarısını kapat"
+                  aria-label={locale.common.dismissStorageWarning}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#52525B] hover:bg-[#ECECE8] dark:text-[#A1A1AA] dark:hover:bg-[#1E1E24] shrink-0"
                 >
                   <X className="h-4 w-4" />
@@ -552,7 +552,7 @@ function TeachersKingdomShell() {
             <Suspense
               fallback={
                 <div className="mx-auto flex max-w-6xl items-center justify-center py-20 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                  {uiLanguage === 'en' ? 'Loading module…' : 'Modül yükleniyor…'}
+                  {locale.common.loadingModule}
                 </div>
               }
             >

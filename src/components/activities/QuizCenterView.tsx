@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { GERMAN_A1_QUIZ_QUESTIONS, QUIZ_IDS } from '../../data/germanA1Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { NavRouteId, QuizTopicFilter } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivitySubNav } from './ActivitySubNav';
@@ -31,11 +32,13 @@ const TOPIC_FILTERS: Array<{ id: TopicOption; labelTr: string; labelEn: string }
 ];
 
 export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) => {
-  const { progress, uiLanguage, recordActivityAnswer } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { progress, recordActivityAnswer } = useAppState();
+  const { isEn, locale, tx } = useI18n();
   const [topicFilter, setTopicFilter] = useState<TopicOption>('all');
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [xpFeedback, setXpFeedback] = useState<Record<string, string>>({});
+  const [xpFeedback, setXpFeedback] = useState<
+    Record<string, { isCorrect: boolean; xp: number }>
+  >({});
 
   const filteredQuestions = useMemo(() => {
     if (topicFilter === 'all') return GERMAN_A1_QUIZ_QUESTIONS;
@@ -59,20 +62,10 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
       isCorrect
     );
 
-    if (isCorrect) {
-      setXpFeedback((prev) => ({
-        ...prev,
-        [questionId]:
-          xp > 0
-            ? `Doğru · +${xp} XP kazanıldı.`
-            : 'Doğru (bu soru daha önce tamamlandığı için ek XP eklenmedi).',
-      }));
-    } else {
-      setXpFeedback((prev) => ({
-        ...prev,
-        [questionId]: 'Yanlış yanıt — açıklamayı inceleyip tekrar deneyebilirsiniz.',
-      }));
-    }
+    setXpFeedback((prev) => ({
+      ...prev,
+      [questionId]: { isCorrect, xp },
+    }));
   };
 
   const handleResetSessionAnswers = () => {
@@ -93,27 +86,32 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Quiz Merkezi
+              {tx({ tr: 'Almanca A1 · Quiz Merkezi', en: 'German A1 · Quiz Center' })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Quiz Merkezi — Karma A1 Tarama Soruları
+            {tx({
+              tr: 'Quiz Merkezi — Karma A1 Tarama Soruları',
+              en: 'Quiz Center — Mixed A1 Review Questions',
+            })}
           </h1>
         </div>
 
         <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tamamlanan Soru</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanan Soru', en: 'Completed Questions' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedCount} / {GERMAN_A1_QUIZ_QUESTIONS.length}
             </p>
@@ -125,7 +123,7 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="group"
-          aria-label="Quiz konu filtresi"
+          aria-label={tx({ tr: 'Quiz konu filtresi', en: 'Quiz topic filter' })}
           className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
         >
           {TOPIC_FILTERS.map((f) => {
@@ -151,7 +149,13 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
         <div className="flex items-center gap-3 text-xs">
           {answeredInFilter > 0 && (
             <span className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              Oturum: {correctInFilter}/{answeredInFilter} doğru
+              {tx(
+                {
+                  tr: 'Oturum: {{correct}}/{{answered}} doğru',
+                  en: 'Session: {{correct}}/{{answered}} correct',
+                },
+                { correct: correctInFilter, answered: answeredInFilter }
+              )}
             </span>
           )}
           {Object.keys(answers).length > 0 && (
@@ -161,7 +165,7 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Seçimleri Temizle</span>
+              <span>{tx({ tr: 'Seçimleri Temizle', en: 'Clear Selections' })}</span>
             </button>
           )}
         </div>
@@ -173,6 +177,7 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
           const picked = answers[q.id];
           const answered = picked !== undefined;
           const isMastered = masteredSet.has(q.id);
+          const feedbackEntry = xpFeedback[q.id];
 
           return (
             <article
@@ -182,7 +187,10 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2 text-[#52525B] dark:text-[#A1A1AA]">
                   <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                    Soru {String(idx + 1).padStart(2, '0')}
+                    {tx(
+                      { tr: 'Soru {{num}}', en: 'Question {{num}}' },
+                      { num: String(idx + 1).padStart(2, '0') }
+                    )}
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{q.topicLabelTr}</span>
@@ -190,7 +198,7 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
                 {isMastered ? (
                   <span className="inline-flex items-center gap-1 font-medium text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Tamamlandı</span>
+                    <span>{locale.common.completed}</span>
                   </span>
                 ) : (
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA]">+10 XP</span>
@@ -251,7 +259,7 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
 
               {answered && (
                 <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-3.5 space-y-1 text-xs sm:text-sm dark:border-[#24242C] dark:bg-[#111113]">
-                  {xpFeedback[q.id] && (
+                  {feedbackEntry && (
                     <p
                       className={`font-semibold ${
                         picked === q.correctIndex
@@ -259,7 +267,20 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
                           : 'text-[#B91C1C] dark:text-[#F87171]'
                       }`}
                     >
-                      {xpFeedback[q.id]}
+                      {feedbackEntry.isCorrect
+                        ? feedbackEntry.xp > 0
+                          ? tx(
+                              { tr: 'Doğru · +{{xp}} XP kazanıldı.', en: 'Correct · +{{xp}} XP earned.' },
+                              { xp: feedbackEntry.xp }
+                            )
+                          : tx({
+                              tr: 'Doğru (bu soru daha önce tamamlandığı için ek XP eklenmedi).',
+                              en: 'Correct (no extra XP — this question was already completed).',
+                            })
+                        : tx({
+                            tr: 'Yanlış yanıt — açıklamayı inceleyip tekrar deneyebilirsiniz.',
+                            en: 'Incorrect — review the explanation and try again.',
+                          })}
                     </p>
                   )}
                   <p className="text-[#52525B] dark:text-[#A1A1AA]">{q.explanationTr}</p>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, Lightbulb, RotateCcw } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { A2SpeakingScenario } from '../../types';
 import { stopGermanSpeech } from '../../utils/speech';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
@@ -12,6 +13,7 @@ interface A2SpeakingRoleplayTabProps {
 
 export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ scenario }) => {
   const { a2Progress, recordA2SpeakingCompletion } = useAppState();
+  const { locale, tx } = useI18n();
   const roleplay = scenario.roleplay;
 
   const [showTurkish, setShowTurkish] = useState(false);
@@ -67,11 +69,16 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
         <span>
           <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            3. Çok Turlu Rol Oyunu
+            {tx({ tr: '3. Çok Turlu Rol Oyunu', en: '3. Multi-Turn Roleplay' })}
           </strong>{' '}
-          · Partneri dinleyip yanıtınızı sesli kurun, sonra örnekle karşılaştırın.
+          {tx({
+            tr: '· Partneri dinleyip yanıtınızı sesli kurun, sonra örnekle karşılaştırın.',
+            en: '· Listen to your partner, respond aloud, then compare with the sample.',
+          })}
         </span>
-        <span className="font-mono tabular-nums">{roleplay.turns.length} Tur</span>
+        <span className="font-mono tabular-nums">
+          {tx({ tr: '{{count}} Tur', en: '{{count}} Turns' }, { count: roleplay.turns.length })}
+        </span>
       </div>
 
       {/* Scenario Brief Card */}
@@ -82,17 +89,27 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
               {scenario.registerLabelTr}
             </span>
             <span aria-hidden="true">·</span>
-            <span>Partner: {roleplay.partnerRoleDe}</span>
+            <span>
+              {tx(
+                { tr: 'Partner: {{role}}', en: 'Partner: {{role}}' },
+                { role: roleplay.partnerRoleDe }
+              )}
+            </span>
             <span aria-hidden="true">·</span>
-            <span>Rolünüz: {roleplay.learnerRoleTr}</span>
+            <span>
+              {tx(
+                { tr: 'Rolünüz: {{role}}', en: 'Your Role: {{role}}' },
+                { role: roleplay.learnerRoleTr }
+              )}
+            </span>
           </div>
           <span className="font-mono text-[#52525B] dark:text-[#A1A1AA]">
             {isMastered ? (
               <span className="font-semibold text-[#15803D] dark:text-[#4ADE80]">
-                Tamamlandı
+                {locale.common.completed}
               </span>
             ) : (
-              'Yeni Görev (+10 A2 XP)'
+              tx({ tr: 'Yeni Görev (+10 A2 XP)', en: 'New Task (+10 A2 XP)' })
             )}
           </span>
         </div>
@@ -116,7 +133,11 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#52525B] hover:text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]"
           >
             {showTurkish ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            <span>{showTurkish ? 'Türkçe Çevirileri Gizle' : 'Partner Çevirilerini Göster'}</span>
+            <span>
+              {showTurkish
+                ? tx({ tr: 'Türkçe Çevirileri Gizle', en: 'Hide Turkish Glosses' })
+                : tx({ tr: 'Partner Çevirilerini Göster', en: 'Show Partner Glosses' })}
+            </span>
           </button>
 
           <button
@@ -125,14 +146,24 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#52525B] hover:text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]"
           >
             <Lightbulb className="h-3.5 w-3.5 text-[#9A6B16] dark:text-[#D9A13B]" />
-            <span>{showPhrases ? 'Redemittel Gizle' : 'Diyalog Kalıpları (Redemittel)'}</span>
+            <span>
+              {showPhrases
+                ? tx({ tr: 'Redemittel Gizle', en: 'Hide Redemittel' })
+                : tx({
+                    tr: 'Diyalog Kalıpları (Redemittel)',
+                    en: 'Dialogue Phrases (Redemittel)',
+                  })}
+            </span>
           </button>
         </div>
 
         {showPhrases && (
           <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4]/70 p-4 space-y-2 dark:border-[#24242C] dark:bg-[#111113]">
             <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-              Senaryoya Özel A2 Kalıpları (Redemittel)
+              {tx({
+                tr: 'Senaryoya Özel A2 Kalıpları (Redemittel)',
+                en: 'Scenario A2 Phrases (Redemittel)',
+              })}
             </p>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
               {roleplay.phrases.map((p) => (
@@ -160,10 +191,16 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
             >
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B] tabular-nums">
-                  Tur {idx + 1} / {roleplay.turns.length} · {turn.partnerNameDe}
+                  {tx(
+                    {
+                      tr: 'Tur {{current}} / {{total}} · {{name}}',
+                      en: 'Turn {{current}} / {{total}} · {{name}}',
+                    },
+                    { current: idx + 1, total: roleplay.turns.length, name: turn.partnerNameDe }
+                  )}
                 </span>
                 <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                  Partner Repliği
+                  {tx({ tr: 'Partner Repliği', en: 'Partner Line' })}
                 </span>
               </div>
 
@@ -180,6 +217,7 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
                 <ModelAudioBar
                   textDe={turn.partnerLineDe}
                   labelTr={`${turn.partnerNameDe} Dinle (de-DE)`}
+                  labelEn={`Listen to ${turn.partnerNameDe} (de-DE)`}
                   speakerGender={turn.partnerGender}
                   compact
                 />
@@ -189,7 +227,10 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
               <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4]/80 p-4 space-y-3 dark:border-[#24242C] dark:bg-[#111113]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                    Sıra Sizde ({roleplay.learnerRoleTr})
+                    {tx(
+                      { tr: 'Sıra Sizde ({{role}})', en: 'Your Turn ({{role}})' },
+                      { role: roleplay.learnerRoleTr }
+                    )}
                   </p>
                   <button
                     type="button"
@@ -201,7 +242,11 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
                     ) : (
                       <Eye className="h-3.5 w-3.5" />
                     )}
-                    <span>{sampleOpen ? 'Örnek Yanıtı Gizle' : 'Örnek Yanıtı Göster'}</span>
+                    <span>
+                      {sampleOpen
+                        ? tx({ tr: 'Örnek Yanıtı Gizle', en: 'Hide Sample Answer' })
+                        : tx({ tr: 'Örnek Yanıtı Göster', en: 'Show Sample Answer' })}
+                    </span>
                   </button>
                 </div>
 
@@ -220,6 +265,7 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
                     <ModelAudioBar
                       textDe={turn.sampleResponseDe}
                       labelTr="Örnek Yanıtı Dinle (de-DE)"
+                      labelEn="Listen to Sample Answer (de-DE)"
                       speakerGender={turn.sampleGender}
                       compact
                     />
@@ -238,7 +284,13 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
         <div className="space-y-3 border-t border-[#ECECE8] pt-5 dark:border-[#24242C]">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Rol Oyunu Öz-Değerlendirme Kontrol Listesi (3 Adım)
+              {tx(
+                {
+                  tr: 'Rol Oyunu Öz-Değerlendirme Kontrol Listesi ({{count}} Adım)',
+                  en: 'Roleplay Self-Assessment Checklist ({{count}} Steps)',
+                },
+                { count: checks.length }
+              )}
             </p>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
               {checks.filter(Boolean).length} / {checks.length}
@@ -271,7 +323,9 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>
-                {isMastered ? 'Tekrarı Kaydet (0 XP)' : 'Rol Oyununu Tamamla (+10 A2 XP)'}
+                {isMastered
+                  ? tx({ tr: 'Tekrarı Kaydet (0 XP)', en: 'Log Repeat (0 XP)' })
+                  : tx({ tr: 'Rol Oyununu Tamamla (+10 A2 XP)', en: 'Complete Roleplay (+10 A2 XP)' })}
               </span>
             </button>
 
@@ -281,7 +335,7 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#52525B] hover:text-[#111113] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Sıfırla</span>
+              <span>{locale.common.reset}</span>
             </button>
           </div>
 
@@ -291,12 +345,18 @@ export const A2SpeakingRoleplayTab: React.FC<A2SpeakingRoleplayTabProps> = ({ sc
               className="flex items-center justify-between gap-3 rounded-lg border border-[#15803D]/35 bg-[#F0FDF4] px-4 py-2.5 text-xs sm:text-sm font-medium text-[#166534] dark:border-[#4ADE80]/30 dark:bg-[#0D2315] dark:text-[#86EFAC]"
             >
               <span>
-                {roleplay.turns.length} turlu A2 rol oyunu yerel A2 ilerlemenize kaydedildi.
+                {tx(
+                  {
+                    tr: '{{count}} turlu A2 rol oyunu yerel A2 ilerlemenize kaydedildi.',
+                    en: '{{count}}-turn A2 roleplay saved to your local A2 progress.',
+                  },
+                  { count: roleplay.turns.length }
+                )}
               </span>
               <span className="font-mono font-semibold tabular-nums shrink-0">
                 {completedBanner.xpAwarded > 0
                   ? `+${completedBanner.xpAwarded} A2 XP`
-                  : '0 XP (Daha önce kazanıldı)'}
+                  : tx({ tr: '0 XP (Daha önce kazanıldı)', en: '0 XP (Already earned)' })}
               </span>
             </div>
           )}

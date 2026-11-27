@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { A2ListeningScenario, ListeningExerciseKind } from '../../types';
 
 interface A2ListeningExercisesProps {
@@ -22,16 +23,17 @@ interface SessionAnswer {
 
 const EXERCISE_TABS: Array<{
   id: ListeningExerciseKind;
-  labelTr: string;
+  label: { tr: string; en: string };
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'tf', labelTr: '1. Richtig / Falsch', icon: ClipboardCheck },
-  { id: 'cloze', labelTr: '2. Lückentext', icon: TextCursorInput },
-  { id: 'mc', labelTr: '3. Anlama Testi', icon: HelpCircle },
+  { id: 'tf', label: { tr: '1. Richtig / Falsch', en: '1. Richtig / Falsch' }, icon: ClipboardCheck },
+  { id: 'cloze', label: { tr: '2. Lückentext', en: '2. Lückentext' }, icon: TextCursorInput },
+  { id: 'mc', label: { tr: '3. Anlama Testi', en: '3. Comprehension' }, icon: HelpCircle },
 ];
 
 export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scenario }) => {
   const { a2Progress, recordA2ListeningAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [activeTab, setActiveTab] = useState<ListeningExerciseKind>('tf');
   const [answers, setAnswers] = useState<Record<string, SessionAnswer>>({});
 
@@ -68,7 +70,7 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
       itemId,
       scenario.id,
       'cloze',
-      `${scenario.titleTr} · Boşluk (${correctOption})`,
+      `${scenario.titleTr} · ${tx({ tr: 'Boşluk', en: 'Blank' })} (${correctOption})`,
       isCorrect
     );
     setAnswers((prev) => ({
@@ -108,12 +110,21 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
   const hasAnySessionAnswer = Object.keys(answers).length > 0;
 
   return (
-    <section aria-label="A2 dinleme anlama alıştırmaları" className="space-y-5">
+    <section
+      aria-label={tx({
+        tr: 'A2 dinleme anlama alıştırmaları',
+        en: 'A2 listening comprehension exercises',
+      })}
+      className="space-y-5"
+    >
       {/* Tabs & Reset */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
           role="tablist"
-          aria-label="A2 dinleme alıştırma sekmeleri"
+          aria-label={tx({
+            tr: 'A2 dinleme alıştırma sekmeleri',
+            en: 'A2 listening exercise tabs',
+          })}
           className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#D9D9D3] bg-[#ECECE8]/80 p-1 dark:border-[#282830] dark:bg-[#16161A]"
         >
           {EXERCISE_TABS.map((tab) => {
@@ -141,7 +152,7 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{tab.labelTr}</span>
+                <span>{tx(tab.label)}</span>
                 <span className="font-mono text-[11px] opacity-80 tabular-nums">
                   ({doneCount}/{totalCount})
                 </span>
@@ -157,7 +168,7 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
             className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Soruları Tekrar Çöz</span>
+            <span>{tx({ tr: 'Soruları Tekrar Çöz', en: 'Retry Questions' })}</span>
           </button>
         )}
       </div>
@@ -176,10 +187,12 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Soru {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx({ tr: 'Soru {num}', en: 'Question {num}' }, { num: idx + 1 })}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -241,15 +254,21 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} A2 XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} A2 XP)', en: 'Correct! (+{xp} A2 XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Yanlış Seçim
+                              {tx({ tr: 'Yanlış Seçim', en: 'Incorrect Choice' })}
                             </span>
                           </>
                         )}
@@ -281,10 +300,12 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Boşluk {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx({ tr: 'Boşluk {num}', en: 'Blank {num}' }, { num: idx + 1 })}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -297,7 +318,7 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
                     {parts[1] ?? ''}”
                   </p>
                   <p className="mt-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    İpucu: {item.hintTr}
+                    {tx({ tr: 'İpucu:', en: 'Hint:' })} {item.hintTr}
                   </p>
                 </div>
 
@@ -345,15 +366,24 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} A2 XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} A2 XP)', en: 'Correct! (+{xp} A2 XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Doğru sözcük: {item.correctOption}
+                              {tx(
+                                { tr: 'Doğru sözcük: {word}', en: 'Correct word: {word}' },
+                                { word: item.correctOption }
+                              )}
                             </span>
                           </>
                         )}
@@ -384,10 +414,15 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Anlama Sorusu {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx(
+                        { tr: 'Anlama Sorusu {num}', en: 'Comprehension {num}' },
+                        { num: idx + 1 }
+                      )}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -458,15 +493,24 @@ export const A2ListeningExercises: React.FC<A2ListeningExercisesProps> = ({ scen
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} A2 XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} A2 XP)', en: 'Correct! (+{xp} A2 XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Doğru yanıt: {item.options[item.correctIndex]}
+                              {tx(
+                                { tr: 'Doğru yanıt: {answer}', en: 'Correct answer: {answer}' },
+                                { answer: item.options[item.correctIndex] }
+                              )}
                             </span>
                           </>
                         )}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Award, BookText, CheckCircle2, Target } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   GERMAN_A2_READING_SCENARIOS,
   TOTAL_A2_READING_EXERCISES,
@@ -16,6 +17,7 @@ interface ReadingA2ModuleProps {
 
 export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenarioId }) => {
   const { a2Progress, a2ReadingAccuracyPercent, rolePreview } = useAppState();
+  const { locale, tx } = useI18n();
   const [activeScenarioId, setActiveScenarioId] = useState<string>(
     initialScenarioId && getA2ReadingScenarioById(initialScenarioId)
       ? initialScenarioId
@@ -47,17 +49,25 @@ export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenari
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
               <BookText className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
               <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                ALMANCA CEFR A2 · AŞAMA 3 · LESEN
+                {tx({
+                  tr: 'ALMANCA CEFR A2 · AŞAMA 3 · LESEN',
+                  en: 'GERMAN CEFR A2 · STAGE 3 · LESEN',
+                })}
               </span>
               {rolePreview === 'teacher' && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span>Öğretmen Önizleme Görünümü</span>
+                  <span>
+                    {tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}
+                  </span>
                 </>
               )}
             </div>
             <h1 className="mt-2 font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-              A2 Okuma (Lesen) Atölyesi
+              {tx({
+                tr: 'A2 Okuma (Lesen) Atölyesi',
+                en: 'A2 Reading (Lesen) Workshop',
+              })}
             </h1>
           </div>
 
@@ -65,26 +75,34 @@ export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenari
             <div className="rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 py-2.5 dark:border-[#282830] dark:bg-[#111113]">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#15803D] dark:text-[#4ADE80]" />
-                <span>A2 Okuma</span>
+                <span>{tx({ tr: 'A2 Okuma', en: 'A2 Reading' })}</span>
               </div>
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {masteredReadingCount}/{TOTAL_A2_READING_EXERCISES}
               </p>
               <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA] tabular-nums">
-                %{readingCompletionPercent} tamamlandı
+                {tx(
+                  { tr: '%{pct} tamamlandı', en: '{pct}% completed' },
+                  { pct: readingCompletionPercent }
+                )}
               </p>
             </div>
 
             <div className="rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 py-2.5 dark:border-[#282830] dark:bg-[#111113]">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
                 <Target className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>Doğruluk</span>
+                <span>{locale.common.accuracy}</span>
               </div>
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {a2ReadingAccuracyPercent !== null ? `%${a2ReadingAccuracyPercent}` : '—'}
+                {a2ReadingAccuracyPercent !== null
+                  ? tx({ tr: '%{pct}', en: '{pct}%' }, { pct: a2ReadingAccuracyPercent })
+                  : '—'}
               </p>
               <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA] tabular-nums">
-                {a2Progress.readingAttempts} puanlı yanıt
+                {tx(
+                  { tr: '{count} puanlı yanıt', en: '{count} graded answers' },
+                  { count: a2Progress.readingAttempts }
+                )}
               </p>
             </div>
 
@@ -96,20 +114,28 @@ export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenari
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.xp}
               </p>
-              <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA]">İzole A2 puanı</p>
+              <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
+                {tx({ tr: 'İzole A2 puanı', en: 'Isolated A2 score' })}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       {/* Scenario Selector Grid */}
-      <section aria-label="A2 okuma metinleri">
+      <section aria-label={tx({ tr: 'A2 okuma metinleri', en: 'A2 reading passages' })}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            1. A2 Okuma Metni Seçin
+            {tx({ tr: '1. A2 Okuma Metni Seçin', en: '1. Choose an A2 Reading Passage' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            {GERMAN_A2_READING_SCENARIOS.length} Özgün A2 Belgesi · {TOTAL_A2_READING_EXERCISES} Alıştırma
+            {tx(
+              {
+                tr: '{docs} Özgün A2 Belgesi · {count} Alıştırma',
+                en: '{docs} Authentic A2 Documents · {count} Exercises',
+              },
+              { docs: GERMAN_A2_READING_SCENARIOS.length, count: TOTAL_A2_READING_EXERCISES }
+            )}
           </span>
         </div>
 
@@ -182,8 +208,14 @@ export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenari
                       />
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
-                      <span>{isSelected ? 'Aktif Metin' : 'Seç ve Oku'}</span>
-                      <span className="font-mono tabular-nums">%{pct}</span>
+                      <span>
+                        {isSelected
+                          ? tx({ tr: 'Aktif Metin', en: 'Active Passage' })
+                          : tx({ tr: 'Seç ve Oku', en: 'Select & Read' })}
+                      </span>
+                      <span className="font-mono tabular-nums">
+                        {tx({ tr: '%{pct}', en: '{pct}%' }, { pct })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -194,18 +226,35 @@ export const ReadingA2Module: React.FC<ReadingA2ModuleProps> = ({ initialScenari
       </section>
 
       {/* Active Reading Passage & Support Aids */}
-      <section aria-label="A2 okuma metni ve destek araçları">
+      <section
+        aria-label={tx({
+          tr: 'A2 okuma metni ve destek araçları',
+          en: 'A2 reading passage and study tools',
+        })}
+      >
         <A2ReadingPassageCard scenario={activeScenario} />
       </section>
 
       {/* Active Reading 3-Part Interactive Exercises */}
-      <section aria-label="A2 okuma anlama alıştırmaları" className="space-y-3">
+      <section
+        aria-label={tx({
+          tr: 'A2 okuma anlama alıştırmaları',
+          en: 'A2 reading comprehension exercises',
+        })}
+        className="space-y-3"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. A2 Etkileşimli Okuma Alıştırmaları
+            {tx({
+              tr: '2. A2 Etkileşimli Okuma Alıştırmaları',
+              en: '2. A2 Interactive Reading Exercises',
+            })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Her benzersiz soruda ilk doğru yanıt +10 A2 XP kazandırır
+            {tx({
+              tr: 'Her benzersiz soruda ilk doğru yanıt +10 A2 XP kazandırır',
+              en: 'Each first correct answer on a unique item earns +10 A2 XP',
+            })}
           </span>
         </div>
 

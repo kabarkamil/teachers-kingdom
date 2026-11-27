@@ -12,7 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
-import { getLocale } from '../i18n/tr';
+import { useI18n } from '../hooks/useI18n';
 import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import { BrandMark } from './BrandMark';
 
@@ -46,7 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     cloudUser,
     cloudSyncStatus,
   } = useAppState();
-  const locale = getLocale(uiLanguage);
+  const { locale, tx } = useI18n();
   const syncLabel = formatSyncStatusLabel(cloudSyncStatus, uiLanguage);
 
   return (
@@ -69,7 +69,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={onToggleSidebarCollapse}
             aria-label={locale.topBar.toggleSidebar}
             aria-expanded={!sidebarCollapsed}
-            title={sidebarCollapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+            title={
+              sidebarCollapsed ? locale.topBar.expandMenuTitle : locale.topBar.collapseMenuTitle
+            }
             className="hidden h-10 w-10 items-center justify-center rounded-lg border border-transparent text-[#52525B] transition-colors hover:border-[#D9D9D3] hover:bg-[#ECECE8] hover:text-[#0D0D0D] lg:inline-flex dark:text-[#A1A1AA] dark:hover:border-[#282830] dark:hover:bg-[#1E1E24] dark:hover:text-[#FFFFFF] shrink-0"
           >
             {sidebarCollapsed ? (
@@ -94,7 +96,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="hidden sm:flex items-center lg:pl-3 lg:ml-0.5 lg:border-l lg:border-[#D9D9D3] lg:dark:border-[#282830] shrink-0">
             <div
               role="group"
-              aria-label="CEFR Level"
+              aria-label={locale.course.levelSwitcherAria}
               className="flex items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#16161A]"
             >
               <button
@@ -185,7 +187,10 @@ export const TopBar: React.FC<TopBarProps> = ({
                 ? `${cloudUser.email} · ${syncLabel}`
                 : `${syncLabel} — ${locale.topBar.authAction}`
             }
-            aria-label={`Sync status: ${syncLabel}`}
+            aria-label={tx(
+              { tr: 'Senkronizasyon durumu: {{status}}', en: 'Sync status: {{status}}' },
+              { status: syncLabel }
+            )}
             className={`hidden xl:inline-flex h-10 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
               cloudSyncStatus === 'synced'
                 ? 'border-[#15803D]/35 bg-[#F0FDF4] text-[#166534] dark:border-[#4ADE80]/35 dark:bg-[#0D2315] dark:text-[#86EFAC]'
@@ -213,7 +218,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             type="button"
             onClick={toggleUiLanguage}
             aria-label={locale.topBar.switchLangLabel}
-            title="TR / EN"
+            title={locale.topBar.switchLangLabel}
             className="inline-flex h-10 items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-2.5 font-mono text-xs font-semibold text-[#52525B] transition-colors hover:border-[#7A1C24] hover:text-[#0D0D0D] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:border-[#D4AF37] dark:hover:text-[#FFFFFF] shrink-0"
           >
             <span className={uiLanguage === 'tr' ? 'text-[#7A1C24] dark:text-[#D4AF37]' : ''}>

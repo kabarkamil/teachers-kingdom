@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { useDialogFocus } from '../hooks/useDialogFocus';
-import { getLocale } from '../i18n/tr';
+import { useI18n } from '../hooks/useI18n';
 import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import type { UserRole } from '../types';
 import { BrandMark } from './BrandMark';
@@ -42,8 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onOpenPorta
     cloudSignOut,
     syncCloudNow,
   } = useAppState();
-  const locale = getLocale(uiLanguage);
-  const isEn = uiLanguage === 'en';
+  const { locale, isEn, bcp47, tx } = useI18n();
 
   const [activeTab, setActiveTab] = useState<ModalTab>(() => (cloudUser ? 'cloud' : 'local'));
   const [nameInput, setNameInput] = useState(displayName);
@@ -354,7 +353,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onOpenPorta
                     </span>
                     <span className="font-mono text-[11px] text-[#166534]/80 dark:text-[#86EFAC]/80">
                       {lastCloudSyncAt
-                        ? new Date(lastCloudSyncAt).toLocaleTimeString(isEn ? 'en-US' : 'tr-TR', {
+                        ? new Date(lastCloudSyncAt).toLocaleTimeString(bcp47, {
                             hour: '2-digit',
                             minute: '2-digit',
                           })
@@ -487,7 +486,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onOpenPorta
                     required
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="ornek@teacherskingdom.net"
+                    placeholder={tx({
+                      tr: 'ornek@teacherskingdom.net',
+                      en: 'name@teacherskingdom.net',
+                    })}
                     className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#0D0D0D] focus:border-[#7A1C24] focus:outline-none dark:border-[#282830] dark:bg-[#0D0D0D] dark:text-[#FFFFFF] dark:focus:border-[#D4AF37]"
                   />
                 </div>

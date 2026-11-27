@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { WritingFormTaskData } from '../../types';
 import { evaluateFormField, type FormFieldCheckResult } from '../../utils/writingEvaluator';
 import { GermanCharBar } from './GermanCharBar';
@@ -19,6 +20,7 @@ interface WritingFormTaskProps {
 
 export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, task }) => {
   const { progress, recordWritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [values, setValues] = useState<Record<string, string>>({});
   const [results, setResults] = useState<Record<string, FormFieldCheckResult> | null>(null);
   const [showTurkish, setShowTurkish] = useState(false);
@@ -122,7 +124,7 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
                   <span aria-hidden="true">·</span>
                   <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Tamamlandı
+                    {locale.common.completed}
                   </span>
                 </>
               )}
@@ -143,7 +145,11 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
             }`}
           >
             <Languages className="h-3.5 w-3.5 shrink-0" />
-            <span>{showTurkish ? 'Türkçe Yönergeyi Gizle' : 'Türkçe Yönerge / Çeviri'}</span>
+            <span>
+              {showTurkish
+                ? tx({ tr: 'Türkçe Yönergeyi Gizle', en: 'Hide Turkish Prompt' })
+                : tx({ tr: 'Türkçe Yönerge / Çeviri', en: 'Turkish Prompt / Gloss' })}
+            </span>
           </button>
         </div>
 
@@ -163,7 +169,10 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
         <div className="flex flex-wrap items-center justify-between gap-3">
           <GermanCharBar onInsert={handleInsertChar} />
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Almancada isimler ve özel adlar büyük harfle başlar.
+            {tx({
+              tr: 'Almancada isimler ve özel adlar büyük harfle başlar.',
+              en: 'In German, nouns and proper names begin with a capital letter.',
+            })}
           </span>
         </div>
 
@@ -246,7 +255,7 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
               type="submit"
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
-              <span>Formu Kontrol Et</span>
+              <span>{tx({ tr: 'Formu Kontrol Et', en: 'Check Form' })}</span>
             </button>
 
             <button
@@ -255,7 +264,7 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Temizle</span>
+              <span>{tx({ tr: 'Temizle', en: 'Clear' })}</span>
             </button>
           </div>
 
@@ -276,9 +285,27 @@ export const WritingFormTask: React.FC<WritingFormTaskProps> = ({ scenarioId, ta
               <span className="tabular-nums">
                 {allPassed
                   ? lastXpAwarded && lastXpAwarded > 0
-                    ? `Tüm alanlar doğru (${passedCount}/${task.fields.length}) · +${lastXpAwarded} XP`
-                    : `Tüm alanlar doğru (${passedCount}/${task.fields.length}) · Daha önce tamamlandı`
-                  : `${passedCount}/${task.fields.length} alan doğru — işaretli alanları düzenleyip tekrar kontrol edin.`}
+                    ? tx(
+                        {
+                          tr: 'Tüm alanlar doğru ({{passed}}/{{total}}) · +{{xp}} XP',
+                          en: 'All fields correct ({{passed}}/{{total}}) · +{{xp}} XP',
+                        },
+                        { passed: passedCount, total: task.fields.length, xp: lastXpAwarded }
+                      )
+                    : tx(
+                        {
+                          tr: 'Tüm alanlar doğru ({{passed}}/{{total}}) · Daha önce tamamlandı',
+                          en: 'All fields correct ({{passed}}/{{total}}) · Already completed',
+                        },
+                        { passed: passedCount, total: task.fields.length }
+                      )
+                  : tx(
+                      {
+                        tr: '{{passed}}/{{total}} alan doğru — işaretli alanları düzenleyip tekrar kontrol edin.',
+                        en: '{{passed}}/{{total}} fields correct — edit the highlighted fields and check again.',
+                      },
+                      { passed: passedCount, total: task.fields.length }
+                    )}
               </span>
             </div>
           )}

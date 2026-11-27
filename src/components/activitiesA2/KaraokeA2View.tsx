@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { A2_KARAOKE_IDS, GERMAN_A2_KARAOKE_TRACKS } from '../../data/germanA2Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { KaraokeTrack, NavRouteId } from '../../types';
 import {
   isSpeechSynthesisSupported,
@@ -26,9 +27,8 @@ interface KaraokeA2ViewProps {
 }
 
 export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
-  const { a2Progress, rolePreview, speechSpeed, uiLanguage, recordA2KaraokeCompletion } =
-    useAppState();
-  const isEn = uiLanguage === 'en';
+  const { a2Progress, rolePreview, speechSpeed, recordA2KaraokeCompletion } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedTrackId, setSelectedTrackId] = useState<string>(GERMAN_A2_KARAOKE_TRACKS[0].id);
   const [rateMode, setRateMode] = useState<'slow' | 'normal'>(speechSpeed);
   const [showTranslations, setShowTranslations] = useState(false);
@@ -42,7 +42,7 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
   const [isSequenceMode, setIsSequenceMode] = useState(false);
   const [audioErrorReason, setAudioErrorReason] = useState<SpeechFailureReason | null>(null);
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, { xp: number }>>({});
 
   const playbackTokenRef = useRef(0);
   const speechSupported = isSpeechSynthesisSupported();
@@ -144,10 +144,7 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
     const xp = recordA2KaraokeCompletion(activeTrack.id, activeTrack.titleDe);
     setFeedbackMap((prev) => ({
       ...prev,
-      [activeTrack.id]:
-        xp > 0
-          ? `A2 parçası tamamlandı olarak kaydedildi · +${xp} A2 XP kazanıldı (puanlı doğruluk oranını şişirmez).`
-          : 'Tekrar pratiğiniz kaydedildi (bu A2 parçası daha önce tamamlandığı için ek XP eklenmedi).',
+      [activeTrack.id]: { xp },
     }));
   };
 
@@ -157,13 +154,38 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
   const isTrackMastered = a2Progress.activityMasteredIds.includes(activeTrack.id);
   const isPlayingOrStarting = activeLineIndex !== null || startingLineIndex !== null;
 
+  const activeFeedback = feedbackMap[activeTrack.id];
+  const activeFeedbackText = activeFeedback
+    ? activeFeedback.xp > 0
+      ? tx(
+          {
+            tr: 'A2 parçası tamamlandı olarak kaydedildi · +{{xp}} A2 XP kazanıldı (puanlı doğruluk oranını şişirmez).',
+            en: 'A2 track marked complete · +{{xp}} A2 XP earned (does not inflate scored accuracy).',
+          },
+          { xp: activeFeedback.xp }
+        )
+      : tx({
+          tr: 'Tekrar pratiğiniz kaydedildi (bu A2 parçası daha önce tamamlandığı için ek XP eklenmedi).',
+          en: 'Repeat practice logged (no extra XP — this A2 track was already completed).',
+        })
+    : null;
+
   const audioErrorText =
     audioErrorReason === 'unsupported'
-      ? 'Bu tarayıcı Web Speech API (de-DE) seslendirmesini desteklemiyor. Satırları ritim vurgularıyla kendiniz sesli okuyarak pratik yapabilirsiniz.'
+      ? tx({
+          tr: 'Bu tarayıcı Web Speech API (de-DE) seslendirmesini desteklemiyor. Satırları ritim vurgularıyla kendiniz sesli okuyarak pratik yapabilirsiniz.',
+          en: 'This browser does not support Web Speech API (de-DE). You can still practice aloud following the rhythm cues.',
+        })
       : audioErrorReason === 'timeout'
-      ? 'Tarayıcı ses motoru zaman aşımına uğradı (onstart doğrulanamadı). Tekrar deneyebilir veya metni ritim işaretleriyle yüksek sesle okuyabilirsiniz.'
+      ? tx({
+          tr: 'Tarayıcı ses motoru zaman aşımına uğradı (onstart doğrulanamadı). Tekrar deneyebilir veya metni ritim işaretleriyle yüksek sesle okuyabilirsiniz.',
+          en: 'Browser speech engine timed out (onstart could not be confirmed). Try again or read the lines aloud with the rhythm cues.',
+        })
       : audioErrorReason === 'error'
-      ? 'Seslendirme başlatılamadı. Tarayıcı ses ayarlarını kontrol edebilir veya satırları kendiniz sesli okuyabilirsiniz.'
+      ? tx({
+          tr: 'Seslendirme başlatılamadı. Tarayıcı ses ayarlarını kontrol edebilir veya satırları kendiniz sesli okuyabilirsiniz.',
+          en: 'Speech playback could not start. Check your browser audio settings or practice reading the lines aloud.',
+        })
       : null;
 
   return (
@@ -174,33 +196,40 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A2 · Karaoke Stüdyosu
+              {tx({ tr: 'Almanca A2 · Karaoke Stüdyosu', en: 'German A2 · Karaoke Studio' })}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">·</span>
-                <span>Sınıf Ekranı Uyumlu</span>
+                <span>{locale.common.classroomDisplayReady}</span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            A2 Karaoke Stüdyosu — Ritmik Yan Cümle &amp; Perfekt Akışı
+            {tx({
+              tr: 'A2 Karaoke Stüdyosu — Ritmik Yan Cümle & Perfekt Akışı',
+              en: 'A2 Karaoke Studio — Rhythmic Subordinate Clauses & Perfekt Flow',
+            })}
           </h1>
         </div>
 
         <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam A2 XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Toplam A2 XP', en: 'Total A2 XP' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
               {a2Progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tamamlanan Parça</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanan Parça', en: 'Tracks Completed' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedTracksCount} / {GERMAN_A2_KARAOKE_TRACKS.length}
             </p>
@@ -227,12 +256,12 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
             >
               <div className="flex items-center justify-between text-xs">
                 <span className="font-mono text-[#9A6B16] dark:text-[#D9A13B]">
-                  A2 Parça 0{idx + 1}
+                  {tx({ tr: 'A2 Parça 0{{num}}', en: 'A2 Track 0{{num}}' }, { num: idx + 1 })}
                 </span>
                 {mastered ? (
                   <span className="inline-flex items-center gap-1 font-medium text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Tamamlandı</span>
+                    <span>{locale.common.completed}</span>
                   </span>
                 ) : (
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA]">+15 A2 XP</span>
@@ -258,7 +287,12 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                 {activeTrack.tempoLabelTr}
               </span>
               <span aria-hidden="true">·</span>
-              <span>{activeTrack.lines.length} ritmik A2 satırı</span>
+              <span>
+                {tx(
+                  { tr: '{{count}} ritmik A2 satırı', en: '{{count}} rhythmic A2 lines' },
+                  { count: activeTrack.lines.length }
+                )}
+              </span>
             </div>
             <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
               {activeTrack.titleDe}{' '}
@@ -267,7 +301,13 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
               </span>
             </h2>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              Tema: {activeTrack.themeTr} · 0.8× veya 1.0× hızda sesli tekrarlayın.
+              {tx(
+                {
+                  tr: 'Tema: {{theme}} · 0.8× veya 1.0× hızda sesli tekrarlayın.',
+                  en: 'Theme: {{theme}} · Repeat aloud at 0.8× or 1.0× speed.',
+                },
+                { theme: activeTrack.themeTr }
+              )}
             </p>
           </div>
 
@@ -281,24 +321,24 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
               {startingLineIndex !== null ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Başlatılıyor…</span>
+                  <span>{locale.audio.starting}</span>
                 </>
               ) : isPlayingOrStarting ? (
                 <>
                   <Square className="h-3.5 w-3.5 fill-current" />
-                  <span>Durdur</span>
+                  <span>{locale.audio.stop}</span>
                 </>
               ) : (
                 <>
                   <Play className="h-3.5 w-3.5 fill-current" />
-                  <span>Parçayı Sırayla Dinle</span>
+                  <span>{tx({ tr: 'Parçayı Sırayla Dinle', en: 'Play All Lines' })}</span>
                 </>
               )}
             </button>
 
             <div
               role="group"
-              aria-label="A2 Karaoke oynatma hızı"
+              aria-label={tx({ tr: 'A2 Karaoke oynatma hızı', en: 'A2 Karaoke playback speed' })}
               className="inline-flex rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#111113]"
             >
               <button
@@ -314,7 +354,7 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                     : 'text-[#52525B] dark:text-[#A1A1AA]'
                 }`}
               >
-                {isEn ? '0.8× Slow' : '0.8× Yavaş'}
+                {tx({ tr: '0.8× Yavaş', en: '0.8× Slow' })}
               </button>
               <button
                 type="button"
@@ -342,12 +382,12 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
               {showTranslations ? (
                 <>
                   <EyeOff className="h-3.5 w-3.5" />
-                  <span>Çeviriyi Gizle</span>
+                  <span>{locale.common.hideTurkish}</span>
                 </>
               ) : (
                 <>
                   <Eye className="h-3.5 w-3.5" />
-                  <span>Türkçe Çeviriyi Göster</span>
+                  <span>{locale.common.showTurkish}</span>
                 </>
               )}
             </button>
@@ -358,7 +398,10 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
           <div className="flex items-start gap-2.5 rounded-lg border border-[#9A6B16]/40 bg-[#FEF9EB] p-3.5 text-xs text-[#111113] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#F4F4F5]">
             <AlertCircle className="mt-0.5 h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B] shrink-0" />
             <span>
-              Bu tarayıcıda Web Speech API (de-DE) seslendirmesi desteklenmiyor. Satırları ritim işaretleriyle yüksek sesle okuyarak A2 çalışmasını tamamlayabilirsiniz.
+              {tx({
+                tr: 'Bu tarayıcıda Web Speech API (de-DE) seslendirmesi desteklenmiyor. Satırları ritim işaretleriyle yüksek sesle okuyarak A2 çalışmasını tamamlayabilirsiniz.',
+                en: 'Web Speech API (de-DE) is not supported in this browser. You can still complete A2 practice by reading the lines aloud with the rhythm cues.',
+              })}
             </span>
           </div>
         )}
@@ -396,7 +439,10 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                       <span className="font-mono text-[11px]">{line.rhythmCueDe}</span>
                       {isActiveLine && (
                         <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                          · Oynatılıyor {isSequenceMode ? '(Sıralı)' : ''}
+                          ·{' '}
+                          {isSequenceMode
+                            ? tx({ tr: 'Oynatılıyor (Sıralı)', en: 'Playing (Sequence)' })
+                            : locale.audio.playing}
                         </span>
                       )}
                     </div>
@@ -409,7 +455,7 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                       </p>
                     )}
                     <p className="text-xs text-[#71717A] dark:text-[#8E8E98]">
-                      Odak kalıplar:{' '}
+                      {tx({ tr: 'Odak kalıplar:', en: 'Focus phrases:' })}{' '}
                       <span className="font-mono text-[#111113] dark:text-[#E4E4E7]">
                         {line.focusWords.join(' · ')}
                       </span>
@@ -420,7 +466,10 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                     type="button"
                     disabled={!speechSupported}
                     onClick={() => handlePlaySingleLine(idx)}
-                    aria-label={`${idx + 1}. satırı dinle`}
+                    aria-label={tx(
+                      { tr: '{{num}}. satırı dinle', en: 'Listen to line {{num}}' },
+                      { num: idx + 1 }
+                    )}
                     className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 ${
                       isActiveLine || isStartingLine
                         ? 'border-[#7C1D2E] bg-[#7C1D2E] text-white dark:border-[#D9A13B] dark:bg-[#D9A13B] dark:text-[#111113]'
@@ -430,17 +479,17 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
                     {isStartingLine ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Başlıyor…</span>
+                        <span>{locale.audio.starting}</span>
                       </>
                     ) : isActiveLine ? (
                       <>
                         <Square className="h-3 w-3 fill-current" />
-                        <span>Durdur</span>
+                        <span>{locale.audio.stop}</span>
                       </>
                     ) : (
                       <>
                         <Volume2 className="h-3.5 w-3.5" />
-                        <span>Satırı Dinle</span>
+                        <span>{tx({ tr: 'Satırı Dinle', en: 'Listen Line' })}</span>
                       </>
                     )}
                   </button>
@@ -455,15 +504,21 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-[#111113] dark:text-[#F4F4F5]">
               {isTrackMastered
-                ? 'Bu A2 parçası daha önce tamamlandı (tekrarlar ek XP veya puanlı doğruluk eklemez).'
-                : 'Tüm satırları yüksek sesle tekrarladıysanız parçayı tamamlandı olarak kaydedin (+15 A2 XP · doğruluk oranını şişirmez).'}
+                ? tx({
+                    tr: 'Bu A2 parçası daha önce tamamlandı (tekrarlar ek XP veya puanlı doğruluk eklemez).',
+                    en: 'This A2 track was already completed (repeats add no extra XP or scored accuracy).',
+                  })
+                : tx({
+                    tr: 'Tüm satırları yüksek sesle tekrarladıysanız parçayı tamamlandı olarak kaydedin (+15 A2 XP · doğruluk oranını şişirmez).',
+                    en: 'Once you have repeated all lines aloud, mark the track complete (+15 A2 XP · does not inflate scored accuracy).',
+                  })}
             </p>
-            {feedbackMap[activeTrack.id] && (
+            {activeFeedbackText && (
               <p
                 role="status"
                 className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]"
               >
-                {feedbackMap[activeTrack.id]}
+                {activeFeedbackText}
               </p>
             )}
           </div>
@@ -474,7 +529,11 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#111113] px-4 text-xs sm:text-sm font-semibold text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap shrink-0"
           >
             <Sparkles className="h-4 w-4" />
-            <span>{isTrackMastered ? 'Tekrar Pratiğini Kaydet' : 'Parçayı Tamamladım (+15 A2 XP)'}</span>
+            <span>
+              {isTrackMastered
+                ? tx({ tr: 'Tekrar Pratiğini Kaydet', en: 'Log Repeat Practice' })
+                : tx({ tr: 'Parçayı Tamamladım (+15 A2 XP)', en: 'Mark Track Complete (+15 A2 XP)' })}
+            </span>
           </button>
         </div>
       </section>

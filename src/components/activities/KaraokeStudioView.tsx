@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { GERMAN_A1_KARAOKE_TRACKS, KARAOKE_IDS } from '../../data/germanA1Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { KaraokeTrack, NavRouteId } from '../../types';
 import {
   isSpeechSynthesisSupported,
@@ -40,8 +41,8 @@ function formatAudioTime(seconds: number): string {
 }
 
 export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate }) => {
-  const { progress, rolePreview, speechSpeed, uiLanguage, recordKaraokeCompletion } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { progress, rolePreview, speechSpeed, recordKaraokeCompletion } = useAppState();
+  const { isEn, locale, tx } = useI18n();
   const [selectedTrackId, setSelectedTrackId] = useState<string>(GERMAN_A1_KARAOKE_TRACKS[0].id);
   const [rateMode, setRateMode] = useState<'slow' | 'normal'>(speechSpeed);
   const [showTranslations, setShowTranslations] = useState(false);
@@ -51,7 +52,9 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
-  const [audioLoadError, setAudioLoadError] = useState<string | null>(null);
+  const [audioLoadErrorKind, setAudioLoadErrorKind] = useState<'blocked' | 'loadFailed' | null>(
+    null
+  );
 
   // Web Speech API playback state strictly confirmed via speech.ts onStart / onEnd
   const [startingLineIndex, setStartingLineIndex] = useState<number | null>(null);
@@ -60,7 +63,7 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
   const [audioErrorReason, setAudioErrorReason] = useState<SpeechFailureReason | null>(null);
 
   // Per-track completion feedback & inline A1 mini-quiz state
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, { xp: number }>>({});
   const [quizSelections, setQuizSelections] = useState<Record<string, number>>({});
 
   const playbackTokenRef = useRef(0);
@@ -112,7 +115,7 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
   useEffect(() => {
     stopAllPlayback(true);
     setAudioDuration(0);
-    setAudioLoadError(null);
+    setAudioLoadErrorKind(null);
     setAudioErrorReason(null);
 
     return () => {
@@ -169,18 +172,14 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
     if (!audio) return;
 
     stopSpeechPlayback();
-    setAudioLoadError(null);
+    setAudioLoadErrorKind(null);
     audio.playbackRate = rateMode === 'slow' ? 0.8 : 1.0;
 
     try {
       await audio.play();
     } catch {
       setAudioIsPlaying(false);
-      setAudioLoadError(
-        isEn
-          ? 'Browser audio playback was blocked or interrupted. Check your sound settings and click Play again, or use the per-line speech button.'
-          : 'Tarayıcı ses oynatımı engellendi veya kesintiye uğradı. Ses izinlerini kontrol edip tekrar Oynat butonuna basabilir ya da satır bazlı seslendirmeyi kullanabilirsiniz.'
-      );
+      setAudioLoadErrorKind('blocked');
     }
   };
 
@@ -223,7 +222,7 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
     if (!line) return;
 
     // Fallback to TTS if the MP3 file could not be loaded
-    if (!audioRef.current || audioLoadError) {
+    if (!audioRef.current || audioLoadErrorKind !== null) {
       handlePlaySingleLineTts(index);
       return;
     }
@@ -319,16 +318,38 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
     const xp = recordKaraokeCompletion(activeTrack.id, activeTrack.titleDe);
     setFeedbackMap((prev) => ({
       ...prev,
-      [activeTrack.id]:
-        xp > 0
-          ? isEn
-            ? `Track marked complete · +${xp} XP earned.`
-            : `Parça tamamlandı olarak kaydedildi · +${xp} XP kazanıldı.`
-          : isEn
-          ? 'Repeat practice logged (no extra XP — single-grant reward already claimed).'
-          : 'Tekrar pratiğiniz kaydedildi (bu parça daha önce tamamlandığı için ek XP eklenmedi).',
+      [activeTrack.id]: { xp },
     }));
   };
+
+  const audioLoadError =
+    audioLoadErrorKind === 'blocked'
+      ? tx({
+          tr: 'Tarayıcı ses oynatımı engellendi veya kesintiye uğradı. Ses izinlerini kontrol edip tekrar Oynat butonuna basabilir ya da satır bazlı seslendirmeyi kullanabilirsiniz.',
+          en: 'Browser audio playback was blocked or interrupted. Check your sound settings and click Play again, or use the per-line speech button.',
+        })
+      : audioLoadErrorKind === 'loadFailed'
+      ? tx({
+          tr: 'MP3 ses dosyası şu anda yüklenemedi. Satır yanındaki seslendirme butonunu veya ritim vurgularını kullanarak çalışmaya devam edebilirsiniz.',
+          en: 'The MP3 track could not be loaded right now. You can still listen line-by-line via speech synthesis or follow the rhythm cues.',
+        })
+      : null;
+
+  const activeFeedback = feedbackMap[activeTrack.id];
+  const activeFeedbackText = activeFeedback
+    ? activeFeedback.xp > 0
+      ? tx(
+          {
+            tr: 'Parça tamamlandı olarak kaydedildi · +{{xp}} XP kazanıldı.',
+            en: 'Track marked complete · +{{xp}} XP earned.',
+          },
+          { xp: activeFeedback.xp }
+        )
+      : tx({
+          tr: 'Tekrar pratiğiniz kaydedildi (bu parça daha önce tamamlandığı için ek XP eklenmedi).',
+          en: 'Repeat practice logged (no extra XP — single-grant reward already claimed).',
+        })
+    : null;
 
   const miniQuizItems = activeTrack.miniQuiz ?? [];
   const miniQuizAnsweredCount = miniQuizItems.filter(
@@ -403,10 +424,12 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
           </h1>
           <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
             <span className="font-semibold text-[#9A6B16] dark:text-[#D4AF37]">
-              Öğren. Öğret. Üret.
+              {locale.brand.philosophy}
             </span>
             <span aria-hidden="true" className="mx-2">·</span>
-            <span className="font-medium text-[#7A1C24] dark:text-[#F4A5AE]">You can do it</span>
+            <span className="font-medium text-[#7A1C24] dark:text-[#F4A5AE]">
+              {locale.brand.mottoEn}
+            </span>
           </p>
         </div>
 
@@ -494,14 +517,14 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
               const el = e.currentTarget;
               setAudioDuration(el.duration || 0);
               el.playbackRate = rateMode === 'slow' ? 0.8 : 1.0;
-              setAudioLoadError(null);
+              setAudioLoadErrorKind(null);
             }}
             onTimeUpdate={(e) => {
               setAudioCurrentTime(e.currentTarget.currentTime);
             }}
             onPlay={() => {
               setAudioIsPlaying(true);
-              setAudioLoadError(null);
+              setAudioLoadErrorKind(null);
             }}
             onPause={() => {
               setAudioIsPlaying(false);
@@ -511,11 +534,7 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
             }}
             onError={() => {
               setAudioIsPlaying(false);
-              setAudioLoadError(
-                isEn
-                  ? 'The MP3 track could not be loaded right now. You can still listen line-by-line via speech synthesis or follow the rhythm cues.'
-                  : 'MP3 ses dosyası şu anda yüklenemedi. Satır yanındaki seslendirme butonunu veya ritim vurgularını kullanarak çalışmaya devam edebilirsiniz.'
-              );
+              setAudioLoadErrorKind('loadFailed');
             }}
           />
         )}
@@ -1054,9 +1073,9 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
               : 'Şarkıya eşlik edip alıştırmayı tamamladıktan sonra pratiği kaydedin (tek seferlik +15 XP).'}
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            {feedbackMap[activeTrack.id] && (
+            {activeFeedbackText && (
               <span className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
-                {feedbackMap[activeTrack.id]}
+                {activeFeedbackText}
               </span>
             )}
             <button

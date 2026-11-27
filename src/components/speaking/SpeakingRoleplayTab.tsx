@@ -9,6 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { SpeakingRoleplayTask } from '../../types';
 import { ModelAudioBar } from './ModelAudioBar';
 import { SpeechTranscriptHelper } from './SpeechTranscriptHelper';
@@ -20,18 +21,19 @@ interface SpeakingRoleplayTabProps {
 
 export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenarioId, task }) => {
   const { progress, recordSpeakingCompletion } = useAppState();
+  const { locale, tx } = useI18n();
   const [showPhrases, setShowPhrases] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [revealedTurns, setRevealedTurns] = useState<Record<string, boolean>>({});
   const [checkedCriteria, setCheckedCriteria] = useState<Record<string, boolean>>({});
-  const [feedbackTr, setFeedbackTr] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ xpAwarded: number } | null>(null);
 
   useEffect(() => {
     setShowPhrases(false);
     setShowTranslation(false);
     setRevealedTurns({});
     setCheckedCriteria({});
-    setFeedbackTr(null);
+    setFeedback(null);
   }, [scenarioId, task.id]);
 
   const isMastered = progress.speakingMasteredIds.includes(task.id);
@@ -40,11 +42,7 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
 
   const handleComplete = () => {
     const xpAwarded = recordSpeakingCompletion(task.id, scenarioId, 'roleplay', task.titleTr);
-    setFeedbackTr(
-      xpAwarded > 0
-        ? `Rol oyunu pratiği kaydedildi · +${xpAwarded} XP kazanıldı.`
-        : 'Tekrar pratiğiniz kaydedildi (bu rol oyunu daha önce tamamlandığı için ek XP eklenmedi).'
-    );
+    setFeedback({ xpAwarded });
   };
 
   return (
@@ -53,7 +51,13 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="font-mono text-xs font-medium text-[#9A6B16] dark:text-[#D9A13B]">
-            3. Dialog / Rollenspiel · {task.titleDe}
+            {tx(
+              {
+                tr: '3. Dialog / Rollenspiel · {{title}}',
+                en: '3. Dialogue / Roleplay · {{title}}',
+              },
+              { title: task.titleDe }
+            )}
           </p>
           <h3 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
             {task.titleTr}
@@ -62,11 +66,11 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
         {isMastered ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
             <CheckCircle2 className="h-4 w-4" />
-            <span>Tamamlandı</span>
+            <span>{locale.common.completed}</span>
           </span>
         ) : (
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            İlk tamamlama +10 XP
+            {tx({ tr: 'İlk tamamlama +10 XP', en: 'First completion +10 XP' })}
           </span>
         )}
       </div>
@@ -76,7 +80,10 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
         <div className="flex flex-wrap items-center gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <UserRound className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
           <span className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Konuşma Partneri: {task.partnerName}
+            {tx(
+              { tr: 'Konuşma Partneri: {{name}}', en: 'Speaking Partner: {{name}}' },
+              { name: task.partnerName }
+            )}
           </span>
           <span aria-hidden="true">·</span>
           <span>{task.partnerRoleTr}</span>
@@ -102,8 +109,11 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
             <BookMarked className="h-3.5 w-3.5" />
             <span>
               {showPhrases
-                ? 'İpuçları / Redemittel’i Gizle'
-                : 'İpuçları / Redemittel (A1 İfadeler)'}
+                ? tx({ tr: 'İpuçları / Redemittel’i Gizle', en: 'Hide Hints / Redemittel' })
+                : tx({
+                    tr: 'İpuçları / Redemittel (A1 İfadeler)',
+                    en: 'Hints / Redemittel (A1 Phrases)',
+                  })}
             </span>
           </button>
 
@@ -114,7 +124,12 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
           >
             {showTranslation ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             <span>
-              {showTranslation ? 'Türkçe Yönerge / Çeviriyi Gizle' : 'Türkçe Yönerge / Çeviri'}
+              {showTranslation
+                ? tx({
+                    tr: 'Türkçe Yönerge / Çeviriyi Gizle',
+                    en: 'Hide Turkish Gloss / Translation',
+                  })
+                : tx({ tr: 'Türkçe Yönerge / Çeviri', en: 'Turkish Gloss / Translation' })}
             </span>
           </button>
         </div>
@@ -124,7 +139,10 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
       {showPhrases && (
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 space-y-2 dark:border-[#282830] dark:bg-[#111113]">
           <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Rol Oyunu İçin A1 Kalıpları (Redemittel)
+            {tx({
+              tr: 'Rol Oyunu İçin A1 Kalıpları (Redemittel)',
+              en: 'A1 Roleplay Phrases (Redemittel)',
+            })}
           </p>
           <ul className="divide-y divide-[#ECECE8] text-xs dark:divide-[#24242C]">
             {task.phrases.map((phrase) => (
@@ -156,9 +174,14 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
             >
               <div className="flex items-center justify-between text-xs">
                 <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                  Tur 0{turn.turnNumber} · {task.partnerName}
+                  {tx(
+                    { tr: 'Tur 0{{num}} · {{name}}', en: 'Turn 0{{num}} · {{name}}' },
+                    { num: turn.turnNumber, name: task.partnerName }
+                  )}
                 </span>
-                <span className="text-[#52525B] dark:text-[#A1A1AA]">Dinle ve yanıtla</span>
+                <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Dinle ve yanıtla', en: 'Listen and respond' })}
+                </span>
               </div>
 
               {/* Partner Line */}
@@ -174,6 +197,7 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
                 <ModelAudioBar
                   textDe={turn.partnerLineDe}
                   labelTr={`${task.partnerName} Repliğini Dinle`}
+                  labelEn={`Listen to ${task.partnerName}`}
                   speakerGender={task.partnerGender}
                   compact
                 />
@@ -185,7 +209,8 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
                   <MessageSquare className="mt-0.5 h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
                   <div className="space-y-0.5 text-xs sm:text-sm">
                     <p className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                      Sıra Sizde: <span className="font-normal">{turn.learnerCueDe}</span>
+                      {tx({ tr: 'Sıra Sizde:', en: 'Your Turn:' })}{' '}
+                      <span className="font-normal">{turn.learnerCueDe}</span>
                     </p>
                     {showTranslation && (
                       <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
@@ -205,8 +230,11 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
                   {modelOpen ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   <span>
                     {modelOpen
-                      ? 'Örnek Yanıtı Gizle'
-                      : 'Örnek A1 Yanıtı Göster / Dinle (önce kendiniz deneyin)'}
+                      ? tx({ tr: 'Örnek Yanıtı Gizle', en: 'Hide Sample Answer' })
+                      : tx({
+                          tr: 'Örnek A1 Yanıtı Göster / Dinle (önce kendiniz deneyin)',
+                          en: 'Show / Listen to Sample A1 Answer (try yourself first)',
+                        })}
                   </span>
                 </button>
 
@@ -223,6 +251,7 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
                     <ModelAudioBar
                       textDe={turn.modelResponseDe}
                       labelTr="Örnek Yanıtı Dinle"
+                      labelEn="Listen to Sample Answer"
                       speakerGender={learnerGender}
                       compact
                     />
@@ -240,7 +269,13 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
       {/* Explicit A1 Self-Check Checklist */}
       <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 space-y-3 dark:border-[#282830] dark:bg-[#111113]/60">
         <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-          Rol Oyunu A1 Öz-Değerlendirme Kontrol Listesi (3 ölçütü onaylayın)
+          {tx(
+            {
+              tr: 'Rol Oyunu A1 Öz-Değerlendirme Kontrol Listesi ({{count}} ölçütü onaylayın)',
+              en: 'A1 Roleplay Self-Assessment Checklist (Check all {{count}} criteria)',
+            },
+            { count: task.selfCheckCriteria.length }
+          )}
         </p>
 
         <div className="space-y-2">
@@ -282,14 +317,28 @@ export const SpeakingRoleplayTab: React.FC<SpeakingRoleplayTabProps> = ({ scenar
             <Sparkles className="h-4 w-4" />
             <span>
               {isMastered
-                ? 'Rol Oyununu Tekrar Kaydet (0 XP)'
-                : 'Rol Oyununu Tamamlandı Olarak Kaydet (+10 XP)'}
+                ? tx({ tr: 'Rol Oyununu Tekrar Kaydet (0 XP)', en: 'Log Roleplay Repeat (0 XP)' })
+                : tx({
+                    tr: 'Rol Oyununu Tamamlandı Olarak Kaydet (+10 XP)',
+                    en: 'Mark Roleplay Complete (+10 XP)',
+                  })}
             </span>
           </button>
 
-          {feedbackTr && (
+          {feedback && (
             <span className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
-              {feedbackTr}
+              {feedback.xpAwarded > 0
+                ? tx(
+                    {
+                      tr: 'Rol oyunu pratiği kaydedildi · +{{xp}} XP kazanıldı.',
+                      en: 'Roleplay practice saved · +{{xp}} XP earned.',
+                    },
+                    { xp: feedback.xpAwarded }
+                  )
+                : tx({
+                    tr: 'Tekrar pratiğiniz kaydedildi (bu rol oyunu daha önce tamamlandığı için ek XP eklenmedi).',
+                    en: 'Repeat practice saved (no extra XP — this roleplay was already completed).',
+                  })}
             </span>
           )}
         </div>

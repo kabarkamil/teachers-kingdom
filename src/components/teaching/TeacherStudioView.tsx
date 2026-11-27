@@ -21,7 +21,6 @@ import {
   STUDIO_DRAFT_TEMPLATES,
   TEACHING_MODULE_CATALOG,
   formatStudioDraftAsPlainText,
-  getModuleShortLabelTr,
 } from '../../data/germanA1Teaching';
 import {
   A2_CURRICULUM_PREVIEW_ITEMS,
@@ -29,6 +28,7 @@ import {
   A2_STUDIO_DRAFT_TEMPLATES,
   TEACHING_A2_MODULE_CATALOG,
 } from '../../data/germanA2Teaching';
+import { useI18n } from '../../hooks/useI18n';
 import type {
   ActiveCourseId,
   NavRouteId,
@@ -58,10 +58,23 @@ type StudioTab = 'preview' | 'builder' | 'audio';
 
 const GERMAN_SPECIAL_CHARS = ['ä', 'ö', 'ü', 'ß', 'Ä', 'Ö', 'Ü'];
 
-const DRAFT_KIND_LABELS: Record<StudioDraftKind, string> = {
-  lesson: 'Ders Planı',
-  quiz: 'Kısa Quiz Taslağı',
-  homework: 'Ödev Kontrol Listesi',
+const DRAFT_KIND_LABELS: Record<StudioDraftKind, { tr: string; en: string }> = {
+  lesson: { tr: 'Ders Planı', en: 'Lesson Plan' },
+  quiz: { tr: 'Kısa Quiz Taslağı', en: 'Short Quiz Draft' },
+  homework: { tr: 'Ödev Kontrol Listesi', en: 'Homework Checklist' },
+};
+
+const STUDIO_MODULE_SHORT_LABELS: Record<TeachingAssignmentModule, { tr: string; en: string }> = {
+  kelime: { tr: 'Kelime', en: 'Vocab' },
+  dinleme: { tr: 'Dinleme', en: 'Listening' },
+  okuma: { tr: 'Okuma', en: 'Reading' },
+  yazma: { tr: 'Yazma', en: 'Writing' },
+  konusma: { tr: 'Konuşma', en: 'Speaking' },
+  karaoke: { tr: 'Karaoke', en: 'Karaoke' },
+  'sessiz-sinema': { tr: 'Sessiz Sinema', en: 'Charades' },
+  arena: { tr: 'Arena', en: 'Arena' },
+  'quiz-merkezi': { tr: 'Quiz', en: 'Quiz' },
+  'sinav-modu': { tr: 'Sınav Modu', en: 'Exam Mode' },
 };
 
 const ALL_DRAFT_TEMPLATES = [
@@ -81,6 +94,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
     toggleStudioDraftItem,
     createTeachingAssignment,
   } = useAppState();
+  const { isEn, locale, tx } = useI18n();
 
   const [studioCourse, setStudioCourse] = useState<ActiveCourseId>(activeCourse);
   const [activeTab, setActiveTab] = useState<StudioTab>('preview');
@@ -177,19 +191,35 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
   // Tab 1 actions
   const handleAssignFromPreview = () => {
     const item = activePreviewItem;
+    const levelShort = studioCourse === 'de-A2' ? 'A2' : 'A1';
     const { xpAwarded } = createTeachingAssignment({
       courseId: studioCourse,
       titleTr: `${item.moduleLabelTr}: ${item.titleTr}`,
       moduleRoute: item.moduleRoute,
       targetId: item.targetId,
       targetLabelTr: item.titleTr,
-      dueDateLabel: `${studioCourse === 'de-A2' ? 'A2' : 'A1'} Stüdyodan Atandı`,
+      dueDateLabel: tx(
+        { tr: '{{level}} Stüdyodan Atandı', en: 'Assigned from {{level}} Studio' },
+        { level: levelShort }
+      ),
       instructionsTr: item.teachingTipTr,
     });
     showNotice(
       xpAwarded > 0
-        ? `"${item.titleTr}" Ödevler listesine eklendi (+${xpAwarded} XP).`
-        : `"${item.titleTr}" Ödevler listesine eklendi.`
+        ? tx(
+            {
+              tr: '"{{title}}" Ödevler listesine eklendi (+{{xp}} XP).',
+              en: '"{{title}}" added to Assignments (+{{xp}} XP).',
+            },
+            { title: item.titleTr, xp: xpAwarded }
+          )
+        : tx(
+            {
+              tr: '"{{title}}" Ödevler listesine eklendi.',
+              en: '"{{title}}" added to Assignments.',
+            },
+            { title: item.titleTr }
+          )
     );
   };
 
@@ -206,11 +236,21 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
       },
     ]);
     if (!draftTitle.trim()) {
-      setDraftTitle(`${studioCourse === 'de-A2' ? 'A2' : 'A1'} ${item.titleTr} Ders Akışı`);
+      setDraftTitle(
+        tx(
+          { tr: '{{level}} {{title}} Ders Akışı', en: '{{level}} {{title}} Lesson Flow' },
+          { level: studioCourse === 'de-A2' ? 'A2' : 'A1', title: item.titleTr }
+        )
+      );
       setDraftModuleFocus(item.moduleRoute);
     }
     setActiveTab('builder');
-    showNotice('Müfredat öğesi Taslak Oluşturucu adımlarına eklendi.');
+    showNotice(
+      tx({
+        tr: 'Müfredat öğesi Taslak Oluşturucu adımlarına eklendi.',
+        en: 'Curriculum item added to Draft Builder steps.',
+      })
+    );
   };
 
   // Tab 2 actions
@@ -232,7 +272,12 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
         checked: false,
       }))
     );
-    showNotice(`"${tpl.titleTr}" şablonu düzenleyiciye yüklendi.`);
+    showNotice(
+      tx(
+        { tr: '"{{title}}" şablonu düzenleyiciye yüklendi.', en: 'Template "{{title}}" loaded into editor.' },
+        { title: tpl.titleTr }
+      )
+    );
   };
 
   const handleLoadSavedDraftForEdit = (draft: StudioDraft) => {
@@ -244,7 +289,12 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
     setDraftDuration(draft.durationMinutes);
     setDraftNotes(draft.notesTr);
     setDraftItems(draft.items.map((it) => ({ ...it })));
-    showNotice(`"${draft.titleTr}" düzenlenmek üzere açıldı.`);
+    showNotice(
+      tx(
+        { tr: '"{{title}}" düzenlenmek üzere açıldı.', en: '"{{title}}" opened for editing.' },
+        { title: draft.titleTr }
+      )
+    );
   };
 
   const handleResetDraftEditor = () => {
@@ -290,8 +340,17 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
     setEditingDraftId(id);
     showNotice(
       xpAwarded > 0
-        ? `Taslak yerel tarayıcıya kaydedildi (+${xpAwarded} XP ilk stüdyo taslağı kazanımı).`
-        : 'Taslak yerel tarayıcıya kaydedildi.'
+        ? tx(
+            {
+              tr: 'Taslak yerel tarayıcıya kaydedildi (+{{xp}} XP ilk stüdyo taslağı kazanımı).',
+              en: 'Draft saved locally (+{{xp}} XP first-studio-draft bonus).',
+            },
+            { xp: xpAwarded }
+          )
+        : tx({
+            tr: 'Taslak yerel tarayıcıya kaydedildi.',
+            en: 'Draft saved to local browser storage.',
+          })
     );
   };
 
@@ -309,7 +368,12 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
       // Fallback below
     }
     setCopyFallbackText(plainText);
-    showNotice('Tarayıcı pano erişimini kısıtladı; metni aşağıdaki kutudan manuel kopyalayabilirsiniz.');
+    showNotice(
+      tx({
+        tr: 'Tarayıcı pano erişimini kısıtladı; metni aşağıdaki kutudan manuel kopyalayabilirsiniz.',
+        en: 'Browser restricted clipboard access; copy the text manually from the box below.',
+      })
+    );
   };
 
   const handleConvertDraftToAssignment = (draft: StudioDraft) => {
@@ -329,10 +393,24 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
       moduleRoute: draft.moduleFocus,
       targetId: target?.id,
       targetLabelTr: target?.labelTr ?? modConfig.labelTr,
-      dueDateLabel: `${draft.durationMinutes} dk · Stüdyo Taslağı`,
-      instructionsTr: summarySteps || draft.notesTr || 'Öğretmen Stüdyosu kontrol listesi görevi.',
+      dueDateLabel: tx(
+        { tr: '{{min}} dk · Stüdyo Taslağı', en: '{{min}} min · Studio Draft' },
+        { min: draft.durationMinutes }
+      ),
+      instructionsTr:
+        summarySteps ||
+        draft.notesTr ||
+        tx({
+          tr: 'Öğretmen Stüdyosu kontrol listesi görevi.',
+          en: 'Teacher Studio checklist task.',
+        }),
     });
-    showNotice(`"${draft.titleTr}" Ödevler modülüne aktarıldı.`);
+    showNotice(
+      tx(
+        { tr: '"{{title}}" Ödevler modülüne aktarıldı.', en: '"{{title}}" sent to Assignments.' },
+        { title: draft.titleTr }
+      )
+    );
   };
 
   const handleInsertGermanChar = (ch: string) => {
@@ -348,10 +426,12 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
         <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 lg:flex-row lg:items-end lg:justify-between dark:border-[#282830]">
           <div>
             <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-              Öğretim ve Yönetim · Öğren. Öğret. Üret. · Almanca CEFR A1 &amp; A2
+              {tx({ tr: 'Öğretim ve Yönetim', en: 'Teaching & Management' })} ·{' '}
+              {locale.brand.philosophy} ·{' '}
+              {tx({ tr: 'Almanca CEFR A1 & A2', en: 'German CEFR A1 & A2' })}
             </p>
             <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Öğretmen Stüdyosu
+              {tx({ tr: 'Öğretmen Stüdyosu', en: 'Teacher Studio' })}
             </h1>
           </div>
 
@@ -359,7 +439,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             {/* Level Switcher */}
             <div
               role="group"
-              aria-label="Stüdyo seviye seçici"
+              aria-label={tx({ tr: 'Stüdyo seviye seçici', en: 'Studio level selector' })}
               className="inline-flex items-center gap-1 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
             >
               <button
@@ -391,7 +471,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             {/* 3 Workspace Tabs */}
             <div
               role="tablist"
-              aria-label="Öğretmen Stüdyosu araçları"
+              aria-label={tx({ tr: 'Öğretmen Stüdyosu araçları', en: 'Teacher Studio tools' })}
               className="flex flex-wrap items-center gap-1 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
             >
               <button
@@ -406,7 +486,11 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 }`}
               >
                 <BookOpen className="h-3.5 w-3.5" />
-                <span>{studioCourse === 'de-A2' ? 'A2 Önizleme' : 'A1 Önizleme'}</span>
+                <span>
+                  {studioCourse === 'de-A2'
+                    ? tx({ tr: 'A2 Önizleme', en: 'A2 Preview' })
+                    : tx({ tr: 'A1 Önizleme', en: 'A1 Preview' })}
+                </span>
               </button>
               <button
                 type="button"
@@ -420,7 +504,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 }`}
               >
                 <FileText className="h-3.5 w-3.5" />
-                <span>Taslak Oluşturucu</span>
+                <span>{tx({ tr: 'Taslak Oluşturucu', en: 'Draft Builder' })}</span>
               </button>
               <button
                 type="button"
@@ -434,7 +518,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 }`}
               >
                 <Volume2 className="h-3.5 w-3.5" />
-                <span>de-DE Ses Testi</span>
+                <span>{tx({ tr: 'de-DE Ses Testi', en: 'de-DE Audio Lab' })}</span>
               </button>
             </div>
           </div>
@@ -456,17 +540,22 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
               {[
                 {
                   id: 'all',
-                  label: studioCourse === 'de-A2' ? 'Tüm A2 Modülleri' : 'Tüm A1 Modülleri',
+                  label:
+                    studioCourse === 'de-A2'
+                      ? tx({ tr: 'Tüm A2 Modülleri', en: 'All A2 Modules' })
+                      : tx({ tr: 'Tüm A1 Modülleri', en: 'All A1 Modules' }),
                 },
-                { id: 'kelime', label: 'Kelime' },
-                { id: 'dinleme', label: 'Dinleme' },
-                { id: 'okuma', label: 'Okuma' },
-                { id: 'yazma', label: 'Yazma' },
-                { id: 'konusma', label: 'Konuşma' },
+                { id: 'kelime', label: tx({ tr: 'Kelime', en: 'Vocab' }) },
+                { id: 'dinleme', label: tx({ tr: 'Dinleme', en: 'Listening' }) },
+                { id: 'okuma', label: tx({ tr: 'Okuma', en: 'Reading' }) },
+                { id: 'yazma', label: tx({ tr: 'Yazma', en: 'Writing' }) },
+                { id: 'konusma', label: tx({ tr: 'Konuşma', en: 'Speaking' }) },
                 { id: 'karaoke', label: 'Karaoke' },
-                { id: 'sessiz-sinema', label: 'Sessiz Sinema' },
+                { id: 'sessiz-sinema', label: tx({ tr: 'Sessiz Sinema', en: 'Charades' }) },
                 { id: 'quiz-merkezi', label: 'Quiz' },
-                ...(studioCourse === 'de-A2' ? [{ id: 'sinav-modu', label: 'A2 Sınav' }] : []),
+                ...(studioCourse === 'de-A2'
+                  ? [{ id: 'sinav-modu', label: tx({ tr: 'A2 Sınav', en: 'A2 Exam' }) }]
+                  : []),
               ].map((f) => (
                 <button
                   key={f.id}
@@ -518,7 +607,11 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
                   <div>
                     <p className="text-xs font-medium text-[#9A6B16] dark:text-[#D9A13B]">
-                      Tahta &amp; Ekran Paylaşımı Önizlemesi · {activePreviewItem.moduleLabelTr}
+                      {tx({
+                        tr: 'Tahta & Ekran Paylaşımı Önizlemesi',
+                        en: 'Board & Screen-Share Preview',
+                      })}{' '}
+                      · {activePreviewItem.moduleLabelTr}
                     </p>
                     <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
                       {activePreviewItem.titleTr}
@@ -538,6 +631,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     <ModelAudioBar
                       textDe={activePreviewItem.germanHeadlineDe}
                       labelTr="Sınıfa Dinlet (de-DE)"
+                      labelEn="Play for Class (de-DE)"
                     />
                   </div>
                 </div>
@@ -545,7 +639,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 {/* Pedagogical Tip */}
                 <div className="text-sm text-[#52525B] dark:text-[#A1A1AA]">
                   <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    Ders Uygulama Notu:{' '}
+                    {tx({ tr: 'Ders Uygulama Notu:', en: 'Classroom Teaching Note:' })}{' '}
                   </strong>
                   {activePreviewItem.teachingTipTr}
                 </div>
@@ -564,7 +658,9 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-medium text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] whitespace-nowrap"
                   >
                     <span>
-                      {studioCourse === 'de-A2' ? 'Canlı A2 Modülünde Aç' : 'Canlı A1 Modülünde Aç'}
+                      {studioCourse === 'de-A2'
+                        ? tx({ tr: 'Canlı A2 Modülünde Aç', en: 'Open Live A2 Module' })
+                        : tx({ tr: 'Canlı A1 Modülünde Aç', en: 'Open Live A1 Module' })}
                     </span>
                     <ArrowRight className="h-4 w-4" />
                   </button>
@@ -575,7 +671,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs sm:text-sm font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] whitespace-nowrap"
                   >
                     <ClipboardPlus className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                    <span>Ödev Olarak Ata</span>
+                    <span>{tx({ tr: 'Ödev Olarak Ata', en: 'Assign as Homework' })}</span>
                   </button>
 
                   <button
@@ -584,7 +680,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs sm:text-sm font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
                   >
                     <Plus className="h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B]" />
-                    <span>Taslağa Ekle</span>
+                    <span>{tx({ tr: 'Taslağa Ekle', en: 'Add to Draft' })}</span>
                   </button>
                 </div>
               </div>
@@ -600,10 +696,18 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
                 <div>
                   <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    {editingDraftId ? 'Taslağı Düzenle' : 'Yeni A1 / A2 Ders & Ödev Kontrol Listesi'}
+                    {editingDraftId
+                      ? tx({ tr: 'Taslağı Düzenle', en: 'Edit Draft' })
+                      : tx({
+                          tr: 'Yeni A1 / A2 Ders & Ödev Kontrol Listesi',
+                          en: 'New A1 / A2 Lesson & Homework Checklist',
+                        })}
                   </h2>
                   <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    Yerel tarayıcıya kaydedilir, panoya kopyalanabilir veya yazdırılabilir.
+                    {tx({
+                      tr: 'Yerel tarayıcıya kaydedilir, panoya kopyalanabilir veya yazdırılabilir.',
+                      en: 'Saved locally in your browser; can be copied to clipboard or printed.',
+                    })}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -614,7 +718,8 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       onClick={() => handleLoadTemplate(tpl.id)}
                       className="rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-2.5 py-1.5 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] whitespace-nowrap"
                     >
-                      {tpl.courseId === 'de-A2' ? 'A2' : 'A1'} · {DRAFT_KIND_LABELS[tpl.kind]}
+                      {tpl.courseId === 'de-A2' ? 'A2' : 'A1'} ·{' '}
+                      {isEn ? DRAFT_KIND_LABELS[tpl.kind].en : DRAFT_KIND_LABELS[tpl.kind].tr}
                     </button>
                   ))}
                 </div>
@@ -624,11 +729,11 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                      Taslak Seviyesi:
+                      {tx({ tr: 'Taslak Seviyesi:', en: 'Draft Level:' })}
                     </span>
                     <div
                       role="group"
-                      aria-label="Taslak CEFR seviyesi"
+                      aria-label={tx({ tr: 'Taslak CEFR seviyesi', en: 'Draft CEFR level' })}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-1 dark:border-[#282830] dark:bg-[#111113]"
                     >
                       <button
@@ -663,7 +768,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       htmlFor="draft-title"
                       className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                     >
-                      Taslak Başlığı *
+                      {tx({ tr: 'Taslak Başlığı *', en: 'Draft Title *' })}
                     </label>
                     <input
                       id="draft-title"
@@ -673,8 +778,14 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       onChange={(e) => setDraftTitle(e.target.value)}
                       placeholder={
                         draftCourseId === 'de-A2'
-                          ? 'Örn: 45 Dk A2 weil/deshalb Yan Cümleler Ders Planı'
-                          : 'Örn: 45 Dk A1 Aile ve Artikel Ders Planı'
+                          ? tx({
+                              tr: 'Örn: 45 Dk A2 weil/deshalb Yan Cümleler Ders Planı',
+                              en: 'e.g. 45-Min A2 weil/deshalb Subordinate Clauses Lesson Plan',
+                            })
+                          : tx({
+                              tr: 'Örn: 45 Dk A1 Aile ve Artikel Ders Planı',
+                              en: 'e.g. 45-Min A1 Family & Articles Lesson Plan',
+                            })
                       }
                       maxLength={100}
                       className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
@@ -686,7 +797,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       htmlFor="draft-kind"
                       className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                     >
-                      Taslak Türü
+                      {tx({ tr: 'Taslak Türü', en: 'Draft Type' })}
                     </label>
                     <select
                       id="draft-kind"
@@ -694,9 +805,15 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       onChange={(e) => setDraftKind(e.target.value as StudioDraftKind)}
                       className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
                     >
-                      <option value="lesson">Ders Planı</option>
-                      <option value="quiz">Kısa Quiz Taslağı</option>
-                      <option value="homework">Ödev Kontrol Listesi</option>
+                      <option value="lesson">
+                        {isEn ? DRAFT_KIND_LABELS.lesson.en : DRAFT_KIND_LABELS.lesson.tr}
+                      </option>
+                      <option value="quiz">
+                        {isEn ? DRAFT_KIND_LABELS.quiz.en : DRAFT_KIND_LABELS.quiz.tr}
+                      </option>
+                      <option value="homework">
+                        {isEn ? DRAFT_KIND_LABELS.homework.en : DRAFT_KIND_LABELS.homework.tr}
+                      </option>
                     </select>
                   </div>
 
@@ -706,7 +823,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                         htmlFor="draft-module"
                         className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                       >
-                        Odak Modül
+                        {tx({ tr: 'Odak Modül', en: 'Focus Module' })}
                       </label>
                       <select
                         id="draft-module"
@@ -718,7 +835,9 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       >
                         {TEACHING_MODULE_CATALOG.map((m) => (
                           <option key={m.route} value={m.route}>
-                            {m.shortLabelTr}
+                            {isEn
+                              ? STUDIO_MODULE_SHORT_LABELS[m.route]?.en ?? m.shortLabelTr
+                              : m.shortLabelTr}
                           </option>
                         ))}
                       </select>
@@ -728,7 +847,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                         htmlFor="draft-duration"
                         className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                       >
-                        Süre (dk)
+                        {tx({ tr: 'Süre (dk)', en: 'Duration (min)' })}
                       </label>
                       <input
                         id="draft-duration"
@@ -747,14 +866,17 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       htmlFor="draft-notes"
                       className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                     >
-                      Öğretmen Notu / Kazanım Hedefi
+                      {tx({ tr: 'Öğretmen Notu / Kazanım Hedefi', en: 'Teacher Notes / Learning Goal' })}
                     </label>
                     <textarea
                       id="draft-notes"
                       rows={2}
                       value={draftNotes}
                       onChange={(e) => setDraftNotes(e.target.value)}
-                      placeholder="Ders içi geçişler veya ödev kontrol ölçütleri..."
+                      placeholder={tx({
+                        tr: 'Ders içi geçişler veya ödev kontrol ölçütleri...',
+                        en: 'In-class transitions or homework grading criteria...',
+                      })}
                       maxLength={400}
                       className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2 text-sm text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
                     />
@@ -764,7 +886,10 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 {/* Checklist Steps inside Editor */}
                 <div className="border-t border-[#ECECE8] pt-4 space-y-3 dark:border-[#24242C]">
                   <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    Kontrol Listesi Adımları ({draftItems.length})
+                    {tx(
+                      { tr: 'Kontrol Listesi Adımları ({{count}})', en: 'Checklist Steps ({{count}})' },
+                      { count: draftItems.length }
+                    )}
                   </p>
 
                   {draftItems.length > 0 && (
@@ -792,7 +917,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                             onClick={() =>
                               setDraftItems((prev) => prev.filter((x) => x.id !== item.id))
                             }
-                            aria-label="Adımı kaldır"
+                            aria-label={tx({ tr: 'Adımı kaldır', en: 'Remove step' })}
                             className="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-md text-[#52525B] hover:text-[#991B1B] dark:text-[#A1A1AA] dark:hover:text-[#FCA5A5] shrink-0"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -808,7 +933,10 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       type="text"
                       value={newItemTextTr}
                       onChange={(e) => setNewItemTextTr(e.target.value)}
-                      placeholder="Adım / soru açıklaması (TR)"
+                      placeholder={tx({
+                        tr: 'Adım / soru açıklaması',
+                        en: 'Step / question description',
+                      })}
                       maxLength={180}
                       className="sm:col-span-6 h-10 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs sm:text-sm text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
                     />
@@ -816,7 +944,10 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       type="text"
                       value={newItemSampleDe}
                       onChange={(e) => setNewItemSampleDe(e.target.value)}
-                      placeholder="Örnek Almanca cümle (isteğe bağlı)"
+                      placeholder={tx({
+                        tr: 'Örnek Almanca cümle (isteğe bağlı)',
+                        en: 'Sample German sentence (optional)',
+                      })}
                       maxLength={220}
                       className="sm:col-span-4 h-10 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs sm:text-sm text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
                     />
@@ -827,7 +958,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       className="sm:col-span-2 inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#F4F4F5]"
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Ekle</span>
+                      <span>{tx({ tr: 'Ekle', en: 'Add' })}</span>
                     </button>
                   </div>
                 </div>
@@ -838,13 +969,15 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     onClick={handleResetDraftEditor}
                     className="h-10 rounded-lg border border-[#D9D9D3] px-3.5 text-xs font-medium text-[#52525B] hover:bg-[#F6F6F4] dark:border-[#282830] dark:text-[#A1A1AA]"
                   >
-                    Formu Temizle
+                    {tx({ tr: 'Formu Temizle', en: 'Clear Form' })}
                   </button>
                   <button
                     type="submit"
                     className="h-10 rounded-lg bg-[#7C1D2E] px-5 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
                   >
-                    {editingDraftId ? 'Değişiklikleri Kaydet' : 'Taslağı Yerel Olarak Kaydet'}
+                    {editingDraftId
+                      ? tx({ tr: 'Değişiklikleri Kaydet', en: 'Save Changes' })
+                      : tx({ tr: 'Taslağı Yerel Olarak Kaydet', en: 'Save Draft Locally' })}
                   </button>
                 </div>
               </form>
@@ -854,23 +987,28 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             <section className="lg:col-span-5 space-y-4">
               <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
                 <h2 className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  Kayıtlı Yerel Taslaklar
+                  {tx({ tr: 'Kayıtlı Yerel Taslaklar', en: 'Saved Local Drafts' })}
                 </h2>
-                <span className="font-mono tabular-nums">{progress.studioDrafts.length} taslak</span>
+                <span className="font-mono tabular-nums">
+                  {tx(
+                    { tr: '{{count}} taslak', en: '{{count}} drafts' },
+                    { count: progress.studioDrafts.length }
+                  )}
+                </span>
               </div>
 
               {copyFallbackText && (
                 <div className="rounded-xl border border-[#D9A13B]/50 bg-[#FFFBEB] p-4 space-y-2 dark:border-[#D9A13B]/40 dark:bg-[#231D10]">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-[#78350F] dark:text-[#F6D693]">
-                      Manuel Kopyalama Metni
+                      {tx({ tr: 'Manuel Kopyalama Metni', en: 'Manual Copy Text' })}
                     </p>
                     <button
                       type="button"
                       onClick={() => setCopyFallbackText(null)}
                       className="text-xs underline text-[#78350F] dark:text-[#F6D693]"
                     >
-                      Kapat
+                      {locale.common.close}
                     </button>
                   </div>
                   <textarea
@@ -887,15 +1025,24 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 text-center dark:border-[#282830] dark:bg-[#16161A]">
                   <FileText className="mx-auto h-6 w-6 text-[#9A6B16] dark:text-[#D9A13B]" />
                   <p className="mt-2 text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    Henüz kayıtlı stüdyo taslağı yok
+                    {tx({
+                      tr: 'Henüz kayıtlı stüdyo taslağı yok',
+                      en: 'No studio drafts saved yet',
+                    })}
                   </p>
                   <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    Sol paneldeki şablonlardan birini yükleyip kaydedebilir veya kendi A1 ders planınızı oluşturabilirsiniz.
+                    {tx({
+                      tr: 'Sol paneldeki şablonlardan birini yükleyip kaydedebilir veya kendi A1/A2 ders planınızı oluşturabilirsiniz.',
+                      en: 'Load a template from the left panel or build your own A1/A2 lesson plan.',
+                    })}
                   </p>
                 </div>
               ) : (
                 progress.studioDrafts.map((draft) => {
                   const checkedCount = draft.items.filter((i) => i.checked).length;
+                  const draftModuleLabel = isEn
+                    ? STUDIO_MODULE_SHORT_LABELS[draft.moduleFocus]?.en ?? draft.moduleFocus
+                    : STUDIO_MODULE_SHORT_LABELS[draft.moduleFocus]?.tr ?? draft.moduleFocus;
                   return (
                     <article
                       key={draft.id}
@@ -909,9 +1056,15 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                             </span>{' '}
                             ·{' '}
                             <span className="font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                              {DRAFT_KIND_LABELS[draft.kind]}
+                              {isEn
+                                ? DRAFT_KIND_LABELS[draft.kind].en
+                                : DRAFT_KIND_LABELS[draft.kind].tr}
                             </span>{' '}
-                            · {getModuleShortLabelTr(draft.moduleFocus)} · {draft.durationMinutes} dk
+                            · {draftModuleLabel} ·{' '}
+                            {tx(
+                              { tr: '{{min}} dk', en: '{{min}} min' },
+                              { min: draft.durationMinutes }
+                            )}
                           </p>
                           <h3 className="mt-1 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
                             {draft.titleTr}
@@ -920,7 +1073,10 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                         <button
                           type="button"
                           onClick={() => deleteStudioDraft(draft.id)}
-                          aria-label={`${draft.titleTr} taslağını sil`}
+                          aria-label={tx(
+                            { tr: '{{title}} taslağını sil', en: 'Delete draft {{title}}' },
+                            { title: draft.titleTr }
+                          )}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#52525B] hover:text-[#991B1B] dark:text-[#A1A1AA] dark:hover:text-[#FCA5A5] shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -930,7 +1086,13 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                       {draft.items.length > 0 && (
                         <div className="space-y-2">
                           <p className="font-mono text-[11px] text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                            Tamamlanan adım: {checkedCount}/{draft.items.length}
+                            {tx(
+                              {
+                                tr: 'Tamamlanan adım: {{done}}/{{total}}',
+                                en: 'Completed steps: {{done}}/{{total}}',
+                              },
+                              { done: checkedCount, total: draft.items.length }
+                            )}
                           </p>
                           <ul className="space-y-1.5">
                             {draft.items.map((item) => (
@@ -954,6 +1116,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                                     <ModelAudioBar
                                       textDe={item.sampleDe}
                                       labelTr={item.sampleDe}
+                                      labelEn={item.sampleDe}
                                       compact
                                     />
                                   </div>
@@ -970,7 +1133,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                           onClick={() => handleLoadSavedDraftForEdit(draft)}
                           className="h-8 rounded-lg border border-[#D9D9D3] px-2.5 text-xs font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
                         >
-                          Düzenle
+                          {tx({ tr: 'Düzenle', en: 'Edit' })}
                         </button>
                         <button
                           type="button"
@@ -982,7 +1145,11 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                           ) : (
                             <Copy className="h-3.5 w-3.5" />
                           )}
-                          <span>{copiedDraftId === draft.id ? 'Kopyalandı' : 'Kopyala'}</span>
+                          <span>
+                            {copiedDraftId === draft.id
+                              ? tx({ tr: 'Kopyalandı', en: 'Copied' })
+                              : tx({ tr: 'Kopyala', en: 'Copy' })}
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -990,7 +1157,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                           className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#D9D9D3] px-2.5 text-xs font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
                         >
                           <Printer className="h-3.5 w-3.5" />
-                          <span>Yazdır</span>
+                          <span>{tx({ tr: 'Yazdır', en: 'Print' })}</span>
                         </button>
                         <button
                           type="button"
@@ -998,7 +1165,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                           className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111113] px-2.5 text-xs font-medium text-[#F6F6F4] hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
                         >
                           <ClipboardPlus className="h-3.5 w-3.5" />
-                          <span>Ödevlere Aktar</span>
+                          <span>{tx({ tr: 'Ödevlere Aktar', en: 'Send to Assignments' })}</span>
                         </button>
                       </div>
                     </article>
@@ -1015,13 +1182,22 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             <section className="lg:col-span-7 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 space-y-5 dark:border-[#282830] dark:bg-[#16161A]">
               <div>
                 <p className="text-xs font-medium text-[#9A6B16] dark:text-[#D9A13B]">
-                  Doğrulanmış Web Speech API · src/utils/speech.ts
+                  {tx({
+                    tr: 'Doğrulanmış Web Speech API · src/utils/speech.ts',
+                    en: 'Verified Web Speech API · src/utils/speech.ts',
+                  })}
                 </p>
                 <h2 className="mt-1 font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  de-DE Model Ses ve Telaffuz Testi
+                  {tx({
+                    tr: 'de-DE Model Ses ve Telaffuz Testi',
+                    en: 'de-DE Model Voice & Pronunciation Lab',
+                  })}
                 </h2>
                 <p className="mt-1 text-xs sm:text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                  Ders öncesi akıllı tahta veya hoparlör üzerinden Almanca örnek cümleleri 0.8× (yavaş A1) ve 1.0× (normal) hızlarında test edin.
+                  {tx({
+                    tr: 'Ders öncesi akıllı tahta veya hoparlör üzerinden Almanca örnek cümleleri 0.8× (yavaş) ve 1.0× (normal) hızlarında test edin.',
+                    en: 'Test German example sentences on your classroom board or speakers at 0.8× (slow) and 1.0× (normal) speeds before class.',
+                  })}
                 </p>
               </div>
 
@@ -1032,7 +1208,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                     htmlFor="studio-audio-textarea"
                     className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                   >
-                    Almanca Örnek Metin (de-DE)
+                    {tx({ tr: 'Almanca Örnek Metin (de-DE)', en: 'German Sample Text (de-DE)' })}
                   </label>
                   <div className="flex items-center gap-1">
                     {GERMAN_SPECIAL_CHARS.map((ch) => (
@@ -1060,7 +1236,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
               {/* Speaker Gender Selector + ModelAudioBar */}
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-                  Konuşmacı Profili:
+                  {tx({ tr: 'Konuşmacı Profili:', en: 'Speaker Profile:' })}
                 </span>
                 <div className="inline-flex rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#111113]">
                   <button
@@ -1072,7 +1248,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                         : 'text-[#52525B] dark:text-[#A1A1AA]'
                     }`}
                   >
-                    Kadın Sesi
+                    {tx({ tr: 'Kadın Sesi', en: 'Female Voice' })}
                   </button>
                   <button
                     type="button"
@@ -1083,7 +1259,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                         : 'text-[#52525B] dark:text-[#A1A1AA]'
                     }`}
                   >
-                    Erkek Sesi
+                    {tx({ tr: 'Erkek Sesi', en: 'Male Voice' })}
                   </button>
                 </div>
               </div>
@@ -1092,6 +1268,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 <ModelAudioBar
                   textDe={audioTextDe.trim() || 'Guten Tag!'}
                   labelTr="Model Sesi Oynat (de-DE)"
+                  labelEn="Play Model Voice (de-DE)"
                   speakerGender={audioGender}
                 />
               </div>
@@ -1099,14 +1276,22 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
               {/* Honest Browser Speech Diagnostics */}
               <div className="rounded-xl border border-[#ECECE8] p-4 space-y-2 text-xs text-[#52525B] dark:border-[#24242C] dark:text-[#A1A1AA]">
                 <p className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  Tarayıcı Ses Motoru Durumu (Dürüst Algılama)
+                  {tx({
+                    tr: 'Tarayıcı Ses Motoru Durumu (Dürüst Algılama)',
+                    en: 'Browser Speech Engine Status (Live Detection)',
+                  })}
                 </p>
                 <p>
                   Web Speech API:{' '}
                   <strong className="text-[#111113] dark:text-[#F4F4F5]">
-                    {voiceInfo.supported ? 'Destekleniyor' : 'Bu tarayıcıda desteklenmiyor'}
+                    {voiceInfo.supported
+                      ? tx({ tr: 'Destekleniyor', en: 'Supported' })
+                      : tx({
+                          tr: 'Bu tarayıcıda desteklenmiyor',
+                          en: 'Not supported in this browser',
+                        })}
                   </strong>{' '}
-                  · Algılanan Almanca ses sayısı:{' '}
+                  · {tx({ tr: 'Algılanan Almanca ses sayısı:', en: 'Detected German voices:' })}{' '}
                   <strong className="font-mono text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                     {voiceInfo.germanVoiceCount}
                   </strong>
@@ -1118,7 +1303,13 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             {/* Classroom A1 / A2 Audio Presets */}
             <section className="lg:col-span-5 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 space-y-4 dark:border-[#282830] dark:bg-[#16161A]">
               <h3 className="font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Hazır {studioCourse === 'de-A2' ? 'A2' : 'A1'} Ders İçi Ses Kalıpları
+                {tx(
+                  {
+                    tr: 'Hazır {{level}} Ders İçi Ses Kalıpları',
+                    en: 'Ready {{level}} Classroom Audio Presets',
+                  },
+                  { level: studioCourse === 'de-A2' ? 'A2' : 'A1' }
+                )}
               </h3>
               <div className="space-y-2.5">
                 {activeAudioPresets.map((preset) => (
@@ -1153,7 +1344,10 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
           <div className="flex items-start gap-2.5 text-xs text-[#52525B] dark:text-[#A1A1AA]">
             <Info className="mt-0.5 h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B] shrink-0" />
             <p className="leading-relaxed">
-              Öğretmen Stüdyosunda hazırlanan taslaklar yalnızca tarayıcınızdaki yerel depolamada saklanır. Kurumsal bulut arşivi, ekip içi taslak paylaşımı ve öğrenci hesaplarına otomatik dağıtım sonraki aşamalarda eklenecektir.
+              {tx({
+                tr: 'Öğretmen Stüdyosunda hazırlanan taslaklar yalnızca tarayıcınızdaki yerel depolamada saklanır. Kurumsal bulut arşivi, ekip içi taslak paylaşımı ve öğrenci hesaplarına otomatik dağıtım sonraki aşamalarda eklenecektir.',
+                en: 'Drafts created in Teacher Studio are stored only in your browser’s local storage. Cloud archives, team draft sharing, and automatic distribution to student accounts will be added in future phases.',
+              })}
             </p>
           </div>
         </div>
@@ -1165,10 +1359,16 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D9D9D3] pb-4 print:hidden">
             <div>
               <p className="text-xs font-semibold text-[#7C1D2E]">
-                Yazdırılabilir Çalışma Kağıdı Önizlemesi
+                {tx({
+                  tr: 'Yazdırılabilir Çalışma Kağıdı Önizlemesi',
+                  en: 'Printable Worksheet Preview',
+                })}
               </p>
               <p className="text-xs text-[#52525B]">
-                Yazdır düğmesi tarayıcı yazdırma diyaloğunu açar; PDF olarak da kaydedebilirsiniz.
+                {tx({
+                  tr: 'Yazdır düğmesi tarayıcı yazdırma diyaloğunu açar; PDF olarak da kaydedebilirsiniz.',
+                  en: 'Click Print to open the browser print dialog; you can also save as PDF.',
+                })}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1178,14 +1378,14 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#111113] px-4 text-xs font-medium text-white hover:bg-[#27272A]"
               >
                 <Printer className="h-3.5 w-3.5" />
-                <span>Yazdır / PDF Kaydet</span>
+                <span>{tx({ tr: 'Yazdır / PDF Kaydet', en: 'Print / Save PDF' })}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPrintPreviewDraft(null)}
                 className="h-9 rounded-lg border border-[#D9D9D3] px-3 text-xs font-medium text-[#52525B] hover:bg-[#F6F6F4]"
               >
-                Önizlemeyi Kapat
+                {tx({ tr: 'Önizlemeyi Kapat', en: 'Close Preview' })}
               </button>
             </div>
           </div>
@@ -1194,23 +1394,36 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[#D9D9D3] pb-3">
               <div>
                 <p className="font-mono text-xs uppercase tracking-wide text-[#52525B]">
-                  Teachers Kingdom · Almanca CEFR{' '}
-                  {printPreviewDraft.courseId === 'de-A2' ? 'A2' : 'A1'} ·{' '}
-                  {DRAFT_KIND_LABELS[printPreviewDraft.kind]}
+                  {tx(
+                    { tr: 'Teachers Kingdom · Almanca CEFR {{lvl}}', en: 'Teachers Kingdom · German CEFR {{lvl}}' },
+                    { lvl: printPreviewDraft.courseId === 'de-A2' ? 'A2' : 'A1' }
+                  )}{' '}
+                  ·{' '}
+                  {isEn
+                    ? DRAFT_KIND_LABELS[printPreviewDraft.kind].en
+                    : DRAFT_KIND_LABELS[printPreviewDraft.kind].tr}
                 </p>
                 <h2 className="mt-1 font-display text-2xl font-semibold text-[#111113]">
                   {printPreviewDraft.titleTr}
                 </h2>
               </div>
               <p className="font-mono text-xs text-[#52525B]">
-                {getModuleShortLabelTr(printPreviewDraft.moduleFocus)} ·{' '}
-                {printPreviewDraft.durationMinutes} dk
+                {isEn
+                  ? STUDIO_MODULE_SHORT_LABELS[printPreviewDraft.moduleFocus]?.en ??
+                    printPreviewDraft.moduleFocus
+                  : STUDIO_MODULE_SHORT_LABELS[printPreviewDraft.moduleFocus]?.tr ??
+                    printPreviewDraft.moduleFocus}{' '}
+                ·{' '}
+                {tx(
+                  { tr: '{{min}} dk', en: '{{min}} min' },
+                  { min: printPreviewDraft.durationMinutes }
+                )}
               </p>
             </div>
 
             {printPreviewDraft.notesTr && (
               <p className="text-sm text-[#3F3F46] leading-relaxed">
-                <strong>Not: </strong>
+                <strong>{tx({ tr: 'Not:', en: 'Note:' })} </strong>
                 {printPreviewDraft.notesTr}
               </p>
             )}
@@ -1233,7 +1446,7 @@ export const TeacherStudioView: React.FC<TeacherStudioViewProps> = ({
             </ol>
 
             <p className="pt-4 border-t border-[#ECECE8] text-xs text-[#52525B]">
-              Teachers Kingdom (teacherskingdom.net) · Öğren. Öğret. Üret.
+              Teachers Kingdom (teacherskingdom.net) · {locale.brand.philosophy}
             </p>
           </div>
         </div>

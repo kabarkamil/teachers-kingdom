@@ -11,6 +11,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { ListeningScenario } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 import {
   getSpeakerProfile,
   isSpeechSynthesisSupported,
@@ -24,18 +25,19 @@ interface DialogueAudioPlayerProps {
 
 type PlaybackStatus = 'idle' | 'starting' | 'playing' | 'paused' | 'ended' | 'unavailable';
 type ListeningRate = 0.8 | 1.0;
+type UnavailableReasonCode = 'unsupported' | 'timeout' | 'synth_error' | 'init_error';
 
 export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenario }) => {
+  const { locale, tx } = useI18n();
   const [speechSupported] = useState<boolean>(() => isSpeechSynthesisSupported());
   const [voicePlan, setVoicePlan] = useState(() => resolveDialogueSpeakerVoices());
   const [status, setStatus] = useState<PlaybackStatus>(() =>
     isSpeechSynthesisSupported() ? 'idle' : 'unavailable'
   );
-  const [unavailableReason, setUnavailableReason] = useState<string | null>(() =>
-    isSpeechSynthesisSupported()
-      ? null
-      : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor.'
-  );
+  const [unavailableReasonCode, setUnavailableReasonCode] =
+    useState<UnavailableReasonCode | null>(() =>
+      isSpeechSynthesisSupported() ? null : 'unsupported'
+    );
   const [rate, setRate] = useState<ListeningRate>(1.0);
   const [currentLineIdx, setCurrentLineIdx] = useState<number>(0);
   const [completedLines, setCompletedLines] = useState<number>(0);
@@ -76,9 +78,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
   useEffect(() => {
     cancelPlayback();
     setStatus(speechSupported ? 'idle' : 'unavailable');
-    setUnavailableReason(
-      speechSupported ? null : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor.'
-    );
+    setUnavailableReasonCode(speechSupported ? null : 'unsupported');
     setCurrentLineIdx(0);
     setCompletedLines(0);
     setShowTranscript(false);
@@ -96,7 +96,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
     (startIndex: number, singleLineOnly = false, playbackRate?: ListeningRate) => {
       if (!speechSupported) {
         setStatus('unavailable');
-        setUnavailableReason('Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor.');
+        setUnavailableReasonCode('unsupported');
         return;
       }
 
@@ -113,7 +113,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
 
       setCurrentLineIdx(startIndex);
       setStatus('starting');
-      setUnavailableReason(null);
+      setUnavailableReasonCode(null);
 
       try {
         const utterance = new SpeechSynthesisUtterance(line.textDe);
@@ -139,9 +139,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
           if (sessionTokenRef.current !== token || startedConfirmed) return;
           cancelPlayback();
           setStatus('unavailable');
-          setUnavailableReason(
-            'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; aşağıdaki metni açarak diyalogu inceleyebilirsiniz.'
-          );
+          setUnavailableReasonCode('timeout');
         }, 1800);
 
         utterance.onstart = () => {
@@ -183,18 +181,14 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
             return;
           }
           setStatus('unavailable');
-          setUnavailableReason(
-            'Tarayıcı ses sentezleyicisi bu satırı okurken bir hata döndürdü. Cihazınızın ses veya Almanca (de-DE) dil paketi ayarlarını kontrol edebilir ya da metni açarak devam edebilirsiniz.'
-          );
+          setUnavailableReasonCode('synth_error');
         };
 
         window.speechSynthesis.speak(utterance);
       } catch {
         clearWatchdog();
         setStatus('unavailable');
-        setUnavailableReason(
-          'Tarayıcı seslendirme API’si başlatılamadı. Metin görünümünü açarak alıştırmalara devam edebilirsiniz.'
-        );
+        setUnavailableReasonCode('init_error');
       }
     },
     [scenario.lines, speechSupported, cancelPlayback, clearWatchdog]
@@ -246,17 +240,113 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
   const statusLabel = (() => {
     switch (status) {
       case 'starting':
-        return 'Ses motoru başlatılıyor…';
+        return tx({ tr: 'Ses motoru başlatılıyor…', en: 'Starting speech engine…' });
       case 'playing':
-        return `Oynatılıyor · Replik ${currentLineIdx + 1} / ${totalLines}`;
+        return tx(
+          {
+            tr: 'Oynatılıyor · Replik {current} / {total}',
+            en: 'Playing · Line {current} / {total}',
+          },
+          { current: currentLineIdx + 1, total: totalLines }
+        );
       case 'paused':
-        return `Duraklatıldı · Replik ${currentLineIdx + 1} / ${totalLines}`;
+        return tx(
+          {
+            tr: 'Duraklatıldı · Replik {current} / {total}',
+            en: 'Paused · Line {current} / {total}',
+          },
+          { current: currentLineIdx + 1, total: totalLines }
+        );
       case 'ended':
-        return `Tamamlandı · ${totalLines} / ${totalLines} replik dinlendi`;
+        return tx(
+          {
+            tr: 'Tamamlandı · {total} / {total} replik dinlendi',
+            en: 'Completed · {total} / {total} lines played',
+          },
+          { total: totalLines }
+        );
       case 'unavailable':
-        return 'Tarayıcı seslendirmesi kullanılamıyor';
+        return tx({
+          tr: 'Tarayıcı seslendirmesi kullanılamıyor',
+          en: 'Browser speech synthesis unavailable',
+        });
       default:
-        return `Dinlemeye hazır · ${totalLines} replik`;
+        return tx(
+          { tr: 'Dinlemeye hazır · {total} replik', en: 'Ready to listen · {total} lines' },
+          { total: totalLines }
+        );
+    }
+  })();
+
+  const voiceStatusNote = (() => {
+    if (!voicePlan.supported) {
+      return tx({
+        tr: 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor.',
+        en: 'Web Speech API speech synthesis is not supported in this browser.',
+      });
+    }
+    if (voicePlan.germanVoiceCount === 0) {
+      return tx({
+        tr: 'Tarayıcıda özel de-DE sesi listelenmedi; sistem varsayılan sentezleyicisi denenir.',
+        en: 'No dedicated de-DE voice listed; the system default synthesizer will be tried.',
+      });
+    }
+    const femaleName = voicePlan.female.voice?.name ?? 'de-DE';
+    const maleName = voicePlan.male.voice?.name ?? 'de-DE';
+    if (voicePlan.germanVoiceCount === 1) {
+      return tx(
+        {
+          tr: 'Tarayıcıda yalnızca 1 Almanca ses bulundu ({name}); tüm konuşmacılar bu sesle okunur.',
+          en: 'Only 1 German voice found ({name}); all speakers use this voice.',
+        },
+        { name: femaleName }
+      );
+    }
+    if (voicePlan.hasDistinctVoices) {
+      return tx(
+        {
+          tr: 'Çift konuşmacı sesi aktif ({female} · {male})',
+          en: 'Dual speaker voices active ({female} · {male})',
+        },
+        { female: femaleName, male: maleName }
+      );
+    }
+    return tx(
+      {
+        tr: 'Tarayıcıda tek Almanca ses profili aktif ({name}).',
+        en: 'Single German voice profile active ({name}).',
+      },
+      { name: femaleName }
+    );
+  })();
+
+  const unavailableMessage = (() => {
+    switch (unavailableReasonCode) {
+      case 'unsupported':
+        return tx({
+          tr: 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor.',
+          en: 'Web Speech API speech synthesis is not supported in this browser.',
+        });
+      case 'timeout':
+        return tx({
+          tr: 'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; aşağıdaki metni açarak diyalogu inceleyebilirsiniz.',
+          en: 'The browser speech engine (de-DE) could not start playback here. No simulated playback is used; open the transcript below to review the dialogue.',
+        });
+      case 'synth_error':
+        return tx({
+          tr: 'Tarayıcı ses sentezleyicisi bu satırı okurken bir hata döndürdü. Cihazınızın ses veya Almanca (de-DE) dil paketi ayarlarını kontrol edebilir ya da metni açarak devam edebilirsiniz.',
+          en: 'The browser speech synthesizer returned an error while reading this line. Check your device audio or German (de-DE) language pack settings, or open the transcript to continue.',
+        });
+      case 'init_error':
+        return tx({
+          tr: 'Tarayıcı seslendirme API’si başlatılamadı. Metin görünümünü açarak alıştırmalara devam edebilirsiniz.',
+          en: 'Could not start the browser speech API. Open the transcript view to continue with the exercises.',
+        });
+      default:
+        return tx({
+          tr: 'Bu tarayıcıda Almanca seslendirme (de-DE) kullanılamıyor. Sahte ses oynatma yapılmaz; aşağıdaki metin görünümünü açarak çalışabilirsiniz.',
+          en: 'German speech synthesis (de-DE) is unavailable in this browser. No simulated audio is used; open the transcript below to continue studying.',
+        });
     }
   })();
 
@@ -285,15 +375,24 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
             <span>
               {voicePlan.supported
                 ? voicePlan.hasDistinctVoices
-                  ? 'Tarayıcı Seslendirmesi (de-DE · Çift Konuşmacı Sesi)'
+                  ? tx({
+                      tr: 'Tarayıcı Seslendirmesi (de-DE · Çift Konuşmacı Sesi)',
+                      en: 'Browser Speech (de-DE · Dual Speaker Voices)',
+                    })
                   : voicePlan.germanVoiceCount === 1
-                  ? 'Tarayıcı Seslendirmesi (de-DE · Tek Ses)'
-                  : 'Tarayıcı Seslendirmesi (Web Speech API · de-DE)'
-                : 'Tarayıcı Seslendirmesi Desteklenmiyor'}
+                  ? tx({
+                      tr: 'Tarayıcı Seslendirmesi (de-DE · Tek Ses)',
+                      en: 'Browser Speech (de-DE · Single Voice)',
+                    })
+                  : locale.common.browserTtsNotice
+                : tx({
+                    tr: 'Tarayıcı Seslendirmesi Desteklenmiyor',
+                    en: 'Browser Speech Not Supported',
+                  })}
             </span>
           </div>
           <p className="text-[11px] text-[#71717A] dark:text-[#8E8E98]">
-            {voicePlan.statusNoteTr}
+            {voiceStatusNote}
           </p>
         </div>
       </div>
@@ -310,12 +409,16 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
             {status === 'playing' || status === 'starting' ? (
               <>
                 <Pause className="h-4 w-4" />
-                <span>Duraklat</span>
+                <span>{locale.audio.pause}</span>
               </>
             ) : (
               <>
                 <Play className="h-4 w-4" />
-                <span>{status === 'paused' ? 'Devam Et' : 'Diyalogu Dinle'}</span>
+                <span>
+                  {status === 'paused'
+                    ? tx({ tr: 'Devam Et', en: 'Resume' })
+                    : tx({ tr: 'Diyalogu Dinle', en: 'Play Dialogue' })}
+                </span>
               </>
             )}
           </button>
@@ -327,18 +430,18 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
             className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>Baştan Dinle</span>
+            <span>{tx({ tr: 'Baştan Dinle', en: 'Replay' })}</span>
           </button>
 
           {(status === 'playing' || status === 'paused' || status === 'starting') && (
             <button
               type="button"
               onClick={handleStop}
-              aria-label="Oynatmayı durdur"
+              aria-label={tx({ tr: 'Oynatmayı durdur', en: 'Stop playback' })}
               className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-sm font-medium text-[#52525B] transition-colors hover:bg-[#ECECE8] hover:text-[#111113] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
             >
               <Square className="h-3.5 w-3.5" />
-              <span>Durdur</span>
+              <span>{locale.audio.stop}</span>
             </button>
           )}
         </div>
@@ -346,11 +449,11 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
         {/* Speed Selector (0.8x / 1.0x) */}
         <div className="flex items-center gap-2.5">
           <span className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA] whitespace-nowrap">
-            Oynatma Hızı:
+            {tx({ tr: 'Oynatma Hızı:', en: 'Playback Speed:' })}
           </span>
           <div
             role="group"
-            aria-label="Ses oynatma hızı"
+            aria-label={locale.audio.speedLabel}
             className="flex items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#111113]"
           >
             <button
@@ -363,7 +466,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
                   : 'text-[#52525B] hover:text-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]'
               }`}
             >
-              0.8× (Yavaş)
+              {tx({ tr: '0.8× (Yavaş)', en: '0.8× (Slow)' })}
             </button>
             <button
               type="button"
@@ -375,7 +478,7 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
                   : 'text-[#52525B] hover:text-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]'
               }`}
             >
-              1.0× (Normal)
+              {tx({ tr: '1.0× (Normal)', en: '1.0× (Normal)' })}
             </button>
           </div>
         </div>
@@ -386,7 +489,9 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <span className="font-medium text-[#111113] dark:text-[#E4E4E7]">{statusLabel}</span>
           <span className="font-mono tabular-nums">
-            {status === 'unavailable' ? '0%' : `%${progressPercent}`}
+            {status === 'unavailable'
+              ? tx({ tr: '%0', en: '0%' })
+              : tx({ tr: '%{pct}', en: '{pct}%' }, { pct: progressPercent })}
           </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
@@ -398,16 +503,13 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
       </div>
 
       {/* Honest Audio Unavailable / Fallback Banner */}
-      {(status === 'unavailable' || unavailableReason) && (
+      {(status === 'unavailable' || unavailableReasonCode) && (
         <div
           role="status"
           className="mt-4 flex items-start gap-2.5 rounded-xl border border-[#9A6B16]/40 bg-[#FEF9EB] px-4 py-3 text-xs leading-relaxed text-[#713F12] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#FDE68A]"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            {unavailableReason ??
-              'Bu tarayıcıda Almanca seslendirme (de-DE) kullanılamıyor. Sahte ses oynatma yapılmaz; aşağıdaki metin görünümünü açarak çalışabilirsiniz.'}
-          </p>
+          <p>{unavailableMessage}</p>
         </div>
       )}
 
@@ -416,12 +518,18 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-0.5">
             <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Diyalog Metni (Transkript)
+              {tx({ tr: 'Diyalog Metni (Transkript)', en: 'Dialogue Transcript' })}
             </p>
             <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
               {showTranscript
-                ? 'Metin açık; satırları tek tek dinleyebilirsiniz.'
-                : 'Önce dinleyin; kontrol için metni istediğiniz zaman açın.'}
+                ? tx({
+                    tr: 'Metin açık; satırları tek tek dinleyebilirsiniz.',
+                    en: 'Transcript open; click any line to listen individually.',
+                  })
+                : tx({
+                    tr: 'Önce dinleyin; kontrol için metni istediğiniz zaman açın.',
+                    en: 'Listen first; open the transcript anytime to check.',
+                  })}
             </p>
           </div>
 
@@ -437,7 +545,11 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
                 }`}
               >
                 <Languages className="h-3.5 w-3.5" />
-                <span>{showTurkish ? 'Türkçe Çeviriyi Gizle' : 'Türkçe Çeviriyi Göster'}</span>
+                <span>
+                  {showTurkish
+                    ? tx({ tr: 'Türkçe Çeviriyi Gizle', en: 'Hide Turkish Gloss' })
+                    : locale.common.showTurkish}
+                </span>
               </button>
             )}
 
@@ -450,12 +562,12 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
               {showTranscript ? (
                 <>
                   <EyeOff className="h-3.5 w-3.5" />
-                  <span>Metni Gizle</span>
+                  <span>{locale.common.hideTranscript}</span>
                 </>
               ) : (
                 <>
                   <Eye className="h-3.5 w-3.5" />
-                  <span>Metni Göster</span>
+                  <span>{locale.common.showTranscript}</span>
                 </>
               )}
             </button>
@@ -492,8 +604,11 @@ export const DialogueAudioPlayer: React.FC<DialogueAudioPlayerProps> = ({ scenar
                     type="button"
                     disabled={!speechSupported}
                     onClick={() => speakFromLine(idx, true)}
-                    aria-label={`${line.speaker} repliğini dinle`}
-                    title="Bu cümleyi dinle"
+                    aria-label={tx(
+                      { tr: '{speaker} repliğini dinle', en: "Listen to {speaker}'s line" },
+                      { speaker: line.speaker }
+                    )}
+                    title={tx({ tr: 'Bu cümleyi dinle', en: 'Listen to this line' })}
                     className="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] text-[#52525B] transition-colors hover:bg-[#ECECE8] hover:text-[#111113] disabled:opacity-40 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:bg-[#1E1E24] shrink-0"
                   >
                     <Volume2 className="h-4 w-4" />

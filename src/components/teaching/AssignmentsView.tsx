@@ -12,7 +12,6 @@ import {
 import { useAppState } from '../../context/AppStateContext';
 import {
   TEACHING_MODULE_CATALOG,
-  getModuleShortLabelTr,
   getTargetLiveProgress,
 } from '../../data/germanA1Teaching';
 import {
@@ -20,8 +19,32 @@ import {
   TEACHING_A2_MODULE_CATALOG,
   getA2TargetLiveProgress,
 } from '../../data/germanA2Teaching';
+import { useI18n } from '../../hooks/useI18n';
 import type { ActiveCourseId, NavRouteId, TeachingAssignmentModule } from '../../types';
 import { TeachingSubNav } from './TeachingSubNav';
+
+const MODULE_SHORT_LABELS: Record<TeachingAssignmentModule, { tr: string; en: string }> = {
+  kelime: { tr: 'Kelime', en: 'Vocab' },
+  dinleme: { tr: 'Dinleme', en: 'Listening' },
+  okuma: { tr: 'Okuma', en: 'Reading' },
+  yazma: { tr: 'Yazma', en: 'Writing' },
+  konusma: { tr: 'Konuşma', en: 'Speaking' },
+  karaoke: { tr: 'Karaoke', en: 'Karaoke' },
+  'sessiz-sinema': { tr: 'Sessiz Sinema', en: 'Charades' },
+  arena: { tr: 'Arena', en: 'Arena' },
+  'quiz-merkezi': { tr: 'Quiz', en: 'Quiz' },
+  'sinav-modu': { tr: 'Sınav Modu', en: 'Exam Mode' },
+};
+
+const UNIT_LABEL_EN_MAP: Record<string, string> = {
+  kelime: 'words',
+  soru: 'questions',
+  görev: 'tasks',
+  parça: 'tracks',
+  kart: 'cards',
+  alıştırma: 'exercises',
+  öğe: 'items',
+};
 
 interface AssignmentsViewProps {
   onNavigate: (route: NavRouteId) => void;
@@ -51,6 +74,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     updateAssignmentReview,
     deleteTeachingAssignment,
   } = useAppState();
+  const { isEn, locale, tx } = useI18n();
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
@@ -113,8 +137,20 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     });
     setFeedbackBanner(
       xpAwarded > 0
-        ? `Hazır A2 ödevi eklendi (+${xpAwarded} XP ilk ödev oluşturma kazanımı).`
-        : `"${tpl.titleTr}" A2 ödev listesine eklendi.`
+        ? tx(
+            {
+              tr: 'Hazır A2 ödevi eklendi (+{{xp}} XP ilk ödev oluşturma kazanımı).',
+              en: 'Starter A2 assignment added (+{{xp}} XP first-assignment bonus).',
+            },
+            { xp: xpAwarded }
+          )
+        : tx(
+            {
+              tr: '"{{title}}" A2 ödev listesine eklendi.',
+              en: '"{{title}}" added to the A2 assignments list.',
+            },
+            { title: tpl.titleTr }
+          )
     );
     window.setTimeout(() => setFeedbackBanner(null), 3200);
   };
@@ -137,7 +173,13 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
       dueDateLabel: dueDateLabel || undefined,
       instructionsTr:
         instructionsTr.trim() ||
-        `${selectedModuleConfig.labelTr} modülündeki "${chosenTarget?.labelTr ?? ''}" çalışmasını tamamlayın.`,
+        tx(
+          {
+            tr: '{{module}} modülündeki "{{target}}" çalışmasını tamamlayın.',
+            en: 'Complete "{{target}}" in the {{module}} module.',
+          },
+          { module: selectedModuleConfig.labelTr, target: chosenTarget?.labelTr ?? '' }
+        ),
     });
 
     setTitleTr('');
@@ -146,8 +188,20 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     setShowCreateForm(false);
     setFeedbackBanner(
       xpAwarded > 0
-        ? `Yeni ${levelShort} ödevi yerel olarak oluşturuldu (+${xpAwarded} XP ilk ödev oluşturma kazanımı).`
-        : `Yeni ${levelShort} ödevi yerel tarayıcı listesine eklendi.`
+        ? tx(
+            {
+              tr: 'Yeni {{level}} ödevi yerel olarak oluşturuldu (+{{xp}} XP ilk ödev oluşturma kazanımı).',
+              en: 'New {{level}} assignment created locally (+{{xp}} XP first-assignment bonus).',
+            },
+            { level: levelShort, xp: xpAwarded }
+          )
+        : tx(
+            {
+              tr: 'Yeni {{level}} ödevi yerel tarayıcı listesine eklendi.',
+              en: 'New {{level}} assignment added to local browser list.',
+            },
+            { level: levelShort }
+          )
     );
     window.setTimeout(() => setFeedbackBanner(null), 3200);
   };
@@ -155,10 +209,23 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
   const handleToggleDone = (assignmentId: string) => {
     const res = toggleAssignmentCompleted(assignmentId);
     if (res.xpAwarded > 0) {
-      setFeedbackBanner(`Ödev tamamlandı olarak işaretlendi (+${res.xpAwarded} XP tek seferlik ödül).`);
+      setFeedbackBanner(
+        tx(
+          {
+            tr: 'Ödev tamamlandı olarak işaretlendi (+{{xp}} XP tek seferlik ödül).',
+            en: 'Assignment marked complete (+{{xp}} XP single-grant reward).',
+          },
+          { xp: res.xpAwarded }
+        )
+      );
       window.setTimeout(() => setFeedbackBanner(null), 3200);
     } else if (res.status === 'completed') {
-      setFeedbackBanner('Ödev tamamlandı olarak güncellendi (bu ödevin XP ödülü daha önce alınmıştı).');
+      setFeedbackBanner(
+        tx({
+          tr: 'Ödev tamamlandı olarak güncellendi (bu ödevin XP ödülü daha önce alınmıştı).',
+          en: 'Assignment updated as completed (XP reward was already claimed).',
+        })
+      );
       window.setTimeout(() => setFeedbackBanner(null), 2800);
     }
   };
@@ -174,8 +241,14 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     setReviewDraftNote('');
     setFeedbackBanner(
       markReviewed
-        ? 'Öğretmen incelemesi ve yerel geri bildirim notu kaydedildi.'
-        : 'İnceleme durumu güncellendi.'
+        ? tx({
+            tr: 'Öğretmen incelemesi ve yerel geri bildirim notu kaydedildi.',
+            en: 'Teacher review and local feedback note saved.',
+          })
+        : tx({
+            tr: 'İnceleme durumu güncellendi.',
+            en: 'Review status updated.',
+          })
     );
     window.setTimeout(() => setFeedbackBanner(null), 2800);
   };
@@ -219,11 +292,17 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 sm:flex-row sm:items-end sm:justify-between dark:border-[#282830]">
         <div>
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            Öğretim ve Yönetim · Almanca CEFR A1 &amp; A2 ·{' '}
-            {rolePreview === 'teacher' ? 'Öğretmen Görünümü' : 'Öğrenci Görünümü'}
+            {tx({
+              tr: 'Öğretim ve Yönetim · Almanca CEFR A1 & A2',
+              en: 'Teaching & Management · German CEFR A1 & A2',
+            })}{' '}
+            ·{' '}
+            {rolePreview === 'teacher'
+              ? tx({ tr: 'Öğretmen Görünümü', en: 'Teacher View' })
+              : tx({ tr: 'Öğrenci Görünümü', en: 'Student View' })}
           </p>
           <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Ödevler
+            {tx({ tr: 'Ödevler', en: 'Assignments' })}
           </h1>
         </div>
 
@@ -233,7 +312,11 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
           className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap shrink-0"
         >
           <Plus className="h-4 w-4" />
-          <span>{showCreateForm ? 'Formu Kapat' : 'Yeni A1 / A2 Ödevi Ata'}</span>
+          <span>
+            {showCreateForm
+              ? tx({ tr: 'Formu Kapat', en: 'Close Form' })
+              : tx({ tr: 'Yeni A1 / A2 Ödevi Ata', en: 'Assign New A1 / A2 Task' })}
+          </span>
         </button>
       </div>
 
@@ -250,9 +333,12 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
       <div className="flex flex-col gap-2.5 rounded-xl border border-[#ECECE8] bg-[#FFFFFF] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between dark:border-[#24242C] dark:bg-[#16161A]">
         <div className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Hızlı CEFR A2 Ödev Şablonları:
+            {tx({ tr: 'Hızlı CEFR A2 Ödev Şablonları:', en: 'Quick CEFR A2 Templates:' })}
           </strong>{' '}
-          Mevcut A1 ödevlerinizi bozmadan tek tıkla A2 görevi ekleyin.
+          {tx({
+            tr: 'Mevcut A1 ödevlerinizi bozmadan tek tıkla A2 görevi ekleyin.',
+            en: 'Add an A2 task in one click without affecting your existing A1 assignments.',
+          })}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {A2_ASSIGNMENT_QUICK_TEMPLATES.map((tpl) => (
@@ -265,10 +351,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               <Plus className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
               <span>
                 {tpl.moduleRoute === 'kelime'
-                  ? 'A2 Kelime'
+                  ? tx({ tr: 'A2 Kelime', en: 'A2 Vocab' })
                   : tpl.moduleRoute === 'yazma'
-                  ? 'A2 Yazma'
-                  : 'A2 Sınav Modu'}
+                  ? tx({ tr: 'A2 Yazma', en: 'A2 Writing' })
+                  : tx({ tr: 'A2 Sınav Modu', en: 'A2 Exam Mode' })}
               </span>
             </button>
           ))}
@@ -281,22 +367,31 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Yeni Almanca {formCourseId === 'de-A2' ? 'CEFR A2' : 'CEFR A1'} Ödevi Oluştur
+                {tx(
+                  {
+                    tr: 'Yeni Almanca {{level}} Ödevi Oluştur',
+                    en: 'Create New German {{level}} Assignment',
+                  },
+                  { level: formCourseId === 'de-A2' ? 'CEFR A2' : 'CEFR A1' }
+                )}
               </h2>
               <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Seçtiğiniz seviye ve ünite/senaryo doğrudan ilgili çalışma ekranına bağlanır; ilerleme çubuğu gerçek yerel kayıttan (
+                {tx({
+                  tr: 'Seçtiğiniz seviye ve ünite/senaryo doğrudan ilgili çalışma ekranına bağlanır; ilerleme çubuğu gerçek yerel kayıttan (',
+                  en: 'The chosen level and unit/scenario link directly to the practice screen; the progress bar reads live local storage (',
+                })}
                 <span className="font-mono">
                   {formCourseId === 'de-A2'
                     ? 'tk_course_de_a2_progress_v1'
                     : 'tk_stage1_progress_v1'}
                 </span>
-                ) hesaplanır.
+                {tx({ tr: ') hesaplanır.', en: ').' })}
               </p>
             </div>
 
             <div
               role="group"
-              aria-label="Ödev CEFR seviyesi"
+              aria-label={tx({ tr: 'Ödev CEFR seviyesi', en: 'Assignment CEFR level' })}
               className="inline-flex items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-1 dark:border-[#282830] dark:bg-[#111113] shrink-0"
             >
               <button
@@ -335,7 +430,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-title"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Ödev Başlığı *
+                {tx({ tr: 'Ödev Başlığı *', en: 'Assignment Title *' })}
               </label>
               <input
                 id="assign-title"
@@ -345,8 +440,14 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 onChange={(e) => setTitleTr(e.target.value)}
                 placeholder={
                   formCourseId === 'de-A2'
-                    ? 'Örn: A2 İş Hayatı Çoğul İsimler ve Randevu Yazışması'
-                    : 'Örn: Aile Ünitesi Artikel ve Dinleme Tekrarı'
+                    ? tx({
+                        tr: 'Örn: A2 İş Hayatı Çoğul İsimler ve Randevu Yazışması',
+                        en: 'e.g. A2 Work Plurals & Appointment Email Practice',
+                      })
+                    : tx({
+                        tr: 'Örn: Aile Ünitesi Artikel ve Dinleme Tekrarı',
+                        en: 'e.g. Family Unit Articles & Listening Review',
+                      })
                 }
                 maxLength={100}
                 className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
@@ -358,7 +459,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-module"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Bağlı {formCourseId === 'de-A2' ? 'A2' : 'A1'} Modülü
+                {tx(
+                  { tr: 'Bağlı {{level}} Modülü', en: 'Linked {{level}} Module' },
+                  { level: formCourseId === 'de-A2' ? 'A2' : 'A1' }
+                )}
               </label>
               <select
                 id="assign-module"
@@ -368,7 +472,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               >
                 {activeCatalog.map((m) => (
                   <option key={m.route} value={m.route}>
-                    {m.labelTr}
+                    {isEn ? MODULE_SHORT_LABELS[m.route]?.en ?? m.labelTr : m.labelTr}
                   </option>
                 ))}
               </select>
@@ -379,7 +483,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-target"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Ünite / Senaryo Hedefi
+                {tx({ tr: 'Ünite / Senaryo Hedefi', en: 'Unit / Scenario Target' })}
               </label>
               <select
                 id="assign-target"
@@ -400,7 +504,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-class"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Sınıf Grubu (İsteğe Bağlı)
+                {tx({ tr: 'Sınıf Grubu (İsteğe Bağlı)', en: 'Class Group (Optional)' })}
               </label>
               <select
                 id="assign-class"
@@ -409,7 +513,13 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
               >
                 <option value="">
-                  Genel / Bireysel {formCourseId === 'de-A2' ? 'A2' : 'A1'} Görevi
+                  {tx(
+                    {
+                      tr: 'Genel / Bireysel {{level}} Görevi',
+                      en: 'General / Individual {{level}} Task',
+                    },
+                    { level: formCourseId === 'de-A2' ? 'A2' : 'A1' }
+                  )}
                 </option>
                 {progress.teachingClasses.map((cls) => (
                   <option key={cls.id} value={cls.id}>
@@ -424,14 +534,17 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-due"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Hedef Tarih / Hafta Etiketi
+                {tx({ tr: 'Hedef Tarih / Hafta Etiketi', en: 'Target Date / Week Label' })}
               </label>
               <input
                 id="assign-due"
                 type="text"
                 value={dueDateLabel}
                 onChange={(e) => setDueDateLabel(e.target.value)}
-                placeholder="Örn: Cuma 18:00 veya Hafta 4"
+                placeholder={tx({
+                  tr: 'Örn: Cuma 18:00 veya Hafta 4',
+                  en: 'e.g. Friday 18:00 or Week 4',
+                })}
                 maxLength={48}
                 className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
               />
@@ -442,14 +555,17 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 htmlFor="assign-instructions"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Görev Yönergesi
+                {tx({ tr: 'Görev Yönergesi', en: 'Task Instructions' })}
               </label>
               <textarea
                 id="assign-instructions"
                 rows={2}
                 value={instructionsTr}
                 onChange={(e) => setInstructionsTr(e.target.value)}
-                placeholder="Öğrencinin hangi alıştırmaları çözmesi ve nelere dikkat etmesi gerektiğini yazın..."
+                placeholder={tx({
+                  tr: 'Öğrencinin hangi alıştırmaları çözmesi ve nelere dikkat etmesi gerektiğini yazın...',
+                  en: 'Describe which exercises to complete and what to focus on...',
+                })}
                 maxLength={320}
                 className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
               />
@@ -461,13 +577,13 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 onClick={() => setShowCreateForm(false)}
                 className="h-10 rounded-lg border border-[#D9D9D3] px-4 text-xs font-medium text-[#52525B] hover:bg-[#F6F6F4] dark:border-[#282830] dark:text-[#A1A1AA]"
               >
-                Vazgeç
+                {locale.common.cancel}
               </button>
               <button
                 type="submit"
                 className="h-10 rounded-lg bg-[#7C1D2E] px-5 text-xs font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
               >
-                Ödevi Kaydet
+                {tx({ tr: 'Ödevi Kaydet', en: 'Save Assignment' })}
               </button>
             </div>
           </form>
@@ -479,15 +595,27 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <div
             role="group"
-            aria-label="Ödev durum filtresi"
+            aria-label={tx({ tr: 'Ödev durum filtresi', en: 'Assignment status filter' })}
             className="flex flex-wrap items-center gap-1 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
           >
             {(
               [
-                { id: 'all', label: `Tümü (${counts.all})` },
-                { id: 'assigned', label: `Bekleyen (${counts.assigned})` },
-                { id: 'completed', label: `Tamamlanan (${counts.completed})` },
-                { id: 'reviewed', label: `İncelenen (${counts.reviewed})` },
+                { id: 'all', label: tx({ tr: 'Tümü ({{c}})', en: 'All ({{c}})' }, { c: counts.all }) },
+                {
+                  id: 'assigned',
+                  label: tx({ tr: 'Bekleyen ({{c}})', en: 'Pending ({{c}})' }, { c: counts.assigned }),
+                },
+                {
+                  id: 'completed',
+                  label: tx(
+                    { tr: 'Tamamlanan ({{c}})', en: 'Completed ({{c}})' },
+                    { c: counts.completed }
+                  ),
+                },
+                {
+                  id: 'reviewed',
+                  label: tx({ tr: 'İncelenen ({{c}})', en: 'Reviewed ({{c}})' }, { c: counts.reviewed }),
+                },
               ] as Array<{ id: StatusFilter; label: string }>
             ).map((tab) => (
               <button
@@ -507,7 +635,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
 
           <div
             role="group"
-            aria-label="Seviye filtresi"
+            aria-label={tx({ tr: 'Seviye filtresi', en: 'Level filter' })}
             className="flex items-center gap-1 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
           >
             {(
@@ -539,7 +667,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               htmlFor="filter-class-select"
               className="text-xs text-[#52525B] dark:text-[#A1A1AA] whitespace-nowrap"
             >
-              Sınıf:
+              {tx({ tr: 'Sınıf:', en: 'Class:' })}
             </label>
             <select
               id="filter-class-select"
@@ -547,8 +675,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               onChange={(e) => setClassFilter(e.target.value)}
               className="h-9 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs text-[#111113] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
             >
-              <option value="all">Tüm Sınıflar</option>
-              <option value="unassigned">Genel / Bireysel</option>
+              <option value="all">{tx({ tr: 'Tüm Sınıflar', en: 'All Classes' })}</option>
+              <option value="unassigned">
+                {tx({ tr: 'Genel / Bireysel', en: 'General / Individual' })}
+              </option>
               {progress.teachingClasses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -564,10 +694,16 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-8 text-center dark:border-[#282830] dark:bg-[#16161A]">
           <ClipboardCheck className="mx-auto h-7 w-7 text-[#7C1D2E] dark:text-[#D9A13B]" />
           <p className="mt-3 font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Seçili filtrede ödev bulunmuyor
+            {tx({
+              tr: 'Seçili filtrede ödev bulunmuyor',
+              en: 'No assignments match the selected filter',
+            })}
           </p>
           <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-            Filtreyi değiştirebilir, hızlı A2 şablonlarından ekleyebilir veya yeni bir Almanca A1/A2 ödevi oluşturabilirsiniz.
+            {tx({
+              tr: 'Filtreyi değiştirebilir, hızlı A2 şablonlarından ekleyebilir veya yeni bir Almanca A1/A2 ödevi oluşturabilirsiniz.',
+              en: 'Adjust your filter, add from the quick A2 templates, or create a new German A1/A2 assignment.',
+            })}
           </p>
         </div>
       ) : (
@@ -594,6 +730,12 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             const isReviewed = assignment.status === 'reviewed';
             const xpAlreadyAwarded = progress.assignmentCompletedIds.includes(assignment.id);
             const linkedClassName = assignment.classId ? classMap.get(assignment.classId) : null;
+            const moduleShortLabel = isEn
+              ? MODULE_SHORT_LABELS[assignment.moduleRoute]?.en ?? assignment.moduleRoute
+              : MODULE_SHORT_LABELS[assignment.moduleRoute]?.tr ?? assignment.moduleRoute;
+            const unitLabel = isEn
+              ? UNIT_LABEL_EN_MAP[liveProgress.unitLabelTr] ?? liveProgress.unitLabelTr
+              : liveProgress.unitLabelTr;
 
             return (
               <article
@@ -609,14 +751,16 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       </span>
                       <span aria-hidden="true">·</span>
                       <span className="font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                        {getModuleShortLabelTr(assignment.moduleRoute)}
+                        {moduleShortLabel}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span>{assignment.targetLabelTr}</span>
                       {linkedClassName && (
                         <>
                           <span aria-hidden="true">·</span>
-                          <span>Sınıf: {linkedClassName}</span>
+                          <span>
+                            {tx({ tr: 'Sınıf:', en: 'Class:' })} {linkedClassName}
+                          </span>
                         </>
                       )}
                       {assignment.dueDateLabel && (
@@ -636,10 +780,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         }`}
                       >
                         {isReviewed
-                          ? 'Öğretmen İnceledi'
+                          ? tx({ tr: 'Öğretmen İnceledi', en: 'Reviewed by Teacher' })
                           : isDone
-                          ? 'Tamamlandı'
-                          : 'Bekliyor'}
+                          ? locale.common.completed
+                          : tx({ tr: 'Bekliyor', en: 'Pending' })}
                       </span>
                     </div>
 
@@ -654,10 +798,15 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     {/* Real Linked Module Progress Bar */}
                     <div className="pt-2 max-w-md space-y-1.5">
                       <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                        <span>Bu tarayıcıdaki gerçek modül ilerlemesi</span>
+                        <span>
+                          {tx({
+                            tr: 'Bu tarayıcıdaki gerçek modül ilerlemesi',
+                            en: 'Live module progress in this browser',
+                          })}
+                        </span>
                         <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                          {liveProgress.done}/{liveProgress.total} {liveProgress.unitLabelTr} (%
-                          {liveProgress.percent})
+                          {liveProgress.done}/{liveProgress.total} {unitLabel} (
+                          {tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct: liveProgress.percent })})
                         </span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
@@ -672,7 +821,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     {assignment.reviewNoteTr && (
                       <div className="mt-3 rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-3 text-xs text-[#111113] dark:border-[#24242C] dark:bg-[#111113] dark:text-[#E4E4E7]">
                         <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                          Yerel İnceleme Notu:{' '}
+                          {tx({ tr: 'Yerel İnceleme Notu:', en: 'Local Review Note:' })}{' '}
                         </span>
                         {assignment.reviewNoteTr}
                       </div>
@@ -692,7 +841,11 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       }
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#111113] px-4 text-xs font-medium text-[#F6F6F4] hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
                     >
-                      <span>{isA2Assignment ? 'A2 Modülünde Aç' : 'A1 Modülünde Aç'}</span>
+                      <span>
+                        {isA2Assignment
+                          ? tx({ tr: 'A2 Modülünde Aç', en: 'Open in A2 Module' })
+                          : tx({ tr: 'A1 Modülünde Aç', en: 'Open in A1 Module' })}
+                      </span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
 
@@ -712,10 +865,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       )}
                       <span>
                         {isDone
-                          ? 'Tamamlandı (Geri Al)'
+                          ? tx({ tr: 'Tamamlandı (Geri Al)', en: 'Completed (Undo)' })
                           : xpAlreadyAwarded
-                          ? 'Tamamlandı İşaretle'
-                          : 'Tamamlandı (+15 XP)'}
+                          ? tx({ tr: 'Tamamlandı İşaretle', en: 'Mark Complete' })
+                          : tx({ tr: 'Tamamlandı (+15 XP)', en: 'Mark Complete (+15 XP)' })}
                       </span>
                     </button>
 
@@ -730,13 +883,16 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#52525B] hover:text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5] whitespace-nowrap"
                       >
                         <MessageSquare className="h-3.5 w-3.5" />
-                        <span>İncele / Not</span>
+                        <span>{tx({ tr: 'İncele / Not', en: 'Review / Note' })}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => deleteTeachingAssignment(assignment.id)}
-                        aria-label={`${assignment.titleTr} ödevini sil`}
+                        aria-label={tx(
+                          { tr: '{{title}} ödevini sil', en: 'Delete assignment {{title}}' },
+                          { title: assignment.titleTr }
+                        )}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9D9D3] text-[#52525B] hover:border-[#B91C1C]/40 hover:text-[#991B1B] dark:border-[#282830] dark:text-[#A1A1AA] dark:hover:text-[#FCA5A5] shrink-0"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -752,14 +908,20 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       htmlFor={`review-note-${assignment.id}`}
                       className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
                     >
-                      Öğretmen İnceleme Notu (Yerel Kayıt)
+                      {tx({
+                        tr: 'Öğretmen İnceleme Notu (Yerel Kayıt)',
+                        en: 'Teacher Review Note (Local Storage)',
+                      })}
                     </label>
                     <textarea
                       id={`review-note-${assignment.id}`}
                       rows={2}
                       value={reviewDraftNote}
                       onChange={(e) => setReviewDraftNote(e.target.value)}
-                      placeholder="Örn: Artikel kullanımı çok iyi, cümle sonundaki noktalama kurallarına dikkat."
+                      placeholder={tx({
+                        tr: 'Örn: Artikel kullanımı çok iyi, cümle sonundaki noktalama kurallarına dikkat.',
+                        en: 'e.g. Great article usage, keep an eye on sentence-final punctuation.',
+                      })}
                       maxLength={240}
                       className="w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 py-2 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
                     />
@@ -769,7 +931,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         onClick={() => setReviewingId(null)}
                         className="h-9 rounded-lg border border-[#D9D9D3] px-3 text-xs font-medium text-[#52525B] dark:border-[#282830] dark:text-[#A1A1AA]"
                       >
-                        Kapat
+                        {locale.common.close}
                       </button>
                       {isReviewed && (
                         <button
@@ -777,7 +939,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                           onClick={() => handleSaveReview(assignment.id, false)}
                           className="h-9 rounded-lg border border-[#D9D9D3] px-3 text-xs font-medium text-[#111113] dark:border-[#282830] dark:text-[#F4F4F5]"
                         >
-                          İnceleme İşaretini Kaldır
+                          {tx({
+                            tr: 'İnceleme İşaretini Kaldır',
+                            en: 'Remove Reviewed Status',
+                          })}
                         </button>
                       )}
                       <button
@@ -785,7 +950,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         onClick={() => handleSaveReview(assignment.id, true)}
                         className="h-9 rounded-lg bg-[#7C1D2E] px-4 text-xs font-medium text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
                       >
-                        İncelendi Olarak Kaydet
+                        {tx({ tr: 'İncelendi Olarak Kaydet', en: 'Save as Reviewed' })}
                       </button>
                     </div>
                   </div>
@@ -801,7 +966,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         <div className="flex items-start gap-2.5 text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <Info className="mt-0.5 h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B] shrink-0" />
           <p className="leading-relaxed">
-            Ödevler, tamamlama işaretleri ve inceleme notları tarayıcınızdaki yerel depolamada tutulur. Her ödev için `+15 XP` ödülü yalnızca ilk tamamlanışta tek sefer verilir; sunucu taraflı öğrenci teslimi ve otomatik çoklu cihaz bildirimleri sonraki aşamalarda eklenecektir.
+            {tx({
+              tr: 'Ödevler, tamamlama işaretleri ve inceleme notları tarayıcınızdaki yerel depolamada tutulur. Her ödev için `+15 XP` ödülü yalnızca ilk tamamlanışta tek sefer verilir; sunucu taraflı öğrenci teslimi ve otomatik çoklu cihaz bildirimleri sonraki aşamalarda eklenecektir.',
+              en: 'Assignments, completion checkmarks, and review notes are stored locally in this browser. The `+15 XP` reward is granted once per assignment on first completion; server-side student submissions and cross-device notifications are planned for future phases.',
+            })}
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Headphones } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   GERMAN_A1_LISTENING_SCENARIOS,
   TOTAL_LISTENING_EXERCISES,
@@ -16,6 +17,7 @@ interface ListeningModuleProps {
 
 export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenarioId }) => {
   const { progress, listeningAccuracyPercent, rolePreview } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     initialScenarioId ?? GERMAN_A1_LISTENING_SCENARIOS[0].id
   );
@@ -35,47 +37,56 @@ export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenari
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Hören
+              {tx({ tr: 'Almanca A1 · Hören', en: 'German A1 · Hören' })}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>{tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}</span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A1 Dinleme (Hören) Atölyesi
+            {tx({
+              tr: 'Almanca A1 Dinleme (Hören) Atölyesi',
+              en: 'German A1 Listening (Hören) Workshop',
+            })}
           </h1>
         </div>
 
         {/* Real Progress Strip (strictly from localStorage) */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Dinleme Sorusu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Dinleme Sorusu', en: 'Listening Items' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {progress.listeningMasteredIds.length} / {TOTAL_LISTENING_EXERCISES}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Dinleme Doğruluğu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Dinleme Doğruluğu', en: 'Listening Accuracy' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {listeningAccuracyPercent === null ? '—' : `%${listeningAccuracyPercent}`}
+              {listeningAccuracyPercent === null
+                ? '—'
+                : tx({ tr: '%{pct}', en: '{pct}%' }, { pct: listeningAccuracyPercent })}
             </p>
           </div>
         </div>
@@ -88,10 +99,16 @@ export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenari
             id="horen-scenario-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. Dinleme Senaryosu Seçin
+            {tx({ tr: '1. Dinleme Senaryosu Seçin', en: '1. Choose a Listening Scenario' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            4 A1 Günlük Bağlam · {TOTAL_LISTENING_EXERCISES} Alıştırma
+            {tx(
+              {
+                tr: '4 A1 Günlük Bağlam · {count} Alıştırma',
+                en: '4 Everyday A1 Contexts · {count} Exercises',
+              },
+              { count: TOTAL_LISTENING_EXERCISES }
+            )}
           </span>
         </div>
 
@@ -156,7 +173,10 @@ export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenari
                   </p>
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                      {scenario.lines.length} replik · 3 görev
+                      {tx(
+                        { tr: '{count} replik · 3 görev', en: '{count} lines · 3 tasks' },
+                        { count: scenario.lines.length }
+                      )}
                     </span>
                     <span
                       className={`font-semibold ${
@@ -165,7 +185,9 @@ export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenari
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili', en: 'Selected' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -176,18 +198,35 @@ export const ListeningModule: React.FC<ListeningModuleProps> = ({ initialScenari
       </section>
 
       {/* Active Scenario Audio Player + Hidden-by-Default Transcript */}
-      <section aria-label="Ses oynatıcı ve diyalog metni">
+      <section
+        aria-label={tx({
+          tr: 'Ses oynatıcı ve diyalog metni',
+          en: 'Audio player and dialogue transcript',
+        })}
+      >
         <DialogueAudioPlayer scenario={activeScenario} />
       </section>
 
       {/* Active Scenario 3-Part Interactive Exercises */}
-      <section aria-label="Dinleme anlama alıştırmaları" className="space-y-3">
+      <section
+        aria-label={tx({
+          tr: 'Dinleme anlama alıştırmaları',
+          en: 'Listening comprehension exercises',
+        })}
+        className="space-y-3"
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. Etkileşimli Dinleme Alıştırmaları
+            {tx({
+              tr: '2. Etkileşimli Dinleme Alıştırmaları',
+              en: '2. Interactive Listening Exercises',
+            })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Her ilk doğru yanıt +10 XP kazandırır
+            {tx({
+              tr: 'Her ilk doğru yanıt +10 XP kazandırır',
+              en: 'Each first correct answer earns +10 XP',
+            })}
           </span>
         </div>
 

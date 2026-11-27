@@ -7,6 +7,7 @@ import {
   getWritingScenarioById,
   getWritingScenarioExerciseIds,
 } from '../../data/germanA1Writing';
+import { useI18n } from '../../hooks/useI18n';
 import type { WritingTaskKind } from '../../types';
 import { WritingControlledTasks } from './WritingControlledTasks';
 import { WritingFormTask } from './WritingFormTask';
@@ -18,6 +19,7 @@ interface WritingModuleProps {
 
 export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId }) => {
   const { progress, writingAccuracyPercent, rolePreview } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     initialScenarioId ?? GERMAN_A1_WRITING_SCENARIOS[0].id
   );
@@ -43,47 +45,58 @@ export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId 
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Schreiben
+              {tx({ tr: 'Almanca A1 · Schreiben', en: 'German A1 · Schreiben' })}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>
+                  {tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}
+                </span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A1 Yazma (Schreiben) Atölyesi
+            {tx({
+              tr: 'Almanca A1 Yazma (Schreiben) Atölyesi',
+              en: 'German A1 Writing (Schreiben) Workshop',
+            })}
           </h1>
         </div>
 
         {/* Real Progress Strip (strictly from localStorage) */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Yazma Görevi</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Yazma Görevi', en: 'Writing Tasks' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {progress.writingMasteredIds.length} / {TOTAL_WRITING_TASKS}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Yazma Doğruluğu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Yazma Doğruluğu', en: 'Writing Accuracy' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {writingAccuracyPercent === null ? '—' : `%${writingAccuracyPercent}`}
+              {writingAccuracyPercent === null
+                ? '—'
+                : tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: writingAccuracyPercent })}
             </p>
           </div>
         </div>
@@ -96,10 +109,16 @@ export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId 
             id="schreiben-scenario-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. Yazma Bağlamı Seçin
+            {tx({ tr: '1. Yazma Bağlamı Seçin', en: '1. Select a Writing Context' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            4 Günlük A1 Bağlamı · {TOTAL_WRITING_TASKS} Görev
+            {tx(
+              {
+                tr: '4 Günlük A1 Bağlamı · {{count}} Görev',
+                en: '4 Everyday A1 Contexts · {{count}} Tasks',
+              },
+              { count: TOTAL_WRITING_TASKS }
+            )}
           </span>
         </div>
 
@@ -173,7 +192,9 @@ export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId 
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili', en: 'Selected' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -184,13 +205,22 @@ export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId 
       </section>
 
       {/* 2. Interactive 3-Format Writing Studio */}
-      <section aria-label="Yazma görevleri" className="space-y-4">
+      <section aria-label={tx({ tr: 'Yazma görevleri', en: 'Writing tasks' })} className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. A1 Yazma Görevleri · {activeScenario.titleTr}
+            {tx(
+              {
+                tr: '2. A1 Yazma Görevleri · {{title}}',
+                en: '2. A1 Writing Tasks · {{title}}',
+              },
+              { title: activeScenario.titleTr }
+            )}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Her ilk doğru görev +10 XP kazandırır (çift sayım yapılmaz)
+            {tx({
+              tr: 'Her ilk doğru görev +10 XP kazandırır (çift sayım yapılmaz)',
+              en: 'Each first correct task awards +10 XP (no duplicate counting)',
+            })}
           </span>
         </div>
 
@@ -198,7 +228,7 @@ export const WritingModule: React.FC<WritingModuleProps> = ({ initialScenarioId 
           {/* 3-Tab Format Switcher */}
           <div
             role="tablist"
-            aria-label="Yazma görev türü"
+            aria-label={tx({ tr: 'Yazma görev türü', en: 'Writing task type' })}
             className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-1.5 dark:border-[#24242C] dark:bg-[#111113]"
           >
             <button

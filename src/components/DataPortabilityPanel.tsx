@@ -17,6 +17,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
+import { useI18n } from '../hooks/useI18n';
 import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import {
   STORAGE_KEY_STATE,
@@ -35,21 +36,6 @@ import {
   getUniqueA2CompletedWordIds,
 } from '../utils/a2DataPortability';
 import { platformServices } from '../services/localAdapters';
-
-function formatClockTr(iso: string | null): string {
-  if (!iso) return 'Henüz bu oturumda yazılmadı';
-  try {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 export const DataPortabilityPanel: React.FC = () => {
   const {
@@ -77,7 +63,7 @@ export const DataPortabilityPanel: React.FC = () => {
     resetAllLocalData,
     resetCloudAndLocal,
   } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { locale, isEn, tx, formatClock } = useI18n();
   const [cloudActionBusy, setCloudActionBusy] = useState(false);
   const [cloudActionNotice, setCloudActionNotice] = useState<string | null>(null);
 
@@ -131,7 +117,15 @@ export const DataPortabilityPanel: React.FC = () => {
       },
       a2Progress
     );
-    setExportNotice(`Yedek dosyası (A1 + A2) oluşturuldu: ${filename}`);
+    setExportNotice(
+      tx(
+        {
+          tr: 'Yedek dosyası (A1 + A2) oluşturuldu: {{filename}}',
+          en: 'Backup file (A1 + A2) created: {{filename}}',
+        },
+        { filename }
+      )
+    );
     window.setTimeout(() => setExportNotice(null), 3500);
   };
 
@@ -154,7 +148,12 @@ export const DataPortabilityPanel: React.FC = () => {
         await navigator.clipboard.writeText(jsonText);
         setCopiedJson(true);
         setCopyFallbackJson(null);
-        setExportNotice('JSON yedek metni (A1 + A2) panoya kopyalandı.');
+        setExportNotice(
+          tx({
+            tr: 'JSON yedek metni (A1 + A2) panoya kopyalandı.',
+            en: 'JSON backup text (A1 + A2) copied to clipboard.',
+          })
+        );
         window.setTimeout(() => {
           setCopiedJson(false);
           setExportNotice(null);
@@ -166,7 +165,10 @@ export const DataPortabilityPanel: React.FC = () => {
     }
     setCopyFallbackJson(jsonText);
     setExportNotice(
-      'Tarayıcı pano erişimini kısıtladı; JSON yedeğini aşağıdaki kutudan kopyalayabilirsiniz.'
+      tx({
+        tr: 'Tarayıcı pano erişimini kısıtladı; JSON yedeğini aşağıdaki kutudan kopyalayabilirsiniz.',
+        en: 'Browser restricted clipboard access; you can copy the JSON backup from the box below.',
+      })
     );
   };
 
@@ -176,7 +178,11 @@ export const DataPortabilityPanel: React.FC = () => {
     const result = parseAndValidateBackup(rawText);
     if (!result.ok) {
       setPendingBackup(null);
-      setImportError(result.errorTr);
+      setImportError(
+        isEn
+          ? 'Invalid or unrecognized Teachers Kingdom backup JSON. Only valid schema backups can be imported.'
+          : result.errorTr
+      );
       return;
     }
     setPendingBackup(result.data);
@@ -187,7 +193,12 @@ export const DataPortabilityPanel: React.FC = () => {
     if (!file) return;
     if (file.size > 2_000_000) {
       setPendingBackup(null);
-      setImportError('Seçilen dosya 2 MB sınırını aşıyor; geçerli bir yerel yedek değil.');
+      setImportError(
+        tx({
+          tr: 'Seçilen dosya 2 MB sınırını aşıyor; geçerli bir yerel yedek değil.',
+          en: 'Selected file exceeds the 2 MB limit; not a valid local backup.',
+        })
+      );
       e.target.value = '';
       return;
     }
@@ -198,7 +209,12 @@ export const DataPortabilityPanel: React.FC = () => {
     };
     reader.onerror = () => {
       setPendingBackup(null);
-      setImportError('Dosya okunamadı. Lütfen geçerli bir .json dosyası seçin.');
+      setImportError(
+        tx({
+          tr: 'Dosya okunamadı. Lütfen geçerli bir .json dosyası seçin.',
+          en: 'Could not read the file. Please select a valid .json file.',
+        })
+      );
     };
     reader.readAsText(file, 'utf-8');
     e.target.value = '';
@@ -222,22 +238,60 @@ export const DataPortabilityPanel: React.FC = () => {
       const parts: string[] = [];
       parts.push(
         a1Delta > 0
-          ? `A1 +${a1Delta} XP (toplam ${outcome.xpAfter} XP)`
-          : `A1 çift XP eklenmedi (${outcome.xpAfter} XP)`
+          ? tx(
+              {
+                tr: 'A1 +{{delta}} XP (toplam {{total}} XP)',
+                en: 'A1 +{{delta}} XP (total {{total}} XP)',
+              },
+              { delta: a1Delta, total: outcome.xpAfter }
+            )
+          : tx(
+              {
+                tr: 'A1 çift XP eklenmedi ({{total}} XP)',
+                en: 'No duplicate A1 XP added ({{total}} XP)',
+              },
+              { total: outcome.xpAfter }
+            )
       );
       if (outcome.a2XpAfter > 0 || outcome.a2XpBefore > 0) {
         parts.push(
           a2Delta > 0
-            ? `A2 +${a2Delta} XP (toplam ${outcome.a2XpAfter} XP)`
-            : `A2 çift XP eklenmedi (${outcome.a2XpAfter} XP)`
+            ? tx(
+                {
+                  tr: 'A2 +{{delta}} XP (toplam {{total}} XP)',
+                  en: 'A2 +{{delta}} XP (total {{total}} XP)',
+                },
+                { delta: a2Delta, total: outcome.a2XpAfter }
+              )
+            : tx(
+                {
+                  tr: 'A2 çift XP eklenmedi ({{total}} XP)',
+                  en: 'No duplicate A2 XP added ({{total}} XP)',
+                },
+                { total: outcome.a2XpAfter }
+              )
         );
       }
-      setImportSuccess(`Yedek güvenli biçimde birleştirildi: ${parts.join(' · ')}.`);
+      setImportSuccess(
+        tx(
+          {
+            tr: 'Yedek güvenli biçimde birleştirildi: {{summary}}.',
+            en: 'Backup merged safely: {{summary}}.',
+          },
+          { summary: parts.join(' · ') }
+        )
+      );
     } else {
       const a2Suffix =
         outcome.a2XpAfter > 0 ? ` · A2 ${outcome.a2XpAfter} XP` : '';
       setImportSuccess(
-        `Yerel ilerleme yedeği geri yüklendi (A1 ${outcome.xpAfter} XP${a2Suffix}).`
+        tx(
+          {
+            tr: 'Yerel ilerleme yedeği geri yüklendi (A1 {{a1}} XP{{a2}}).',
+            en: 'Local progress backup restored (A1 {{a1}} XP{{a2}}).',
+          },
+          { a1: outcome.xpAfter, a2: a2Suffix }
+        )
       );
     }
     window.setTimeout(() => setImportSuccess(null), 5000);
@@ -284,17 +338,35 @@ export const DataPortabilityPanel: React.FC = () => {
     if (resetScope === 'all-local') {
       resetAllLocalData();
       setResetNotice(
-        `A1 ve A2 yerel ilerleme kayıtları, sınıflar, ödevler, taslaklar ve profil tercihleri sıfırlandı.${cloudSafeSuffix}`
+        tx(
+          {
+            tr: 'A1 ve A2 yerel ilerleme kayıtları, sınıflar, ödevler, taslaklar ve profil tercihleri sıfırlandı.{{suffix}}',
+            en: 'A1 and A2 local progress records, classes, assignments, drafts, and profile preferences were reset.{{suffix}}',
+          },
+          { suffix: cloudSafeSuffix }
+        )
       );
     } else if (resetScope === 'a2-only') {
       resetA2Progress();
       setResetNotice(
-        `Almanca A2 yerel ilerleme kaydı (${STORAGE_KEY_A2_STATE}) sıfırlandı; A1 kaydınız ve tercihleriniz korundu.${cloudSafeSuffix}`
+        tx(
+          {
+            tr: 'Almanca A2 yerel ilerleme kaydı ({{key}}) sıfırlandı; A1 kaydınız ve tercihleriniz korundu.{{suffix}}',
+            en: 'German A2 local progress ({{key}}) was reset; your A1 progress and preferences were preserved.{{suffix}}',
+          },
+          { key: STORAGE_KEY_A2_STATE, suffix: cloudSafeSuffix }
+        )
       );
     } else {
       resetProgress();
       setResetNotice(
-        `Almanca A1 yerel ilerleme kaydı (${STORAGE_KEY_STATE}) sıfırlandı; A2 kaydınız, tema ve profil adınız korundu.${cloudSafeSuffix}`
+        tx(
+          {
+            tr: 'Almanca A1 yerel ilerleme kaydı ({{key}}) sıfırlandı; A2 kaydınız, tema ve profil adınız korundu.{{suffix}}',
+            en: 'German A1 local progress ({{key}}) was reset; your A2 progress, theme, and display name were preserved.{{suffix}}',
+          },
+          { key: STORAGE_KEY_STATE, suffix: cloudSafeSuffix }
+        )
       );
     }
     setResetPanelOpen(false);
@@ -352,14 +424,24 @@ export const DataPortabilityPanel: React.FC = () => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
           <div>
             <p className="text-xs font-medium text-[#9A6B16] dark:text-[#D9A13B]">
-              Hesap, Servis Katmanı ve Senkronizasyon Mimarisi
+              {tx({
+                tr: 'Hesap, Servis Katmanı ve Senkronizasyon Mimarisi',
+                en: 'Account, Service Layer & Sync Architecture',
+              })}
             </p>
             <h2 className="mt-1 font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Hesap ve Senkronizasyon Durumu
+              {tx({
+                tr: 'Hesap ve Senkronizasyon Durumu',
+                en: 'Account & Synchronization Status',
+              })}
             </h2>
           </div>
           <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-            Şema v{TK_BACKUP_SCHEMA_VERSION} · {STORAGE_KEY_STATE} · {platformServices.progressSync.id}
+            {tx(
+              { tr: 'Şema v{{v}}', en: 'Schema v{{v}}' },
+              { v: TK_BACKUP_SCHEMA_VERSION }
+            )}{' '}
+            · {STORAGE_KEY_STATE} · {platformServices.progressSync.id}
           </span>
         </div>
 
@@ -369,42 +451,59 @@ export const DataPortabilityPanel: React.FC = () => {
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
                 <HardDrive className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>Bugün Aktif: Yerel Tarayıcı Depolaması</span>
+                <span>
+                  {tx({
+                    tr: 'Bugün Aktif: Yerel Tarayıcı Depolaması',
+                    en: 'Active Today: Local Browser Storage',
+                  })}
+                </span>
               </span>
               <span className="font-mono text-xs font-semibold text-[#15803D] dark:text-[#4ADE80]">
-                {diagnostics.available ? 'Çalışıyor' : 'Kısıtlı'}
+                {diagnostics.available
+                  ? tx({ tr: 'Çalışıyor', en: 'Operational' })
+                  : tx({ tr: 'Kısıtlı', en: 'Restricted' })}
               </span>
             </div>
 
             <dl className="divide-y divide-[#ECECE8] text-xs dark:divide-[#24242C]">
               <div className="flex items-center justify-between py-2">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Yerel Profil</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Yerel Profil', en: 'Local Profile' })}
+                </dt>
                 <dd className="font-medium text-[#111113] dark:text-[#F4F4F5] truncate max-w-[180px]">
-                  {displayName || 'Misafir Kullanıcı'}
+                  {displayName || locale.roles.guestUser}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Rol Önizlemesi</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Rol Önizlemesi', en: 'Role Preview' })}
+                </dt>
                 <dd className="font-medium text-[#111113] dark:text-[#F4F4F5]">
-                  {rolePreview === 'teacher' ? 'Öğretmen' : 'Öğrenci'}
+                  {rolePreview === 'teacher' ? locale.roles.teacher : locale.roles.student}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Depolama Boyutu (A1 + A2)</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Depolama Boyutu (A1 + A2)', en: 'Storage Size (A1 + A2)' })}
+                </dt>
                 <dd className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {formatBytesTr(diagnostics.totalBytes)}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">İzole A2 Kaydı</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'İzole A2 Kaydı', en: 'Isolated A2 Storage' })}
+                </dt>
                 <dd className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
                   {a2Progress.xp} XP · {formatBytesTr(diagnostics.a2ProgressBytes)}
                 </dd>
               </div>
               <div className="flex items-center justify-between py-2">
-                <dt className="text-[#52525B] dark:text-[#A1A1AA]">Son Yerel Kayıt</dt>
+                <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Son Yerel Kayıt', en: 'Last Local Save' })}
+                </dt>
                 <dd className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                  {formatClockTr(lastSavedAt)}
+                  {formatClock(lastSavedAt)}
                 </dd>
               </div>
             </dl>
@@ -454,7 +553,7 @@ export const DataPortabilityPanel: React.FC = () => {
                       {isEn ? 'Last Cloud Sync' : 'Son Bulut Eşitleme'}
                     </dt>
                     <dd className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                      {formatClockTr(lastCloudSyncAt)}
+                      {formatClock(lastCloudSyncAt)}
                     </dd>
                   </div>
                   <div className="flex items-center justify-between gap-2 py-1.5">
@@ -571,10 +670,16 @@ export const DataPortabilityPanel: React.FC = () => {
       <section className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 space-y-5 dark:border-[#282830] dark:bg-[#16161A]">
         <div className="border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
           <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Yerel Yedekleme ve Veri Taşıma (JSON)
+            {tx({
+              tr: 'Yerel Yedekleme ve Veri Taşıma (JSON)',
+              en: 'Local Backup & Data Portability (JSON)',
+            })}
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-[#52525B] dark:text-[#A1A1AA]">
-            Almanca A1 ve A2 ilerlemenizi, XP kayıtlarınızı, yerel sınıflarınızı, ödevlerinizi ve Öğretmen Stüdyosu taslaklarınızı tek bir şema doğrulamalı JSON dosyasıyla dışa/içe aktarın.
+            {tx({
+              tr: 'Almanca A1 ve A2 ilerlemenizi, XP kayıtlarınızı, yerel sınıflarınızı, ödevlerinizi ve Öğretmen Stüdyosu taslaklarınızı tek bir şema doğrulamalı JSON dosyasıyla dışa/içe aktarın.',
+              en: 'Export or import your German A1 & A2 progress, XP records, local classes, assignments, and Teacher Studio drafts in a single schema-validated JSON file.',
+            })}
           </p>
         </div>
 
@@ -587,7 +692,7 @@ export const DataPortabilityPanel: React.FC = () => {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
               <Download className="h-4 w-4" />
-              <span>JSON Yedeği İndir</span>
+              <span>{tx({ tr: 'JSON Yedeği İndir', en: 'Download JSON Backup' })}</span>
             </button>
 
             <button
@@ -600,7 +705,11 @@ export const DataPortabilityPanel: React.FC = () => {
               ) : (
                 <Copy className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
               )}
-              <span>{copiedJson ? 'JSON Kopyalandı' : 'JSON Metnini Kopyala'}</span>
+              <span>
+                {copiedJson
+                  ? tx({ tr: 'JSON Kopyalandı', en: 'JSON Copied' })
+                  : tx({ tr: 'JSON Metnini Kopyala', en: 'Copy JSON Text' })}
+              </span>
             </button>
           </div>
 
@@ -617,14 +726,14 @@ export const DataPortabilityPanel: React.FC = () => {
             <div className="rounded-lg border border-[#D9A13B]/50 bg-[#FFFBEB] p-3.5 space-y-2 dark:border-[#D9A13B]/40 dark:bg-[#231D10]">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-[#78350F] dark:text-[#F6D693]">
-                  Manuel JSON Kopyalama Alanı
+                  {tx({ tr: 'Manuel JSON Kopyalama Alanı', en: 'Manual JSON Copy Area' })}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCopyFallbackJson(null)}
                   className="underline text-[#78350F] dark:text-[#F6D693]"
                 >
-                  Kapat
+                  {locale.common.close}
                 </button>
               </div>
               <textarea
@@ -643,17 +752,23 @@ export const DataPortabilityPanel: React.FC = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                JSON Yedeği İçe Aktar (Şema Doğrulamalı)
+                {tx({
+                  tr: 'JSON Yedeği İçe Aktar (Şema Doğrulamalı)',
+                  en: 'Import JSON Backup (Schema-Validated)',
+                })}
               </h3>
               <p className="mt-0.5 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Bozuk veya geçersiz dosyalar mevcut verinize dokunmadan reddedilir.
+                {tx({
+                  tr: 'Bozuk veya geçersiz dosyalar mevcut verinize dokunmadan reddedilir.',
+                  en: 'Corrupted or invalid files are rejected without touching your existing data.',
+                })}
               </p>
             </div>
 
             {/* Import Mode Selector */}
             <div
               role="group"
-              aria-label="İçe aktarma modu"
+              aria-label={tx({ tr: 'İçe aktarma modu', en: 'Import mode' })}
               className="inline-flex flex-wrap items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#111113] shrink-0"
             >
               <button
@@ -666,7 +781,7 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'text-[#52525B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Tam Geri Yükle
+                {tx({ tr: 'Tam Geri Yükle', en: 'Full Restore' })}
               </button>
               <button
                 type="button"
@@ -678,7 +793,10 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'text-[#52525B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Birleştir (Çift XP Korumalı)
+                {tx({
+                  tr: 'Birleştir (Çift XP Korumalı)',
+                  en: 'Merge (Duplicate-XP Safe)',
+                })}
               </button>
             </div>
           </div>
@@ -690,7 +808,10 @@ export const DataPortabilityPanel: React.FC = () => {
               accept=".json,application/json"
               onChange={handleFileChange}
               className="sr-only"
-              aria-label="JSON yedek dosyası seç"
+              aria-label={tx({
+                tr: 'JSON yedek dosyası seç',
+                en: 'Choose JSON backup file',
+              })}
             />
             <button
               type="button"
@@ -698,7 +819,7 @@ export const DataPortabilityPanel: React.FC = () => {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs sm:text-sm font-medium text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#23232B] dark:text-[#F4F4F5] dark:hover:bg-[#2E2E38] whitespace-nowrap"
             >
               <Upload className="h-4 w-4 text-[#D9A13B]" />
-              <span>.json Dosyası Seç</span>
+              <span>{tx({ tr: '.json Dosyası Seç', en: 'Choose .json File' })}</span>
             </button>
 
             <button
@@ -711,7 +832,11 @@ export const DataPortabilityPanel: React.FC = () => {
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs sm:text-sm font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
             >
               <FileJson className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-              <span>{showPasteBox ? 'Yapıştırma Alanını Kapat' : 'JSON Metni Yapıştır'}</span>
+              <span>
+                {showPasteBox
+                  ? tx({ tr: 'Yapıştırma Alanını Kapat', en: 'Close Paste Box' })
+                  : tx({ tr: 'JSON Metni Yapıştır', en: 'Paste JSON Text' })}
+              </span>
             </button>
           </div>
 
@@ -730,7 +855,7 @@ export const DataPortabilityPanel: React.FC = () => {
                 onClick={handleValidatePastedJson}
                 className="h-9 rounded-lg bg-[#7C1D2E] px-4 text-xs font-medium text-white hover:bg-[#641624] disabled:opacity-45 dark:bg-[#D9A13B] dark:text-[#111113]"
               >
-                JSON İçeriğini Doğrula
+                {tx({ tr: 'JSON İçeriğini Doğrula', en: 'Validate JSON Content' })}
               </button>
             </div>
           )}
@@ -762,62 +887,120 @@ export const DataPortabilityPanel: React.FC = () => {
             <div className="rounded-xl border border-[#7C1D2E]/50 bg-[#F6F6F4] p-5 space-y-4 dark:border-[#D9A13B]/50 dark:bg-[#111113]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  Yedek Şeması Doğrulandı — Onayınız Bekleniyor
+                  {tx({
+                    tr: 'Yedek Şeması Doğrulandı — Onayınız Bekleniyor',
+                    en: 'Backup Schema Validated — Awaiting Confirmation',
+                  })}
                 </p>
                 <span className="font-mono text-xs text-[#9A6B16] dark:text-[#D9A13B]">
                   {pendingBackup.sourceFormat === 'envelope-v1'
-                    ? 'Resmî Yedek v1'
-                    : 'Ham tk_stage1_progress_v1'}
+                    ? tx({ tr: 'Resmî Yedek v1', en: 'Official Backup v1' })
+                    : tx({ tr: 'Ham tk_stage1_progress_v1', en: 'Raw tk_stage1_progress_v1' })}
                 </span>
               </div>
 
               {pendingBackup.exportedAt && (
                 <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                  Dışa aktarma zamanı: {formatClockTr(pendingBackup.exportedAt)}
+                  {tx(
+                    { tr: 'Dışa aktarma zamanı: {{time}}', en: 'Exported at: {{time}}' },
+                    { time: formatClock(pendingBackup.exportedAt) }
+                  )}
                 </p>
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                 <div className="rounded-lg border border-[#ECECE8] bg-[#FFFFFF] p-2.5 dark:border-[#24242C] dark:bg-[#16161A]">
-                  <span className="text-[#52525B] dark:text-[#A1A1AA]">Yedek XP (A1 / A2)</span>
+                  <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                    {tx({ tr: 'Yedek XP (A1 / A2)', en: 'Backup XP (A1 / A2)' })}
+                  </span>
                   <p className="mt-0.5 font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                     A1 {pendingStats.xp} XP{pendingStats.hasA2 ? ` · A2 ${pendingStats.a2Xp} XP` : ''}
                   </p>
                 </div>
                 <div className="rounded-lg border border-[#ECECE8] bg-[#FFFFFF] p-2.5 dark:border-[#24242C] dark:bg-[#16161A]">
-                  <span className="text-[#52525B] dark:text-[#A1A1AA]">Çekirdek A1</span>
+                  <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                    {tx({ tr: 'Çekirdek A1', en: 'Core A1' })}
+                  </span>
                   <p className="mt-0.5 font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                    {pendingStats.uniqueWords} K · {pendingStats.listening} D · {pendingStats.reading} O
+                    {tx(
+                      { tr: '{{w}} K · {{l}} D · {{r}} O', en: '{{w}} V · {{l}} L · {{r}} R' },
+                      {
+                        w: pendingStats.uniqueWords,
+                        l: pendingStats.listening,
+                        r: pendingStats.reading,
+                      }
+                    )}
                   </p>
                 </div>
                 <div className="rounded-lg border border-[#ECECE8] bg-[#FFFFFF] p-2.5 dark:border-[#24242C] dark:bg-[#16161A]">
-                  <span className="text-[#52525B] dark:text-[#A1A1AA]">Üretim &amp; A2</span>
+                  <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                    {tx({ tr: 'Üretim & A2', en: 'Production & A2' })}
+                  </span>
                   <p className="mt-0.5 font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                    {pendingStats.writing} Y · {pendingStats.speaking} K · {pendingStats.a2Words} A2K · {pendingStats.a2Listening} A2D · {pendingStats.a2Reading} A2O · {pendingStats.a2Writing} A2Y · {pendingStats.a2Speaking} A2S · {pendingStats.a2Activities} A2E
+                    {tx(
+                      {
+                        tr: '{{wr}} Y · {{sp}} K · {{a2w}} A2K · {{a2l}} A2D · {{a2r}} A2O · {{a2wr}} A2Y · {{a2sp}} A2S · {{a2a}} A2E',
+                        en: '{{wr}} W · {{sp}} S · {{a2w}} A2V · {{a2l}} A2L · {{a2r}} A2R · {{a2wr}} A2W · {{a2sp}} A2S · {{a2a}} A2A',
+                      },
+                      {
+                        wr: pendingStats.writing,
+                        sp: pendingStats.speaking,
+                        a2w: pendingStats.a2Words,
+                        a2l: pendingStats.a2Listening,
+                        a2r: pendingStats.a2Reading,
+                        a2wr: pendingStats.a2Writing,
+                        a2sp: pendingStats.a2Speaking,
+                        a2a: pendingStats.a2Activities,
+                      }
+                    )}
                   </p>
                 </div>
                 <div className="rounded-lg border border-[#ECECE8] bg-[#FFFFFF] p-2.5 dark:border-[#24242C] dark:bg-[#16161A]">
-                  <span className="text-[#52525B] dark:text-[#A1A1AA]">Öğretim (Yerel)</span>
+                  <span className="text-[#52525B] dark:text-[#A1A1AA]">
+                    {tx({ tr: 'Öğretim (Yerel)', en: 'Teaching (Local)' })}
+                  </span>
                   <p className="mt-0.5 font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                    {pendingStats.classes} sınıf · {pendingStats.completedAssignments}/{pendingStats.assignments} ödev · {pendingStats.drafts} taslak
+                    {tx(
+                      {
+                        tr: '{{c}} sınıf · {{ca}}/{{a}} ödev · {{d}} taslak',
+                        en: '{{c}} classes · {{ca}}/{{a}} tasks · {{d}} drafts',
+                      },
+                      {
+                        c: pendingStats.classes,
+                        ca: pendingStats.completedAssignments,
+                        a: pendingStats.assignments,
+                        d: pendingStats.drafts,
+                      }
+                    )}
                   </p>
                 </div>
               </div>
 
               {pendingBackup.warningsTr.length > 0 && (
                 <ul className="space-y-1 text-xs text-[#9A6B16] dark:text-[#F6D693]">
-                  {pendingBackup.warningsTr.map((w, idx) => (
-                    <li key={idx}>• {w}</li>
-                  ))}
+                  {isEn ? (
+                    <li>
+                      • Legacy or partial fields in this backup were safely normalized before
+                      import.
+                    </li>
+                  ) : (
+                    pendingBackup.warningsTr.map((w, idx) => <li key={idx}>• {w}</li>)
+                  )}
                 </ul>
               )}
 
               <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Seçili işlem:{' '}
+                {tx({ tr: 'Seçili işlem:', en: 'Selected action:' })}{' '}
                 <strong className="text-[#111113] dark:text-[#F4F4F5]">
                   {importMode === 'replace'
-                    ? 'Tam Geri Yükleme (mevcut tarayıcı verisinin yerine geçer)'
-                    : 'Güvenli Birleştirme (benzersiz kazanımları birleştirir, çift XP eklemez)'}
+                    ? tx({
+                        tr: 'Tam Geri Yükleme (mevcut tarayıcı verisinin yerine geçer)',
+                        en: 'Full Restore (replaces current browser data)',
+                      })
+                    : tx({
+                        tr: 'Güvenli Birleştirme (benzersiz kazanımları birleştirir, çift XP eklemez)',
+                        en: 'Safe Merge (combines unique completions without duplicate XP)',
+                      })}
                 </strong>
               </p>
 
@@ -827,14 +1010,14 @@ export const DataPortabilityPanel: React.FC = () => {
                   onClick={() => setPendingBackup(null)}
                   className="h-9 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#52525B] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA]"
                 >
-                  Vazgeç
+                  {locale.common.cancel}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmImport}
                   className="h-9 rounded-lg bg-[#7C1D2E] px-4 text-xs font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
                 >
-                  İçe Aktarmayı Onayla
+                  {tx({ tr: 'İçe Aktarmayı Onayla', en: 'Confirm Import' })}
                 </button>
               </div>
             </div>
@@ -849,11 +1032,30 @@ export const DataPortabilityPanel: React.FC = () => {
             <ShieldCheck className="mt-0.5 h-5 w-5 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
             <div>
               <h2 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Veri Bütünlüğü ve Güvenli Sıfırlama
+                {tx({
+                  tr: 'Veri Bütünlüğü ve Güvenli Sıfırlama',
+                  en: 'Data Integrity & Safe Reset',
+                })}
               </h2>
               <p className="mt-0.5 text-xs text-[#52525B] dark:text-[#A1A1AA]">
                 {integrity.isHealthy && a2Integrity.isHealthy
-                  ? `Bütünlük doğrulandı · ${integrity.totalUniqueMasteredItems} A1 kazanımı · ${a2Integrity.totalUniqueMasteredWords} A2 kelimesi · ${a2Integrity.totalUniqueListeningItems} A2 dinleme · ${a2Integrity.totalUniqueReadingItems} A2 okuma · ${a2Integrity.totalUniqueWritingTasks} A2 yazma · ${a2Integrity.totalUniqueSpeakingTasks} A2 konuşma · ${a2Integrity.totalUniqueActivityItems} A2 etkinlik/sınav · Çift XP koruması aktif`
+                  ? tx(
+                      {
+                        tr: 'Bütünlük doğrulandı · {{a1}} A1 kazanımı · {{a2w}} A2 kelimesi · {{a2l}} A2 dinleme · {{a2r}} A2 okuma · {{a2wr}} A2 yazma · {{a2sp}} A2 konuşma · {{a2a}} A2 etkinlik/sınav · Çift XP koruması aktif',
+                        en: 'Integrity verified · {{a1}} A1 items · {{a2w}} A2 words · {{a2l}} A2 listening · {{a2r}} A2 reading · {{a2wr}} A2 writing · {{a2sp}} A2 speaking · {{a2a}} A2 activities/exams · Duplicate-XP guard active',
+                      },
+                      {
+                        a1: integrity.totalUniqueMasteredItems,
+                        a2w: a2Integrity.totalUniqueMasteredWords,
+                        a2l: a2Integrity.totalUniqueListeningItems,
+                        a2r: a2Integrity.totalUniqueReadingItems,
+                        a2wr: a2Integrity.totalUniqueWritingTasks,
+                        a2sp: a2Integrity.totalUniqueSpeakingTasks,
+                        a2a: a2Integrity.totalUniqueActivityItems,
+                      }
+                    )
+                  : isEn
+                  ? 'Data consistency check detected anomalies in stored progress. Download a backup before resetting.'
                   : [...integrity.issuesTr, ...a2Integrity.issuesTr].join(' ')}
               </p>
             </div>
@@ -872,7 +1074,7 @@ export const DataPortabilityPanel: React.FC = () => {
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#B91C1C]/40 px-4 text-xs font-medium text-[#991B1B] transition-colors hover:bg-[#FEF2F2] dark:border-[#EF4444]/40 dark:text-[#FCA5A5] dark:hover:bg-[#450A0A]/40 whitespace-nowrap shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Güvenli Sıfırlama</span>
+              <span>{tx({ tr: 'Güvenli Sıfırlama', en: 'Safe Reset' })}</span>
             </button>
           )}
         </div>
@@ -910,7 +1112,10 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'Dikkat: Yalnızca Yerel Tarayıcı Verisi Sıfırlanacak (Bulut Korunur)'}
                 </p>
                 <p className="mt-0.5 text-xs text-[#7F1D1D] dark:text-[#FECACA]">
-                  İşlemden önce ilerlemenizi kaybetmemek için JSON yedeği indirmeniz önerilir.
+                  {tx({
+                    tr: 'İşlemden önce ilerlemenizi kaybetmemek için JSON yedeği indirmeniz önerilir.',
+                    en: 'Downloading a JSON backup first is recommended so you do not lose your progress.',
+                  })}
                 </p>
               </div>
               <button
@@ -919,7 +1124,7 @@ export const DataPortabilityPanel: React.FC = () => {
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] whitespace-nowrap shrink-0"
               >
                 <Download className="h-3.5 w-3.5" />
-                <span>Önce Yedek İndir</span>
+                <span>{tx({ tr: 'Önce Yedek İndir', en: 'Download Backup First' })}</span>
               </button>
             </div>
 
@@ -995,9 +1200,17 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'border-[#D9D9D3] bg-[#FFFFFF]/60 text-[#52525B] dark:border-[#282830] dark:bg-[#16161A]/60 dark:text-[#A1A1AA]'
                 }`}
               >
-                <p className="font-semibold">Yalnızca A1 İlerlemesini Sıfırla</p>
+                <p className="font-semibold">
+                  {tx({
+                    tr: 'Yalnızca A1 İlerlemesini Sıfırla',
+                    en: 'Reset A1 Progress Only',
+                  })}
+                </p>
                 <p className="mt-0.5 opacity-85">
-                  tk_stage1_progress_v1 sıfırlanır; A2 kaydınız, tema ve profil adınız korunur.
+                  {tx({
+                    tr: 'tk_stage1_progress_v1 sıfırlanır; A2 kaydınız, tema ve profil adınız korunur.',
+                    en: 'Resets tk_stage1_progress_v1; preserves your A2 progress, theme, and display name.',
+                  })}
                 </p>
               </button>
 
@@ -1010,9 +1223,17 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'border-[#D9D9D3] bg-[#FFFFFF]/60 text-[#52525B] dark:border-[#282830] dark:bg-[#16161A]/60 dark:text-[#A1A1AA]'
                 }`}
               >
-                <p className="font-semibold">Yalnızca A2 İlerlemesini Sıfırla</p>
+                <p className="font-semibold">
+                  {tx({
+                    tr: 'Yalnızca A2 İlerlemesini Sıfırla',
+                    en: 'Reset A2 Progress Only',
+                  })}
+                </p>
                 <p className="mt-0.5 opacity-85">
-                  tk_course_de_a2_progress_v1 sıfırlanır; tüm A1 kaydınız korunur.
+                  {tx({
+                    tr: 'tk_course_de_a2_progress_v1 sıfırlanır; tüm A1 kaydınız korunur.',
+                    en: 'Resets tk_course_de_a2_progress_v1; preserves all of your A1 progress.',
+                  })}
                 </p>
               </button>
 
@@ -1027,11 +1248,20 @@ export const DataPortabilityPanel: React.FC = () => {
               >
                 <p className="font-semibold">
                   {isCloudResetSelected
-                    ? 'Tüm Yerel + Bulut Oturumunu Temizle'
-                    : 'Tüm Yerel Oturumu Temizle'}
+                    ? tx({
+                        tr: 'Tüm Yerel + Bulut Oturumunu Temizle',
+                        en: 'Clear All Local + Cloud Data',
+                      })
+                    : tx({
+                        tr: 'Tüm Yerel Oturumu Temizle',
+                        en: 'Clear All Local Session Data',
+                      })}
                 </p>
                 <p className="mt-0.5 opacity-85">
-                  A1 ve A2 kayıtlarına ek olarak görünen ad ve rol/hız tercihleri de sıfırlanır.
+                  {tx({
+                    tr: 'A1 ve A2 kayıtlarına ek olarak görünen ad ve rol/hız tercihleri de sıfırlanır.',
+                    en: 'Resets A1 and A2 progress as well as display name and role/speed preferences.',
+                  })}
                 </p>
               </button>
             </div>
@@ -1088,7 +1318,7 @@ export const DataPortabilityPanel: React.FC = () => {
                 }}
                 className="h-9 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#52525B] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA]"
               >
-                Vazgeç
+                {locale.common.cancel}
               </button>
               <button
                 type="button"

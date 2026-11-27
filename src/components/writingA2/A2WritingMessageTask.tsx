@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { A2WritingMessageTaskData } from '../../types';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   evaluateA2GuidedWriting,
   type A2WritingEvaluationResult,
@@ -37,6 +38,7 @@ interface A2WritingMessageTaskProps {
 
 export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scenarioId, task }) => {
   const { a2Progress, recordA2WritingAnswer, speechSpeed } = useAppState();
+  const { locale, tx } = useI18n();
   const [draft, setDraft] = useState('');
   const [showPromptTr, setShowPromptTr] = useState(false);
   const [showScaffold, setShowScaffold] = useState(false);
@@ -48,7 +50,9 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
   // Verified speech.ts playback state for A2 model response
   const [audioStatus, setAudioStatus] = useState<'idle' | 'starting' | 'playing'>('idle');
   const [audioRateMode, setAudioRateMode] = useState<'normal' | 'slow'>(speechSpeed);
-  const [audioFeedbackTr, setAudioFeedbackTr] = useState<string | null>(null);
+  const [audioFailureReason, setAudioFailureReason] = useState<
+    SpeechFailureReason | 'not-queued' | null
+  >(null);
   const [voiceInfo, setVoiceInfo] = useState<GermanVoiceInfo>(() => getGermanVoiceInfo());
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -87,7 +91,7 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
     speechRequestRef.current += 1;
     stopGermanSpeech();
     setAudioStatus('idle');
-    setAudioFeedbackTr(null);
+    setAudioFailureReason(null);
     setDraft('');
     setShowPromptTr(false);
     setShowScaffold(false);
@@ -149,15 +153,13 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
     speechRequestRef.current += 1;
     stopGermanSpeech();
     setAudioStatus('idle');
-    setAudioFeedbackTr(null);
+    setAudioFailureReason(null);
   };
 
   const handlePlayModelAudio = (rateMode: 'normal' | 'slow') => {
     if (!isSpeechSynthesisSupported()) {
       setAudioStatus('idle');
-      setAudioFeedbackTr(
-        'Tarayıcınız Web Speech (de-DE) seslendirmeyi desteklemiyor; örnek yanıtı metinden inceleyebilirsiniz.'
-      );
+      setAudioFailureReason('unsupported');
       return;
     }
     if (audioStatus !== 'idle' && audioRateMode === rateMode) {
@@ -168,7 +170,7 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
     const reqId = ++speechRequestRef.current;
     setAudioRateMode(rateMode);
     setAudioStatus('starting');
-    setAudioFeedbackTr(null);
+    setAudioFailureReason(null);
 
     const outcome = speakGermanText(task.modelAnswerDe, rateMode, {
       onStart: () => {
@@ -182,37 +184,56 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
       onError: (reason?: SpeechFailureReason) => {
         if (!isMountedRef.current || speechRequestRef.current !== reqId) return;
         setAudioStatus('idle');
-        if (reason === 'timeout') {
-          setAudioFeedbackTr(
-            '1800 ms onstart bekçisi zaman aşımına uğradı. Tarayıcı ses motoru yanıt vermedi; örnek yanıtı metinden okuyabilirsiniz.'
-          );
-        } else if (reason === 'unsupported') {
-          setAudioFeedbackTr(
-            'Bu tarayıcıda Web Speech (de-DE) seslendirmesi desteklenmiyor; metni doğrudan okuyabilirsiniz.'
-          );
-        } else {
-          setAudioFeedbackTr(
-            'Almanca seslendirme başlatılamadı. Sistem ses ayarlarını kontrol edin veya metinden inceleyin.'
-          );
-        }
+        setAudioFailureReason(reason ?? 'error');
       },
     });
 
     if (!outcome.queued) {
       setAudioStatus('idle');
-      setAudioFeedbackTr(
-        outcome.reason === 'unsupported'
-          ? 'Bu tarayıcıda Almanca seslendirme desteklenmiyor; metni doğrudan okuyabilirsiniz.'
-          : 'Ses kuyruğa alınamadı; örnek yanıtı metinden okuyabilirsiniz.'
-      );
+      setAudioFailureReason(outcome.reason === 'unsupported' ? 'unsupported' : 'not-queued');
     }
   };
 
+  const audioFeedbackMessage =
+    audioFailureReason === 'timeout'
+      ? tx({
+          tr: '1800 ms onstart bekçisi zaman aşımına uğradı. Tarayıcı ses motoru yanıt vermedi; örnek yanıtı metinden okuyabilirsiniz.',
+          en: 'The 1800 ms onstart watchdog timed out. The browser speech engine did not respond; you can read the model answer as text.',
+        })
+      : audioFailureReason === 'unsupported'
+      ? tx({
+          tr: 'Bu tarayıcıda Web Speech (de-DE) seslendirmesi desteklenmiyor; örnek yanıtı metinden okuyabilirsiniz.',
+          en: 'Web Speech (de-DE) synthesis is not supported in this browser; you can read the model answer as text.',
+        })
+      : audioFailureReason === 'not-queued'
+      ? tx({
+          tr: 'Ses kuyruğa alınamadı; örnek yanıtı metinden okuyabilirsiniz.',
+          en: 'Speech could not be queued; you can read the model answer as text.',
+        })
+      : audioFailureReason
+      ? tx({
+          tr: 'Almanca seslendirme başlatılamadı. Sistem ses ayarlarını kontrol edin veya metinden inceleyin.',
+          en: 'German speech playback could not start. Check system audio settings or review the text directly.',
+        })
+      : null;
+
   const voiceLabel = !voiceInfo.supported
-    ? 'Tarayıcı ses sentezi desteklenmiyor'
+    ? tx({
+        tr: 'Tarayıcı ses sentezi desteklenmiyor',
+        en: 'Browser speech synthesis is not supported',
+      })
     : voiceInfo.voiceName
-      ? `${voiceInfo.voiceName} (${voiceInfo.germanVoiceCount} de-DE sesi)`
-      : 'Sistem varsayılan sentezleyicisi (özel de-DE sesi listelenmedi)';
+      ? tx(
+          {
+            tr: '{{name}} ({{count}} de-DE sesi)',
+            en: '{{name}} ({{count}} de-DE voices)',
+          },
+          { name: voiceInfo.voiceName, count: voiceInfo.germanVoiceCount }
+        )
+      : tx({
+          tr: 'Sistem varsayılan sentezleyicisi (özel de-DE sesi listelenmedi)',
+          en: 'System default synthesizer (no dedicated de-DE voice listed)',
+        });
 
   return (
     <div className="space-y-6">
@@ -235,7 +256,7 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                   <span aria-hidden="true">·</span>
                   <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Tamamlandı
+                    {locale.common.completed}
                   </span>
                 </>
               )}
@@ -255,7 +276,9 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
             >
               <Languages className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-              {showPromptTr ? 'Türkçe Yönergeyi Gizle' : 'Türkçe Yönerge'}
+              {showPromptTr
+                ? tx({ tr: 'Türkçe Yönergeyi Gizle', en: 'Hide Turkish Prompt' })
+                : tx({ tr: 'Türkçe Yönerge', en: 'Turkish Prompt' })}
             </button>
             <button
               type="button"
@@ -263,7 +286,9 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
             >
               <Lightbulb className="h-3.5 w-3.5 text-[#9A6B16] dark:text-[#D9A13B]" />
-              {showScaffold ? 'Taslak & Kalıpları Gizle' : 'Taslak Planı & Redemittel'}
+              {showScaffold
+                ? tx({ tr: 'Taslak & Kalıpları Gizle', en: 'Hide Outline & Phrases' })
+                : tx({ tr: 'Taslak Planı & Redemittel', en: 'Draft Outline & Redemittel' })}
             </button>
           </div>
         </div>
@@ -283,10 +308,23 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
         <div className="mt-5">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">
-              Zorunlu 3 A2 Görev Maddesi (Leitpunkte)
+              {tx({
+                tr: 'Zorunlu 3 A2 Görev Maddesi (Leitpunkte)',
+                en: '3 Required A2 Task Points (Leitpunkte)',
+              })}
             </h4>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              En az {task.minWords} kelime · {task.minSentences}+ cümle · {task.registerLabelTr}
+              {tx(
+                {
+                  tr: 'En az {{words}} kelime · {{sentences}}+ cümle · {{register}}',
+                  en: 'At least {{words}} words · {{sentences}}+ sentences · {{register}}',
+                },
+                {
+                  words: task.minWords,
+                  sentences: task.minSentences,
+                  register: task.registerLabelTr,
+                }
+              )}
             </span>
           </div>
 
@@ -352,7 +390,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
           <div className="mt-5 grid gap-4 rounded-xl border border-[#D9D9D3] bg-[#F6F6F4] p-4 dark:border-[#282830] dark:bg-[#111113] lg:grid-cols-2">
             <div>
               <h5 className="text-xs font-semibold uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">
-                Adım Adım A2 Taslak Planı (Puanı Etkilemez)
+                {tx({
+                  tr: 'Adım Adım A2 Taslak Planı (Puanı Etkilemez)',
+                  en: 'Step-by-Step A2 Draft Outline (Unscored)',
+                })}
               </h5>
               <ol className="mt-2 space-y-1.5 text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                 {task.draftingStepsTr.map((step) => (
@@ -362,7 +403,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
             </div>
             <div>
               <h5 className="text-xs font-semibold uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">
-                Tıklayıp Ekleyebileceğiniz A2 Kalıpları (Redemittel)
+                {tx({
+                  tr: 'Tıklayıp Ekleyebileceğiniz A2 Kalıpları (Redemittel)',
+                  en: 'Click-to-Insert A2 Phrases (Redemittel)',
+                })}
               </h5>
               <div className="mt-2 space-y-2">
                 {task.phrases.map((phrase) => (
@@ -406,14 +450,15 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                   : 'text-[#52525B] dark:text-[#A1A1AA]'
               }
             >
-              Kelime: <strong className="font-mono tabular-nums">{liveWordCount}</strong> /{' '}
+              {tx({ tr: 'Kelime:', en: 'Words:' })}{' '}
+              <strong className="font-mono tabular-nums">{liveWordCount}</strong> /{' '}
               {task.minWords}+
             </span>
           </div>
         </div>
 
         <label htmlFor={`a2-writing-editor-${task.id}`} className="sr-only">
-          Almanca A2 metin alanı
+          {tx({ tr: 'Almanca A2 metin alanı', en: 'German A2 writing editor' })}
         </label>
         <textarea
           id={`a2-writing-editor-${task.id}`}
@@ -437,7 +482,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#641624] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
               <FileCheck2 className="h-4 w-4" />
-              Yerel Kural Motoruyla Kontrol Et
+              {tx({
+                tr: 'Yerel Kural Motoruyla Kontrol Et',
+                en: 'Check with Local Rule Engine',
+              })}
             </button>
             <button
               type="button"
@@ -446,7 +494,7 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:cursor-not-allowed disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
             >
               <RotateCcw className="h-4 w-4" />
-              Temizle
+              {tx({ tr: 'Temizle', en: 'Clear' })}
             </button>
           </div>
 
@@ -456,13 +504,21 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
             disabled={!canViewModel}
             title={
               canViewModel
-                ? 'Örnek A2 yanıtını aç/kapat (puanı etkilemez)'
-                : 'Örnek A2 yanıtını görmek için önce en az bir kez kendi taslağınızı kontrol edin'
+                ? tx({
+                    tr: 'Örnek A2 yanıtını aç/kapat (puanı etkilemez)',
+                    en: 'Toggle A2 model answer (unscored)',
+                  })
+                : tx({
+                    tr: 'Örnek A2 yanıtını görmek için önce en az bir kez kendi taslağınızı kontrol edin',
+                    en: 'Check your own draft at least once to view the A2 model answer',
+                  })
             }
             className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:cursor-not-allowed disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
           >
             {showModel ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            {showModel ? 'Örnek A2 Yanıtını Gizle' : 'Örnek A2 Yanıtını Gör'}
+            {showModel
+              ? tx({ tr: 'Örnek A2 Yanıtını Gizle', en: 'Hide A2 Model Answer' })
+              : tx({ tr: 'Örnek A2 Yanıtını Gör', en: 'View A2 Model Answer' })}
           </button>
         </div>
       </section>
@@ -487,8 +543,11 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               <div>
                 <h4 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
                   {result.passed
-                    ? 'A2 Yazma Kontrolü Geçti'
-                    : 'Düzeltme Gereken A2 Kriterleri Var'}
+                    ? tx({ tr: 'A2 Yazma Kontrolü Geçti', en: 'A2 Writing Check Passed' })
+                    : tx({
+                        tr: 'Düzeltme Gereken A2 Kriterleri Var',
+                        en: 'Some A2 Criteria Need Revision',
+                      })}
                 </h4>
                 <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
                   {result.summaryTr}
@@ -498,9 +557,11 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
 
             <div className="flex items-center gap-3">
               <div className="rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 py-1.5 text-right dark:border-[#282830] dark:bg-[#111113]">
-                <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">Kriter Skoru</div>
+                <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Kriter Skoru', en: 'Criteria Score' })}
+                </div>
                 <div className="font-mono text-base font-bold tabular-nums text-[#111113] dark:text-[#F4F4F5]">
-                  %{result.scorePercent}
+                  {tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: result.scorePercent })}
                 </div>
               </div>
               {lastXpAwarded > 0 && (
@@ -515,11 +576,17 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-3.5 dark:border-[#24242C] dark:bg-[#111113]">
               <div className="text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
-                Kelime &amp; Çeşitlilik
+                {tx({ tr: 'Kelime & Çeşitlilik', en: 'Words & Diversity' })}
               </div>
               <div className="mt-1 flex items-center justify-between text-sm font-semibold">
                 <span className="font-mono tabular-nums text-[#111113] dark:text-[#F4F4F5]">
-                  {result.wordCount} kelime ({result.uniqueWordCount} farklı)
+                  {tx(
+                    {
+                      tr: '{{words}} kelime ({{unique}} farklı)',
+                      en: '{{words}} words ({{unique}} unique)',
+                    },
+                    { words: result.wordCount, unique: result.uniqueWordCount }
+                  )}
                 </span>
                 {result.meetsWordCount && result.meetsUniqueDiversity ? (
                   <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
@@ -528,17 +595,29 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                 )}
               </div>
               <p className="mt-1 text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
-                En az {result.minWords} kelime ve {result.minUniqueWords} farklı sözcük
+                {tx(
+                  {
+                    tr: 'En az {{minWords}} kelime ve {{minUnique}} farklı sözcük',
+                    en: 'At least {{minWords}} words and {{minUnique}} unique words',
+                  },
+                  { minWords: result.minWords, minUnique: result.minUniqueWords }
+                )}
               </p>
             </div>
 
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-3.5 dark:border-[#24242C] dark:bg-[#111113]">
               <div className="text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
-                Cümle &amp; Fiil Yapısı
+                {tx({ tr: 'Cümle & Fiil Yapısı', en: 'Sentence & Verb Structure' })}
               </div>
               <div className="mt-1 flex items-center justify-between text-sm font-semibold">
                 <span className="font-mono tabular-nums text-[#111113] dark:text-[#F4F4F5]">
-                  {result.sentenceCount} cümle · {result.detectedVerbCount} fiil
+                  {tx(
+                    {
+                      tr: '{{sentences}} cümle · {{verbs}} fiil',
+                      en: '{{sentences}} sentences · {{verbs}} verbs',
+                    },
+                    { sentences: result.sentenceCount, verbs: result.detectedVerbCount }
+                  )}
                 </span>
                 {result.meetsSentenceCount && result.hasVerbStructure ? (
                   <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
@@ -547,17 +626,28 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                 )}
               </div>
               <p className="mt-1 text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
-                En az {result.minSentences} tam cümle ve 3+ çekimli/Perfekt fiil
+                {tx(
+                  {
+                    tr: 'En az {{minSentences}} tam cümle ve 3+ çekimli/Perfekt fiil',
+                    en: 'At least {{minSentences}} full sentences and 3+ conjugated/Perfekt verbs',
+                  },
+                  { minSentences: result.minSentences }
+                )}
               </p>
             </div>
 
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-3.5 dark:border-[#24242C] dark:bg-[#111113]">
               <div className="text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
-                Hitap Düzeyi ({task.register})
+                {tx(
+                  { tr: 'Hitap Düzeyi ({{register}})', en: 'Register ({{register}})' },
+                  { register: task.register }
+                )}
               </div>
               <div className="mt-1 flex items-center justify-between text-sm font-semibold">
                 <span className="text-[#111113] dark:text-[#F4F4F5]">
-                  {result.registerCheck.passed ? 'Uyumlu' : 'Uyumsuz / Eksik'}
+                  {result.registerCheck.passed
+                    ? tx({ tr: 'Uyumlu', en: 'Consistent' })
+                    : tx({ tr: 'Uyumsuz / Eksik', en: 'Inconsistent / Missing' })}
                 </span>
                 {result.registerCheck.passed ? (
                   <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
@@ -572,15 +662,15 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
 
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-3.5 dark:border-[#24242C] dark:bg-[#111113]">
               <div className="text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
-                Yazım &amp; Noktalama
+                {tx({ tr: 'Yazım & Noktalama', en: 'Spelling & Punctuation' })}
               </div>
               <div className="mt-1 flex items-center justify-between text-sm font-semibold">
                 <span className="text-[#111113] dark:text-[#F4F4F5]">
                   {result.hasSentencePunctuation &&
                   result.hasSentenceStartCapitalization &&
                   result.nounCapitalizationWarnings.length === 0
-                    ? 'Temiz'
-                    : 'Uyarı Var'}
+                    ? tx({ tr: 'Temiz', en: 'Clean' })
+                    : tx({ tr: 'Uyarı Var', en: 'Warnings Found' })}
                 </span>
                 {result.hasSentencePunctuation &&
                 result.hasSentenceStartCapitalization &&
@@ -592,12 +682,27 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
               </div>
               <p className="mt-1 text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
                 {!result.hasSentencePunctuation
-                  ? 'Cümle sonu noktalama (. ! ?) eksik.'
+                  ? tx({
+                      tr: 'Cümle sonu noktalama (. ! ?) eksik.',
+                      en: 'End-of-sentence punctuation (. ! ?) is missing.',
+                    })
                   : !result.hasSentenceStartCapitalization
-                    ? 'Cümle başı büyük harf kuralını kontrol edin.'
+                    ? tx({
+                        tr: 'Cümle başı büyük harf kuralını kontrol edin.',
+                        en: 'Check sentence-initial capitalization.',
+                      })
                     : result.nounCapitalizationWarnings.length > 0
-                      ? `${result.nounCapitalizationWarnings.length} isim küçük harfle yazılmış.`
-                      : 'Noktalama ve büyük harf kontrolleri geçti.'}
+                      ? tx(
+                          {
+                            tr: '{{count}} isim küçük harfle yazılmış.',
+                            en: '{{count}} noun(s) written in lowercase.',
+                          },
+                          { count: result.nounCapitalizationWarnings.length }
+                        )
+                      : tx({
+                          tr: 'Noktalama ve büyük harf kontrolleri geçti.',
+                          en: 'Punctuation and capitalization checks passed.',
+                        })}
               </p>
             </div>
           </div>
@@ -605,7 +710,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
           {/* A2 Structure Requirements */}
           <div className="mt-4 rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
             <h5 className="text-xs font-semibold uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">
-              Hedef A2 Dilbilgisi &amp; Bağlaç Kontrolü
+              {tx({
+                tr: 'Hedef A2 Dilbilgisi & Bağlaç Kontrolü',
+                en: 'Target A2 Grammar & Connector Check',
+              })}
             </h5>
             <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
               {result.structureResults.map((st) => (
@@ -625,7 +733,12 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                   <div>
                     <p className="font-semibold text-[#111113] dark:text-[#F4F4F5]">{st.labelTr}</p>
                     <p className="mt-0.5 text-[#52525B] dark:text-[#A1A1AA]">
-                      {st.passed ? `Örnek kalıp: ${st.exampleDe}` : st.missingHintTr}
+                      {st.passed
+                        ? tx(
+                            { tr: 'Örnek kalıp: {{example}}', en: 'Example pattern: {{example}}' },
+                            { example: st.exampleDe }
+                          )
+                        : st.missingHintTr}
                     </p>
                   </div>
                 </div>
@@ -637,7 +750,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
           {(result.nounCapitalizationWarnings.length > 0 || result.pitfallWarnings.length > 0) && (
             <div className="mt-4 space-y-2 rounded-xl border border-[#B91C1C]/35 bg-[#FEF2F2] p-4 dark:border-[#EF4444]/35 dark:bg-[#2A1013]">
               <h5 className="text-xs font-semibold uppercase tracking-wider text-[#991B1B] dark:text-[#FCA5A5]">
-                Tespit Edilen Yazım ve A2 Dilbilgisi Uyarıları
+                {tx({
+                  tr: 'Tespit Edilen Yazım ve A2 Dilbilgisi Uyarıları',
+                  en: 'Detected Spelling & A2 Grammar Warnings',
+                })}
               </h5>
               <ul className="space-y-1.5 text-xs text-[#7F1D1D] dark:text-[#FECACA]">
                 {result.pitfallWarnings.map((warn) => (
@@ -671,7 +787,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B]" />
               <h4 className="font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Örnek CEFR A2 Yanıtı (İnceleme Amaçlı · Puanlanmaz)
+                {tx({
+                  tr: 'Örnek CEFR A2 Yanıtı (İnceleme Amaçlı · Puanlanmaz)',
+                  en: 'Sample CEFR A2 Response (For Review · Unscored)',
+                })}
               </h4>
             </div>
 
@@ -691,10 +810,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                   <Volume2 className="h-3.5 w-3.5" />
                 )}
                 {audioStatus === 'starting' && audioRateMode === 'slow'
-                  ? 'Başlatılıyor…'
+                  ? locale.audio.starting
                   : audioStatus === 'playing' && audioRateMode === 'slow'
-                    ? 'Durdur (Yavaş)'
-                    : 'Yavaş Dinle'}
+                    ? tx({ tr: 'Durdur (Yavaş)', en: 'Stop (Slow)' })
+                    : tx({ tr: 'Yavaş Dinle', en: 'Listen Slowly' })}
               </button>
 
               <button
@@ -712,10 +831,10 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                   <Volume2 className="h-3.5 w-3.5" />
                 )}
                 {audioStatus === 'starting' && audioRateMode === 'normal'
-                  ? 'Başlatılıyor…'
+                  ? locale.audio.starting
                   : audioStatus === 'playing' && audioRateMode === 'normal'
-                    ? 'Durdur (Normal)'
-                    : 'Normal Dinle'}
+                    ? tx({ tr: 'Durdur (Normal)', en: 'Stop (Normal)' })
+                    : tx({ tr: 'Normal Dinle', en: 'Listen Normal' })}
               </button>
 
               <button
@@ -724,7 +843,9 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <Languages className="h-3.5 w-3.5" />
-                {showModelTr ? 'Çeviriyi Gizle' : 'Türkçe Çeviri'}
+                {showModelTr
+                  ? tx({ tr: 'Çeviriyi Gizle', en: 'Hide Translation' })
+                  : tx({ tr: 'Türkçe Çeviri', en: 'Turkish Translation' })}
               </button>
             </div>
           </div>
@@ -742,17 +863,23 @@ export const A2WritingMessageTask: React.FC<A2WritingMessageTaskProps> = ({ scen
             </pre>
           )}
 
-          {audioFeedbackTr && (
+          {audioFeedbackMessage && (
             <p
               role="status"
               className="mt-3 rounded-lg border border-[#9A6B16]/45 bg-[#FEF9EB] px-3.5 py-2 text-xs text-[#78350F] dark:border-[#D9A13B]/45 dark:bg-[#231D11] dark:text-[#F6D693]"
             >
-              {audioFeedbackTr}
+              {audioFeedbackMessage}
             </p>
           )}
 
           <p className="mt-2.5 text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
-            Ses kaynağı: {voiceLabel} (speech.ts · queued + 1800 ms onstart doğrulamalı)
+            {tx(
+              {
+                tr: 'Ses kaynağı: {{voice}} (speech.ts · queued + 1800 ms onstart doğrulamalı)',
+                en: 'Audio source: {{voice}} (speech.ts · queued + 1800 ms onstart verified)',
+              },
+              { voice: voiceLabel }
+            )}
           </p>
         </section>
       )}

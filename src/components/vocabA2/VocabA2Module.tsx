@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { ALL_A2_WORDS, GERMAN_A2_TOPICS, getA2TopicById } from '../../data/germanA2Vocab';
-import { tr } from '../../i18n/tr';
-import type { A2VocabMode } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
+import type { A2VocabMode, UiLanguage } from '../../types';
 import { isSpeechSynthesisSupported } from '../../utils/speech';
 import { A2ArticlePluralMode } from './A2ArticlePluralMode';
 import { A2ContextUsageMode } from './A2ContextUsageMode';
@@ -23,32 +23,27 @@ interface VocabA2ModuleProps {
 
 const A2_MODES: Array<{
   id: A2VocabMode;
-  labelTr: string;
-  shortDescTr: string;
+  label: Record<UiLanguage, string>;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   {
     id: 'flashcards',
-    labelTr: 'Kartlarla Öğren',
-    shortDescTr: 'Artikel, çoğul, örnek cümle ve ses',
+    label: { tr: 'Kartlarla Öğren', en: 'Flashcards' },
     icon: Layers,
   },
   {
     id: 'articles-plural',
-    labelTr: 'Artikel & Çoğul Avı',
-    shortDescTr: 'der / die / das + Plural hatırlama',
+    label: { tr: 'Artikel & Çoğul Avı', en: 'Articles & Plurals' },
     icon: BookOpen,
   },
   {
     id: 'meaning',
-    labelTr: 'Anlam Eşleştirme',
-    shortDescTr: 'Almanca–Türkçe anlam kontrolü',
+    label: { tr: 'Anlam Eşleştirme', en: 'Meaning Match' },
     icon: CheckSquare,
   },
   {
     id: 'context',
-    labelTr: 'Cümle İçi Kullanım',
-    shortDescTr: 'A2 bağlam cümlesi tamamlama',
+    label: { tr: 'Cümle İçi Kullanım', en: 'Context Usage' },
     icon: FileText,
   },
 ];
@@ -62,6 +57,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
     setSpeechSpeed,
     rolePreview,
   } = useAppState();
+  const { locale, tx } = useI18n();
 
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     initialTopicId ?? GERMAN_A2_TOPICS[0].id
@@ -85,47 +81,60 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A2 · CEFR A2 Aşama 1
+              {tx({ tr: 'Almanca A2 · CEFR A2 Aşama 1', en: 'German A2 · CEFR A2 Stage 1' })}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>
+                  {tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}
+                </span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A2 Kelime Stüdyosu (Wortschatz)
+            {tx({
+              tr: 'Almanca A2 Kelime Stüdyosu (Wortschatz)',
+              en: 'German A2 Vocabulary Studio (Wortschatz)',
+            })}
           </h1>
         </div>
 
         {/* Real A2 Progress Strip */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 XP', en: 'A2 XP' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {a2Progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Çalışılan A2 Kelime</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Çalışılan A2 Kelime', en: 'A2 Words Studied' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {uniqueA2CompletedWordIds.length} / {ALL_A2_WORDS.length}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Doğruluk</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Doğruluk', en: 'A2 Accuracy' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {a2VocabAccuracyPercent === null ? '—' : `%${a2VocabAccuracyPercent}`}
+              {a2VocabAccuracyPercent === null
+                ? '—'
+                : tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: a2VocabAccuracyPercent })}
             </p>
           </div>
         </div>
@@ -138,10 +147,16 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
             id="a2-topic-selector-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. A2 Tematik Ünite Seçin
+            {tx({ tr: '1. A2 Tematik Ünite Seçin', en: '1. Select an A2 Thematic Unit' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            {GERMAN_A2_TOPICS.length} A2 Ünitesi · Toplam {ALL_A2_WORDS.length} Kelime
+            {tx(
+              {
+                tr: '{{units}} A2 Ünitesi · Toplam {{words}} Kelime',
+                en: '{{units}} A2 Units · {{words}} Words Total',
+              },
+              { units: GERMAN_A2_TOPICS.length, words: ALL_A2_WORDS.length }
+            )}
           </span>
         </div>
 
@@ -189,7 +204,10 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                   <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2 text-white">
                     <div>
                       <p className="font-mono text-[11px] text-[#F5D08A]">
-                        Ünite {topic.unitNumber} · {topic.titleDe}
+                        {tx(
+                          { tr: 'Ünite {{num}} · {{title}}', en: 'Unit {{num}} · {{title}}' },
+                          { num: topic.unitNumber, title: topic.titleDe }
+                        )}
                       </p>
                       <p className="font-display text-base font-semibold leading-snug">
                         {topic.titleTr}
@@ -207,7 +225,13 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                   </p>
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                      {topic.words.length} kelime · {topic.grammarBadgeTr}
+                      {tx(
+                        {
+                          tr: '{{count}} kelime · {{badge}}',
+                          en: '{{count}} words · {{badge}}',
+                        },
+                        { count: topic.words.length, badge: topic.grammarBadgeTr }
+                      )}
                     </span>
                     <span
                       className={`font-semibold ${
@@ -216,7 +240,9 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili Ünite' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili Ünite', en: 'Selected Unit' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -227,11 +253,17 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
       </section>
 
       {/* Mode Switcher + Shared speech.ts Attribution & Speed Control */}
-      <section aria-label="A2 çalışma modu ve seslendirme kontrolleri" className="space-y-4">
+      <section
+        aria-label={tx({
+          tr: 'A2 çalışma modu ve seslendirme kontrolleri',
+          en: 'A2 study mode and audio controls',
+        })}
+        className="space-y-4"
+      >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div
             role="tablist"
-            aria-label="A2 kelime öğrenme modları"
+            aria-label={tx({ tr: 'A2 kelime öğrenme modları', en: 'A2 vocabulary study modes' })}
             className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#D9D9D3] bg-[#ECECE8]/80 p-1 dark:border-[#282830] dark:bg-[#16161A]"
           >
             {A2_MODES.map((mode) => {
@@ -251,7 +283,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span>{mode.labelTr}</span>
+                  <span>{tx(mode.label)}</span>
                 </button>
               );
             })}
@@ -261,7 +293,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2 text-xs dark:border-[#282830] dark:bg-[#16161A]">
             <div className="flex items-center gap-2 text-[#52525B] dark:text-[#A1A1AA]">
               <Volume2 className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
-              <span>{tr.common.browserTtsNotice}</span>
+              <span>{locale.common.browserTtsNotice}</span>
             </div>
 
             {speechSupported && (
@@ -275,7 +307,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                       : 'text-[#52525B] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  {tr.common.speedNormal}
+                  {locale.common.speedNormal}
                 </button>
                 <button
                   type="button"
@@ -286,7 +318,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
                       : 'text-[#52525B] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  Yavaş (A2)
+                  {tx({ tr: 'Yavaş (A2)', en: 'Slow (A2)' })}
                 </button>
               </div>
             )}
@@ -300,7 +332,7 @@ export const VocabA2Module: React.FC<VocabA2ModuleProps> = ({ initialTopicId }) 
             className="flex items-start gap-2.5 rounded-xl border border-[#9A6B16]/40 bg-[#FEF9EB] px-4 py-3 text-xs text-[#713F12] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#FDE68A]"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{tr.common.ttsUnavailable}</p>
+            <p>{locale.common.ttsUnavailable}</p>
           </div>
         )}
       </section>

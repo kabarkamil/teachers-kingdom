@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookMarked, CheckCircle2, Eye, EyeOff, MessageCircle, Sparkles } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { SpeakingPromptItem } from '../../types';
 import { ModelAudioBar } from './ModelAudioBar';
 import { SpeechTranscriptHelper } from './SpeechTranscriptHelper';
@@ -12,13 +13,14 @@ interface SpeakingPromptTabProps {
 
 export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId, items }) => {
   const { progress, recordSpeakingCompletion } = useAppState();
+  const { locale, tx } = useI18n();
   const [showPhrasesMap, setShowPhrasesMap] = useState<Record<string, boolean>>({});
   const [showTranslationMap, setShowTranslationMap] = useState<Record<string, boolean>>({});
   const [showModelMap, setShowModelMap] = useState<Record<string, boolean>>({});
   const [checkedCriteria, setCheckedCriteria] = useState<Record<string, Record<string, boolean>>>(
     {}
   );
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, { xpAwarded: number }>>({});
 
   useEffect(() => {
     setShowPhrasesMap({});
@@ -42,10 +44,7 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
     const xpAwarded = recordSpeakingCompletion(item.id, scenarioId, 'prompt', item.titleTr);
     setFeedbackMap((prev) => ({
       ...prev,
-      [item.id]:
-        xpAwarded > 0
-          ? `Kısa yanıt pratiği kaydedildi · +${xpAwarded} XP kazanıldı.`
-          : 'Tekrar pratiğiniz kaydedildi (bu görev daha önce tamamlandığı için ek XP eklenmedi).',
+      [item.id]: { xpAwarded },
     }));
   };
 
@@ -53,10 +52,16 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
     <div className="space-y-6">
       <div className="space-y-1">
         <h3 className="font-display text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
-          2. Leitfragen / Kurze Antwort (Kılavuzlu Kısa A1 Cevapları)
+          {tx({
+            tr: '2. Leitfragen / Kurze Antwort (Kılavuzlu Kısa A1 Cevapları)',
+            en: '2. Guided Prompt / Short Answer (A1 Guided Responses)',
+          })}
         </h3>
         <p className="text-xs sm:text-sm text-[#52525B] dark:text-[#A1A1AA]">
-          Soruyu dinleyip önce kendi A1 cevabınızı sesli verin; gerekirse Redemittel veya örnek yanıtı açın.
+          {tx({
+            tr: 'Soruyu dinleyip önce kendi A1 cevabınızı sesli verin; gerekirse Redemittel veya örnek yanıtı açın.',
+            en: 'Listen to the question and give your own A1 answer aloud first; open Redemittel or the sample answer if needed.',
+          })}
         </p>
       </div>
 
@@ -68,6 +73,7 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
           const showModel = Boolean(showModelMap[item.id]);
           const itemChecks = checkedCriteria[item.id] ?? {};
           const allChecked = item.selfCheckCriteria.every((c) => Boolean(itemChecks[c.id]));
+          const feedback = feedbackMap[item.id];
 
           return (
             <article
@@ -81,11 +87,11 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                 {isMastered ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Tamamlandı</span>
+                    <span>{locale.common.completed}</span>
                   </span>
                 ) : (
                   <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    İlk tamamlama +10 XP
+                    {tx({ tr: 'İlk tamamlama +10 XP', en: 'First completion +10 XP' })}
                   </span>
                 )}
               </div>
@@ -99,13 +105,17 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                 <ModelAudioBar
                   textDe={item.questionDe}
                   labelTr="Soruyu Dinle"
+                  labelEn="Listen to Question"
                   speakerGender={item.speakerGender}
                   compact
                 />
 
                 <div className="border-t border-[#D9D9D3] pt-3 dark:border-[#282830]">
                   <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    Yanıtınızda Yer Alması Gereken Noktalar (Stichpunkte):
+                    {tx({
+                      tr: 'Yanıtınızda Yer Alması Gereken Noktalar (Stichpunkte):',
+                      en: 'Key Points to Include in Your Answer (Stichpunkte):',
+                    })}
                   </p>
                   <ul className="mt-1.5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
                     {item.cuesDe.map((cue, idx) => (
@@ -139,8 +149,11 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                   <BookMarked className="h-3.5 w-3.5" />
                   <span>
                     {showPhrases
-                      ? 'İpuçları / Redemittel’i Gizle'
-                      : 'İpuçları / Redemittel (A1 İfadeler)'}
+                      ? tx({ tr: 'İpuçları / Redemittel’i Gizle', en: 'Hide Hints / Redemittel' })
+                      : tx({
+                          tr: 'İpuçları / Redemittel (A1 İfadeler)',
+                          en: 'Hints / Redemittel (A1 Phrases)',
+                        })}
                   </span>
                 </button>
 
@@ -153,7 +166,12 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                 >
                   {showTr ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   <span>
-                    {showTr ? 'Türkçe Yönerge / Çeviriyi Gizle' : 'Türkçe Yönerge / Çeviri'}
+                    {showTr
+                      ? tx({
+                          tr: 'Türkçe Yönerge / Çeviriyi Gizle',
+                          en: 'Hide Turkish Gloss / Translation',
+                        })
+                      : tx({ tr: 'Türkçe Yönerge / Çeviri', en: 'Turkish Gloss / Translation' })}
                   </span>
                 </button>
 
@@ -166,7 +184,12 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                 >
                   <MessageCircle className="h-3.5 w-3.5 text-[#9A6B16] dark:text-[#D9A13B]" />
                   <span>
-                    {showModel ? 'Örnek A1 Cevabı Gizle' : 'Örnek A1 Cevabı Göster / Dinle'}
+                    {showModel
+                      ? tx({ tr: 'Örnek A1 Cevabı Gizle', en: 'Hide Sample A1 Answer' })
+                      : tx({
+                          tr: 'Örnek A1 Cevabı Göster / Dinle',
+                          en: 'Show / Listen to Sample A1 Answer',
+                        })}
                   </span>
                 </button>
               </div>
@@ -174,7 +197,9 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
               {/* Turkish Prompt Translation */}
               {showTr && (
                 <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4] px-3.5 py-2.5 text-xs sm:text-sm text-[#111113] dark:border-[#24242C] dark:bg-[#16161A] dark:text-[#E4E4E7]">
-                  <span className="font-semibold">Soru (Türkçe): </span>
+                  <span className="font-semibold">
+                    {tx({ tr: 'Soru (Türkçe): ', en: 'Question (Turkish Gloss): ' })}
+                  </span>
                   {item.questionTr}
                 </div>
               )}
@@ -183,7 +208,10 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
               {showPhrases && (
                 <div className="rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] p-4 space-y-2 dark:border-[#282830] dark:bg-[#16161A]">
                   <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    Yardımcı A1 Kalıpları (Redemittel)
+                    {tx({
+                      tr: 'Yardımcı A1 Kalıpları (Redemittel)',
+                      en: 'Helpful A1 Phrases (Redemittel)',
+                    })}
                   </p>
                   <ul className="divide-y divide-[#ECECE8] text-xs dark:divide-[#24242C]">
                     {item.phrases.map((phrase) => (
@@ -207,7 +235,7 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
               {showModel && (
                 <div className="rounded-lg border border-[#7C1D2E]/30 bg-[#FDF2F4]/40 p-4 space-y-3 dark:border-[#D9A13B]/40 dark:bg-[#1B1813]">
                   <p className="text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                    Örnek A1 Model Yanıt
+                    {tx({ tr: 'Örnek A1 Model Yanıt', en: 'Sample A1 Model Answer' })}
                   </p>
                   <p className="text-sm font-medium leading-relaxed text-[#111113] dark:text-[#F4F4F5]">
                     “{item.modelAnswerDe}”
@@ -215,6 +243,7 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                   <ModelAudioBar
                     textDe={item.modelAnswerDe}
                     labelTr="Örnek Cevabı Dinle"
+                    labelEn="Listen to Sample Answer"
                     speakerGender={item.speakerGender === 'female' ? 'male' : 'female'}
                     compact
                   />
@@ -232,7 +261,13 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
               {/* Explicit A1 Self-Check Checklist */}
               <div className="space-y-3 border-t border-[#ECECE8] pt-4 dark:border-[#24242C]">
                 <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  A1 Öz-Değerlendirme Kontrol Listesi (Tamamlamak için 3 ölçütü onaylayın)
+                  {tx(
+                    {
+                      tr: 'A1 Öz-Değerlendirme Kontrol Listesi (Tamamlamak için {{count}} ölçütü onaylayın)',
+                      en: 'A1 Self-Assessment Checklist (Check all {{count}} criteria to complete)',
+                    },
+                    { count: item.selfCheckCriteria.length }
+                  )}
                 </p>
 
                 <div className="space-y-2">
@@ -269,14 +304,28 @@ export const SpeakingPromptTab: React.FC<SpeakingPromptTabProps> = ({ scenarioId
                     <Sparkles className="h-4 w-4" />
                     <span>
                       {isMastered
-                        ? 'Tekrar Pratiği Kaydet (0 XP)'
-                        : 'Pratiği Tamamlandı Olarak Kaydet (+10 XP)'}
+                        ? tx({ tr: 'Tekrar Pratiği Kaydet (0 XP)', en: 'Log Repeat Practice (0 XP)' })
+                        : tx({
+                            tr: 'Pratiği Tamamlandı Olarak Kaydet (+10 XP)',
+                            en: 'Mark Practice Complete (+10 XP)',
+                          })}
                     </span>
                   </button>
 
-                  {feedbackMap[item.id] && (
+                  {feedback && (
                     <span className="text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
-                      {feedbackMap[item.id]}
+                      {feedback.xpAwarded > 0
+                        ? tx(
+                            {
+                              tr: 'Kısa yanıt pratiği kaydedildi · +{{xp}} XP kazanıldı.',
+                              en: 'Short-answer practice saved · +{{xp}} XP earned.',
+                            },
+                            { xp: feedback.xpAwarded }
+                          )
+                        : tx({
+                            tr: 'Tekrar pratiğiniz kaydedildi (bu görev daha önce tamamlandığı için ek XP eklenmedi).',
+                            en: 'Repeat practice saved (no extra XP — this task was already completed).',
+                          })}
                     </span>
                   )}
                 </div>

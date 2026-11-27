@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, Square, Volume2 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { SpeakerGender } from '../../types';
 import {
   isSpeechSynthesisSupported,
@@ -22,12 +23,12 @@ type PlaybackState = 'idle' | 'starting' | 'playing';
 export const ModelAudioBar: React.FC<ModelAudioBarProps> = ({
   textDe,
   labelTr = 'Modeli Dinle (de-DE)',
-  labelEn = 'Listen (de-DE)',
+  labelEn = 'Listen to Model (de-DE)',
   speakerGender,
   compact = false,
 }) => {
-  const { speechSpeed, uiLanguage } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { speechSpeed } = useAppState();
+  const { isEn, locale, tx } = useI18n();
   const [rateMode, setRateMode] = useState<'normal' | 'slow'>(speechSpeed);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [errorReason, setErrorReason] = useState<SpeechFailureReason | null>(null);
@@ -93,17 +94,11 @@ export const ModelAudioBar: React.FC<ModelAudioBarProps> = ({
 
   const errorMessage =
     errorReason === 'unsupported'
-      ? isEn
-        ? 'This browser does not support Web Speech API (de-DE). You can still practice aloud using the written text.'
-        : 'Bu tarayıcı Web Speech API (de-DE) seslendirmesini desteklemiyor; metni okuyarak sesli pratik yapabilirsiniz.'
+      ? locale.audio.ttsUnsupported
       : errorReason === 'timeout'
-      ? isEn
-        ? 'Browser speech engine timed out. Try again or read the German phrase aloud.'
-        : 'Tarayıcı ses motoru yanıt vermedi (zaman aşımı). Tekrar deneyebilir veya metni kendiniz sesli okuyabilirsiniz.'
+      ? locale.audio.ttsTimeout
       : errorReason === 'error'
-      ? isEn
-        ? 'Audio playback could not start. Check your browser sound settings or continue reading aloud.'
-        : 'Seslendirme başlatılamadı. Tarayıcı ses ayarlarını kontrol edebilir veya metni sesli okuyarak devam edebilirsiniz.'
+      ? locale.audio.ttsError
       : null;
 
   const idleLabel = isEn ? labelEn : labelTr;
@@ -132,13 +127,9 @@ export const ModelAudioBar: React.FC<ModelAudioBarProps> = ({
           )}
           <span>
             {playbackState === 'starting'
-              ? isEn
-                ? 'Starting…'
-                : 'Başlatılıyor…'
+              ? locale.audio.starting
               : playbackState === 'playing'
-              ? isEn
-                ? 'Stop'
-                : 'Durdur'
+              ? locale.audio.stop
               : idleLabel}
           </span>
         </button>
@@ -146,7 +137,7 @@ export const ModelAudioBar: React.FC<ModelAudioBarProps> = ({
         {/* Speed Selector: 0.8x / 1.0x */}
         <div
           role="group"
-          aria-label={isEn ? 'Speech speed' : 'Seslendirme hızı'}
+          aria-label={locale.audio.speedLabel}
           className="inline-flex items-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] p-0.5 dark:border-[#282830] dark:bg-[#0D0D0D]"
         >
           <button
@@ -177,7 +168,7 @@ export const ModelAudioBar: React.FC<ModelAudioBarProps> = ({
 
         {!supported && !errorMessage && (
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            {isEn ? 'Browser TTS unavailable' : 'Tarayıcı TTS desteklemiyor'}
+            {tx({ tr: 'Tarayıcı TTS desteklemiyor', en: 'Browser TTS unavailable' })}
           </span>
         )}
       </div>

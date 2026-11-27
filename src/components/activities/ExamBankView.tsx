@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { EXAM_IDS, GERMAN_A1_EXAM_QUESTIONS } from '../../data/germanA1Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { ExamSectionId, NavRouteId } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivitySubNav } from './ActivitySubNav';
@@ -22,17 +23,18 @@ interface ExamBankViewProps {
 
 type ExamPhase = 'intro' | 'running' | 'review';
 
-const SECTION_META: Array<{ id: ExamSectionId; labelTr: string; labelDe: string }> = [
-  { id: 'wortschatz', labelTr: 'Kelime & Artikel', labelDe: 'Wortschatz & Artikel' },
-  { id: 'grammatik', labelTr: 'Dilbilgisi & Cümle', labelDe: 'Grammatik & Satzbau' },
-  { id: 'lesen', labelTr: 'Okuduğunu Anlama', labelDe: 'Leseverstehen' },
-  { id: 'kommunikation', labelTr: 'Günlük İletişim', labelDe: 'Alltag & Kommunikation' },
+const SECTION_META: Array<{ id: ExamSectionId; labelTr: string; labelEn: string; labelDe: string }> = [
+  { id: 'wortschatz', labelTr: 'Kelime & Artikel', labelEn: 'Vocabulary & Articles', labelDe: 'Wortschatz & Artikel' },
+  { id: 'grammatik', labelTr: 'Dilbilgisi & Cümle', labelEn: 'Grammar & Syntax', labelDe: 'Grammatik & Satzbau' },
+  { id: 'lesen', labelTr: 'Okuduğunu Anlama', labelEn: 'Reading Comprehension', labelDe: 'Leseverstehen' },
+  { id: 'kommunikation', labelTr: 'Günlük İletişim', labelEn: 'Daily Communication', labelDe: 'Alltag & Kommunikation' },
 ];
 
 const EXAM_DURATION_SECONDS = 15 * 60;
 
 export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
   const { progress, recordExamSubmission } = useAppState();
+  const { locale, isEn, tx } = useI18n();
   const [phase, setPhase] = useState<ExamPhase>('intro');
   const [useTimer, setUseTimer] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
@@ -98,34 +100,48 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Sınav Modu / Sınav Bankası
+              {tx({
+                tr: 'Almanca A1 · Sınav Modu / Sınav Bankası',
+                en: 'German A1 · Exam Mode / Exam Bank',
+              })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            CEFR A1 Deneme Sınavı ve Soru Bankası
+            {tx({
+              tr: 'CEFR A1 Deneme Sınavı ve Soru Bankası',
+              en: 'CEFR A1 Practice Exam & Question Bank',
+            })}
           </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">En Yüksek Skor</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'En Yüksek Skor', en: 'Highest Score' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
-              {progress.examBestScorePercent === null ? '—' : `%${progress.examBestScorePercent}`}
+              {progress.examBestScorePercent === null
+                ? '—'
+                : tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct: progress.examBestScorePercent })}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Çözülen Banka Sorusu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Çözülen Banka Sorusu', en: 'Bank Questions Mastered' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {masteredExamCount} / {GERMAN_A1_EXAM_QUESTIONS.length}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tamamlanan Deneme</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanan Deneme', en: 'Completed Exams' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {progress.examCompletedCount}
             </p>
@@ -138,10 +154,16 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
         <section className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 sm:p-8 space-y-6 dark:border-[#282830] dark:bg-[#16161A]">
           <div className="space-y-1.5">
             <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Almanca A1 Tam Deneme Yapısı (15 Soru · 4 Bölüm)
+              {tx({
+                tr: 'Almanca A1 Tam Deneme Yapısı (15 Soru · 4 Bölüm)',
+                en: 'Full German A1 Practice Exam Structure (15 Questions · 4 Sections)',
+              })}
             </h2>
             <p className="text-sm text-[#52525B] dark:text-[#A1A1AA]">
-              15 dakikalık zamanlı veya süresiz modda çözün; her yeni doğru soru +10 XP kazandırır.
+              {tx({
+                tr: '15 dakikalık zamanlı veya süresiz modda çözün; her yeni doğru soru +10 XP kazandırır.',
+                en: 'Take the exam in 15-minute timed or untimed mode; each newly mastered question awards +10 XP.',
+              })}
             </p>
           </div>
 
@@ -154,10 +176,13 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                   className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]"
                 >
                   <p className="font-mono text-xs text-[#9A6B16] dark:text-[#D9A13B]">
-                    Bölüm 0{idx + 1} · {count} Soru
+                    {tx(
+                      { tr: 'Bölüm 0{{num}} · {{count}} Soru', en: 'Section 0{{num}} · {{count}} Questions' },
+                      { num: idx + 1, count }
+                    )}
                   </p>
                   <p className="mt-1 font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    {sec.labelTr}
+                    {isEn ? sec.labelEn : sec.labelTr}
                   </p>
                   <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{sec.labelDe}</p>
                 </div>
@@ -172,7 +197,12 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
               <Clock className="h-4 w-4" />
-              <span>Zamanlı Sınavı Başlat (15 Dakika)</span>
+              <span>
+                {tx({
+                  tr: 'Zamanlı Sınavı Başlat (15 Dakika)',
+                  en: 'Start Timed Exam (15 Minutes)',
+                })}
+              </span>
             </button>
             <button
               type="button"
@@ -180,7 +210,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-5 text-sm font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
             >
               <Play className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B]" />
-              <span>Süresiz Deneme Başlat</span>
+              <span>{tx({ tr: 'Süresiz Deneme Başlat', en: 'Start Untimed Practice' })}</span>
             </button>
           </div>
         </section>
@@ -194,7 +224,10 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
               <div className="text-xs">
                 <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                  Soru {currentIdx + 1} / {GERMAN_A1_EXAM_QUESTIONS.length}
+                  {tx(
+                    { tr: 'Soru {{current}} / {{total}}', en: 'Question {{current}} / {{total}}' },
+                    { current: currentIdx + 1, total: GERMAN_A1_EXAM_QUESTIONS.length }
+                  )}
                 </span>
                 <span aria-hidden="true" className="mx-2 text-[#A1A1AA]">·</span>
                 <span className="text-[#52525B] dark:text-[#A1A1AA]">
@@ -213,7 +246,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
             {currentQuestion.contextBoxDe && (
               <div className="rounded-xl border border-[#D9D9D3] bg-[#F6F6F4] p-4 text-sm leading-relaxed text-[#111113] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]">
                 <span className="block mb-1 text-[11px] font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                  Kısa A1 Okuma Metni
+                  {tx({ tr: 'Kısa A1 Okuma Metni', en: 'Short A1 Reading Passage' })}
                 </span>
                 {currentQuestion.contextBoxDe}
               </div>
@@ -230,6 +263,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 <ModelAudioBar
                   textDe={currentQuestion.audioTextDe}
                   labelTr="İfadeyi Dinle (de-DE)"
+                  labelEn="Listen to Phrase (de-DE)"
                   compact
                 />
               )}
@@ -271,7 +305,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs sm:text-sm font-medium text-[#111113] disabled:opacity-40 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
               >
                 <ChevronLeft className="h-4 w-4" />
-                <span>Önceki</span>
+                <span>{locale.common.previous}</span>
               </button>
 
               {currentIdx < GERMAN_A1_EXAM_QUESTIONS.length - 1 ? (
@@ -280,7 +314,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                   onClick={() => setCurrentIdx((i) => i + 1)}
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#111113] px-4 text-xs sm:text-sm font-medium text-[#F6F6F4] hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
                 >
-                  <span>Sonraki Soru</span>
+                  <span>{tx({ tr: 'Sonraki Soru', en: 'Next Question' })}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : (
@@ -290,7 +324,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                   className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
                 >
                   <FileCheck2 className="h-4 w-4" />
-                  <span>Sınavı Bitir ve Değerlendir</span>
+                  <span>{tx({ tr: 'Sınavı Bitir ve Değerlendir', en: 'Finish & Grade Exam' })}</span>
                 </button>
               )}
             </div>
@@ -300,10 +334,13 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
           <aside className="lg:col-span-4 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 space-y-5 h-fit dark:border-[#282830] dark:bg-[#16161A]">
             <div>
               <h2 className="font-display text-base font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Soru Haritası
+                {tx({ tr: 'Soru Haritası', en: 'Question Map' })}
               </h2>
               <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-                Yanıtlanan: {answeredCount} / {GERMAN_A1_EXAM_QUESTIONS.length}
+                {tx(
+                  { tr: 'Yanıtlanan: {{done}} / {{total}}', en: 'Answered: {{done}} / {{total}}' },
+                  { done: answeredCount, total: GERMAN_A1_EXAM_QUESTIONS.length }
+                )}
               </p>
             </div>
 
@@ -316,7 +353,7 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                     key={q.id}
                     type="button"
                     onClick={() => setCurrentIdx(idx)}
-                    aria-label={`Soru ${idx + 1}`}
+                    aria-label={tx({ tr: 'Soru {{num}}', en: 'Question {{num}}' }, { num: idx + 1 })}
                     className={`h-10 rounded-lg border font-mono text-xs font-semibold transition-colors tabular-nums ${
                       isCurrent
                         ? 'border-[#7C1D2E] bg-[#7C1D2E] text-white dark:border-[#D9A13B] dark:bg-[#D9A13B] dark:text-[#111113]'
@@ -338,10 +375,21 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
               >
                 <FileCheck2 className="h-4 w-4" />
-                <span>Sınavı Teslim Et ({answeredCount}/15)</span>
+                <span>
+                  {tx(
+                    {
+                      tr: 'Sınavı Teslim Et ({{done}}/{{total}})',
+                      en: 'Submit Exam ({{done}}/{{total}})',
+                    },
+                    { done: answeredCount, total: GERMAN_A1_EXAM_QUESTIONS.length }
+                  )}
+                </span>
               </button>
               <p className="text-[11px] leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-                Boş bırakılan sorular yanlış sayılır. Teslim sonrası tüm soruların ayrıntılı çözümünü görebilirsiniz.
+                {tx({
+                  tr: 'Boş bırakılan sorular yanlış sayılır. Teslim sonrası tüm soruların ayrıntılı çözümünü görebilirsiniz.',
+                  en: 'Unanswered questions count as incorrect. After submitting, you can review detailed explanations for all questions.',
+                })}
               </p>
             </div>
           </aside>
@@ -357,12 +405,21 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 <Award className="mt-1 h-7 w-7 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
                 <div>
                   <h2 className="font-display text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                    A1 Deneme Sınavı Sonuç Karnesi
+                    {tx({
+                      tr: 'A1 Deneme Sınavı Sonuç Karnesi',
+                      en: 'A1 Practice Exam Score Report',
+                    })}
                   </h2>
                   <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
                     {(submittedScorePct ?? 0) >= 60
-                      ? 'CEFR A1 temel yeterlilik eşiği (%60 ve üzeri) başarıyla geçildi.'
-                      : 'A1 temel yeterlilik hedefi (%60) için aşağıdaki açıklamaları inceleyip tekrar deneyebilirsiniz.'}
+                      ? tx({
+                          tr: 'CEFR A1 temel yeterlilik eşiği (%60 ve üzeri) başarıyla geçildi.',
+                          en: 'CEFR A1 proficiency threshold (60% and above) passed successfully.',
+                        })
+                      : tx({
+                          tr: 'A1 temel yeterlilik hedefi (%60) için aşağıdaki açıklamaları inceleyip tekrar deneyebilirsiniz.',
+                          en: 'Review the explanations below and try again to reach the A1 proficiency target (60%).',
+                        })}
                   </p>
                 </div>
               </div>
@@ -373,26 +430,32 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs sm:text-sm font-medium text-[#F6F6F4] hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
               >
                 <RotateCcw className="h-4 w-4" />
-                <span>Yeni Deneme Başlat</span>
+                <span>{tx({ tr: 'Yeni Deneme Başlat', en: 'Start New Practice Exam' })}</span>
               </button>
             </div>
 
             {/* Summary KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Doğru Sayısı</p>
+                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Doğru Sayısı', en: 'Correct Answers' })}
+                </p>
                 <p className="mt-1 font-mono text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                   {reviewCorrectCount} / {GERMAN_A1_EXAM_QUESTIONS.length}
                 </p>
               </div>
               <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Sınav Başarı Oranı</p>
+                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Sınav Başarı Oranı', en: 'Exam Score' })}
+                </p>
                 <p className="mt-1 font-mono text-2xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
-                  %{submittedScorePct ?? 0}
+                  {tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct: submittedScorePct ?? 0 })}
                 </p>
               </div>
               <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Bu Denemede Yeni XP</p>
+                <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                  {tx({ tr: 'Bu Denemede Yeni XP', en: 'New XP This Attempt' })}
+                </p>
                 <p className="mt-1 font-mono text-2xl font-semibold text-[#15803D] dark:text-[#4ADE80] tabular-nums">
                   +{lastXpAwarded} XP
                 </p>
@@ -413,14 +476,14 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                     className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 space-y-2 dark:border-[#24242C] dark:bg-[#111113]"
                   >
                     <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                      {sec.labelTr}
+                      {isEn ? sec.labelEn : sec.labelTr}
                     </p>
                     <div className="flex items-center justify-between font-mono text-xs tabular-nums">
                       <span className="text-[#52525B] dark:text-[#A1A1AA]">
                         {secCorrect}/{secQs.length}
                       </span>
                       <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                        %{pct}
+                        {tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct })}
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#D9D9D3] dark:bg-[#23232B]">
@@ -438,7 +501,13 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
           {/* Full Answer Review */}
           <section className="space-y-3">
             <h3 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Soru Bazlı Çözüm İncelemesi (15 Soru)
+              {tx(
+                {
+                  tr: 'Soru Bazlı Çözüm İncelemesi ({{total}} Soru)',
+                  en: 'Question-by-Question Answer Review ({{total}} Questions)',
+                },
+                { total: GERMAN_A1_EXAM_QUESTIONS.length }
+              )}
             </h3>
             {GERMAN_A1_EXAM_QUESTIONS.map((q, idx) => {
               const userChoice = selectedAnswers[q.id];
@@ -450,17 +519,22 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="font-mono text-[#52525B] dark:text-[#A1A1AA]">
-                      Soru {idx + 1} · {q.sectionLabelTr}
+                      {tx({ tr: 'Soru {{num}}', en: 'Question {{num}}' }, { num: idx + 1 })} ·{' '}
+                      {q.sectionLabelTr}
                     </span>
                     {isCorrect ? (
                       <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>Doğru</span>
+                        <span>{locale.common.correct}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 font-semibold text-[#B91C1C] dark:text-[#F87171]">
                         <XCircle className="h-4 w-4" />
-                        <span>{userChoice === undefined ? 'Boş Bırakıldı' : 'Yanlış'}</span>
+                        <span>
+                          {userChoice === undefined
+                            ? tx({ tr: 'Boş Bırakıldı', en: 'Unanswered' })
+                            : locale.common.incorrect}
+                        </span>
                       </span>
                     )}
                   </div>
@@ -470,11 +544,12 @@ export const ExamBankView: React.FC<ExamBankViewProps> = ({ onNavigate }) => {
                   <div className="text-xs sm:text-sm space-y-1">
                     {userChoice !== undefined && !isCorrect && (
                       <p className="text-[#B91C1C] dark:text-[#F87171]">
-                        Sizin yanıtınız: {q.options[userChoice]}
+                        {tx({ tr: 'Sizin yanıtınız:', en: 'Your answer:' })} {q.options[userChoice]}
                       </p>
                     )}
                     <p className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                      Doğru yanıt: {q.options[q.correctIndex]}
+                      {tx({ tr: 'Doğru yanıt:', en: 'Correct answer:' })}{' '}
+                      {q.options[q.correctIndex]}
                     </p>
                     <p className="text-[#52525B] dark:text-[#A1A1AA]">{q.explanationTr}</p>
                   </div>

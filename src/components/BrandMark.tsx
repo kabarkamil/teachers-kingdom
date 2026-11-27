@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../hooks/useI18n';
 
 export const BRAND_LOGO_URL = '/assets/logo.png';
 
@@ -17,6 +18,7 @@ export const BrandMark: React.FC<BrandMarkProps> = ({
   variant = 'square',
   decorative = true,
 }) => {
+  const { locale } = useI18n();
   const imageScaleClass = variant === 'crest' ? 'scale-[1.42]' : 'scale-[1.16]';
 
   return (
@@ -25,7 +27,7 @@ export const BrandMark: React.FC<BrandMarkProps> = ({
     >
       <img
         src={BRAND_LOGO_URL}
-        alt={decorative ? '' : 'Teachers Kingdom amblemi'}
+        alt={decorative ? '' : locale.brand.emblemAlt}
         aria-hidden={decorative ? true : undefined}
         decoding="async"
         className={`h-full w-full object-contain ${imageScaleClass} select-none pointer-events-none`}

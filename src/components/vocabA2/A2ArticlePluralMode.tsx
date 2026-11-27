@@ -7,6 +7,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
 import type { A2VocabTopic, GermanArticle } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
@@ -32,6 +33,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
   onSpeechError,
 }) => {
   const { a2Progress, speechSpeed, recordA2ArticlePluralAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [index, setIndex] = useState(0);
   const [selectedArticle, setSelectedArticle] = useState<GermanArticle | null>(null);
   const [selectedPlural, setSelectedPlural] = useState<string | null>(null);
@@ -123,11 +125,20 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
           <span className="font-medium text-[#111113] dark:text-[#F4F4F5]">{topic.titleTr}</span>
           <span aria-hidden="true">·</span>
           <span className="font-mono tabular-nums">
-            Soru {index + 1} / {topic.words.length}
+            {tx(
+              { tr: 'Soru {{current}} / {{total}}', en: 'Question {{current}} / {{total}}' },
+              { current: index + 1, total: topic.words.length }
+            )}
           </span>
         </div>
         <span className="font-mono text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
-          Ustalaşılan: {masteredInTopic} / {topic.words.length}
+          {tx(
+            {
+              tr: 'Ustalaşılan: {{mastered}} / {{total}}',
+              en: 'Mastered: {{mastered}} / {{total}}',
+            },
+            { mastered: masteredInTopic, total: topic.words.length }
+          )}
         </span>
       </div>
 
@@ -136,7 +147,10 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-              Artikel &amp; Çoğul Avı · İki Aşamalı Hatırlama
+              {tx({
+                tr: 'Artikel & Çoğul Avı · İki Aşamalı Hatırlama',
+                en: 'Article & Plural Drill · Two-Step Recall',
+              })}
             </p>
             <h3 className="mt-2 font-display text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
               {checked ? (
@@ -151,7 +165,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
               )}
             </h3>
             <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-              Türkçe anlamı:{' '}
+              {tx({ tr: 'Türkçe anlamı:', en: 'Turkish meaning:' })}{' '}
               <strong className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
                 {currentWord.turkish}
               </strong>
@@ -160,7 +174,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
 
           {isMastered && (
             <span className="font-mono text-xs font-semibold text-[#15803D] dark:text-[#4ADE80] shrink-0">
-              Ustalaşıldı
+              {tx({ tr: 'Ustalaşıldı', en: 'Mastered' })}
             </span>
           )}
         </div>
@@ -168,7 +182,10 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
         {/* Step 1: Article Selection */}
         <div className="space-y-2.5">
           <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            1. Doğru artikeli seçin (der / die / das):
+            {tx({
+              tr: '1. Doğru artikeli seçin (der / die / das):',
+              en: '1. Select the correct article (der / die / das):',
+            })}
           </p>
           <div className="grid grid-cols-3 gap-2.5">
             {ARTICLES.map((art) => {
@@ -208,7 +225,10 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
         {/* Step 2: Plural Selection */}
         <div className="space-y-2.5">
           <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            2. Doğru çoğul biçimini (Plural) seçin:
+            {tx({
+              tr: '2. Doğru çoğul biçimini (Plural) seçin:',
+              en: '2. Select the correct plural form (Plural):',
+            })}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {pluralOptions.map((opt) => {
@@ -254,7 +274,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
               onClick={handleCheck}
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#641624] disabled:opacity-45 dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
-              <span>Kontrol Et</span>
+              <span>{locale.common.check}</span>
             </button>
           </div>
         ) : (
@@ -278,13 +298,44 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
                   <p className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
                     {isBothCorrect
                       ? lastXpEarned > 0
-                        ? `Tebrikler! Artikel ve çoğul doğru (+${lastXpEarned} XP).`
-                        : 'Doğru! Bu kelime daha önce ustalaşıldı (çift XP eklenmez).'
+                        ? tx(
+                            {
+                              tr: 'Tebrikler! Artikel ve çoğul doğru (+{{xp}} XP).',
+                              en: 'Well done! Both article and plural are correct (+{{xp}} XP).',
+                            },
+                            { xp: lastXpEarned }
+                          )
+                        : tx({
+                            tr: 'Doğru! Bu kelime daha önce ustalaşıldı (çift XP eklenmez).',
+                            en: 'Correct! This word was already mastered (no duplicate XP).',
+                          })
                       : !isArticleCorrect && !isPluralCorrect
-                      ? `Hem artikel hem çoğul farklı: ${currentWord.article} ${currentWord.word} / ${currentWord.plural}`
+                      ? tx(
+                          {
+                            tr: 'Hem artikel hem çoğul farklı: {{article}} {{word}} / {{plural}}',
+                            en: 'Both article and plural differ: {{article}} {{word}} / {{plural}}',
+                          },
+                          {
+                            article: currentWord.article,
+                            word: currentWord.word,
+                            plural: currentWord.plural,
+                          }
+                        )
                       : !isArticleCorrect
-                      ? `Çoğul doğru, ancak doğru artikel "${currentWord.article}": ${currentWord.article} ${currentWord.word}`
-                      : `Artikel doğru, ancak doğru çoğul biçimi "${currentWord.plural}".`}
+                      ? tx(
+                          {
+                            tr: 'Çoğul doğru, ancak doğru artikel "{{article}}": {{article}} {{word}}',
+                            en: 'Plural is correct, but the correct article is "{{article}}": {{article}} {{word}}',
+                          },
+                          { article: currentWord.article, word: currentWord.word }
+                        )
+                      : tx(
+                          {
+                            tr: 'Artikel doğru, ancak doğru çoğul biçimi "{{plural}}".',
+                            en: 'Article is correct, but the correct plural form is "{{plural}}".',
+                          },
+                          { plural: currentWord.plural }
+                        )}
                   </p>
                   <p className="leading-relaxed text-[#52525B] dark:text-[#D4D4D8]">
                     {currentWord.articlePluralTipTr}
@@ -296,7 +347,10 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
                 type="button"
                 disabled={!speechSupported}
                 onClick={handleSpeakAnswer}
-                aria-label="Doğru tekil ve çoğul biçimi dinle"
+                aria-label={tx({
+                  tr: 'Doğru tekil ve çoğul biçimi dinle',
+                  en: 'Listen to the correct singular and plural forms',
+                })}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] text-[#7C1D2E] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#D9A13B]"
               >
                 <Volume2 className="h-4 w-4" />
@@ -311,7 +365,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-semibold text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Tekrar Dene</span>
+                  <span>{locale.common.retry}</span>
                 </button>
               )}
               <button
@@ -319,7 +373,7 @@ export const A2ArticlePluralMode: React.FC<A2ArticlePluralModeProps> = ({
                 onClick={handleNext}
                 className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#111113] px-4 text-xs font-semibold text-white hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
               >
-                <span>Sonraki Kelime</span>
+                <span>{tx({ tr: 'Sonraki Kelime', en: 'Next Word' })}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>

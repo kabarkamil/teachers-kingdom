@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { A2_ARENA_IDS, GERMAN_A2_ARENA_ITEMS } from '../../data/germanA2Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { ArenaItem, NavRouteId } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivityA2SubNav } from './ActivityA2SubNav';
@@ -34,8 +35,8 @@ function shuffleA2Items(items: ArenaItem[]): ArenaItem[] {
 }
 
 export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
-  const { a2Progress, uiLanguage, recordA2ActivityAnswer } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { a2Progress, recordA2ActivityAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [format, setFormat] = useState<ArenaFormat>('streak');
   const [phase, setPhase] = useState<ArenaPhase>('lobby');
   const [deck, setDeck] = useState<ArenaItem[]>(GERMAN_A2_ARENA_ITEMS);
@@ -130,21 +131,27 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A2 · Hızlı Tekrar Arenası (Bireysel)
+              {tx({
+                tr: 'Almanca A2 · Hızlı Tekrar Arenası (Bireysel)',
+                en: 'German A2 · Rapid Review Arena (Solo)',
+              })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            A2 Arena — Seri &amp; 60 Saniyelik Hız Turu
+            {tx({
+              tr: 'A2 Arena — Seri & 60 Saniyelik Hız Turu',
+              en: 'A2 Arena — Streak & 60-Second Speed Round',
+            })}
           </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
             <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {isEn ? 'A2 Best Streak' : 'A2 En İyi Seri'}
+              {tx({ tr: 'A2 En İyi Seri', en: 'A2 Best Streak' })}
             </p>
             <p className="font-mono text-xl font-semibold text-[#7A1C24] dark:text-[#D4AF37] tabular-nums">
               {a2Progress.a2ArenaBestStreak}
@@ -153,7 +160,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
             <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {isEn ? 'Mastered A2' : 'Ustalaşılan A2 Soru'}
+              {tx({ tr: 'Ustalaşılan A2 Soru', en: 'Mastered A2 Questions' })}
             </p>
             <p className="font-mono text-xl font-semibold text-[#0D0D0D] dark:text-[#FFFFFF] tabular-nums">
               {masteredCount} / {GERMAN_A2_ARENA_ITEMS.length}
@@ -162,7 +169,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
             <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {isEn ? 'Total A2 XP' : 'Toplam A2 XP'}
+              {tx({ tr: 'Toplam A2 XP', en: 'Total A2 XP' })}
             </p>
             <p className="font-mono text-xl font-semibold text-[#0D0D0D] dark:text-[#D4AF37] tabular-nums">
               {a2Progress.xp}
@@ -178,13 +185,16 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
                 <Flame className="h-4 w-4" />
-                <span>Seri Modu · Süresiz Odak</span>
+                <span>{tx({ tr: 'Seri Modu · Süresiz Odak', en: 'Streak Mode · Untimed Focus' })}</span>
               </div>
               <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                12 Soruluk A2 Seri Turu
+                {tx({ tr: '12 Soruluk A2 Seri Turu', en: '12-Question A2 Streak Round' })}
               </h2>
               <p className="text-sm leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-                Süresiz 12 A2 sorusuyla kişisel seri rekorunuzu geliştirin.
+                {tx({
+                  tr: 'Süresiz 12 A2 sorusuyla kişisel seri rekorunuzu geliştirin.',
+                  en: 'Improve your personal streak record with 12 untimed A2 questions.',
+                })}
               </p>
             </div>
             <button
@@ -193,7 +203,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
               <Play className="h-4 w-4 fill-current" />
-              <span>A2 Seri Modunu Başlat</span>
+              <span>{tx({ tr: 'A2 Seri Modunu Başlat', en: 'Start A2 Streak Mode' })}</span>
             </button>
           </div>
 
@@ -201,13 +211,16 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
                 <Clock className="h-4 w-4" />
-                <span>Hız Turu · 60 Saniye</span>
+                <span>{tx({ tr: 'Hız Turu · 60 Saniye', en: 'Speed Round · 60 Seconds' })}</span>
               </div>
               <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                60 Saniyelik A2 Hızlı Tekrar
+                {tx({ tr: '60 Saniyelik A2 Hızlı Tekrar', en: '60-Second A2 Rapid Review' })}
               </h2>
               <p className="text-sm leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-                60 saniyede A2 sözcük ve yan cümle hızınızı ölçün (ilk ustalaşmada +10 A2 XP).
+                {tx({
+                  tr: '60 saniyede A2 sözcük ve yan cümle hızınızı ölçün (ilk ustalaşmada +10 A2 XP).',
+                  en: 'Test your A2 vocabulary and subordinate clause speed in 60 seconds (+10 A2 XP on first mastery).',
+                })}
               </p>
             </div>
             <button
@@ -216,7 +229,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#111113] px-5 text-sm font-semibold text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#23232B] dark:text-[#F4F4F5] dark:hover:bg-[#2E2E38]"
             >
               <Swords className="h-4 w-4 text-[#D9A13B]" />
-              <span>60 Saniye Turunu Başlat</span>
+              <span>{tx({ tr: '60 Saniye Turunu Başlat', en: 'Start 60-Second Round' })}</span>
             </button>
           </div>
         </div>
@@ -228,7 +241,10 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ECECE8] pb-4 dark:border-[#24242C]">
             <div className="flex flex-wrap items-center gap-3 text-xs">
               <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B] tabular-nums">
-                Soru {questionIdx + 1} / {GERMAN_A2_ARENA_ITEMS.length}
+                {tx(
+                  { tr: 'Soru {{current}} / {{total}}', en: 'Question {{current}} / {{total}}' },
+                  { current: questionIdx + 1, total: GERMAN_A2_ARENA_ITEMS.length }
+                )}
               </span>
               <span aria-hidden="true">·</span>
               <span className="text-[#52525B] dark:text-[#A1A1AA]">
@@ -239,7 +255,9 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
             <div className="flex items-center gap-4 font-mono text-xs font-semibold tabular-nums">
               <span className="inline-flex items-center gap-1.5 text-[#7C1D2E] dark:text-[#D9A13B]">
                 <Flame className="h-4 w-4" />
-                <span>Seri: {currentStreak}</span>
+                <span>
+                  {tx({ tr: 'Seri: {{streak}}', en: 'Streak: {{streak}}' }, { streak: currentStreak })}
+                </span>
               </span>
               {format === 'timed' && (
                 <span
@@ -250,7 +268,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
                   }`}
                 >
                   <Clock className="h-4 w-4" />
-                  <span>{secondsLeft} sn</span>
+                  <span>{tx({ tr: '{{sec}} sn', en: '{{sec}}s' }, { sec: secondsLeft })}</span>
                 </span>
               )}
               <button
@@ -258,7 +276,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
                 onClick={() => setPhase('summary')}
                 className="text-[#52525B] hover:text-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]"
               >
-                Turu Bitir
+                {tx({ tr: 'Turu Bitir', en: 'Finish Round' })}
               </button>
             </div>
           </div>
@@ -275,6 +293,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
                 <ModelAudioBar
                   textDe={currentItem.audioTextDe ?? currentItem.promptDe.replace(/___+/g, '...')}
                   labelTr="İfadeyi Dinle (de-DE)"
+                  labelEn="Listen to Phrase (de-DE)"
                   compact
                 />
               </div>
@@ -325,9 +344,18 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
                 <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
                   {selectedIdx === currentItem.correctIndex
                     ? lastXpAwarded && lastXpAwarded > 0
-                      ? `Doğru · +${lastXpAwarded} A2 XP kazanıldı`
-                      : 'Doğru (bu A2 sorusu daha önce tamamlandığı için 0 ek XP)'
-                    : 'Tekrar edilmeli'}
+                      ? tx(
+                          {
+                            tr: 'Doğru · +{{xp}} A2 XP kazanıldı',
+                            en: 'Correct · +{{xp}} A2 XP earned',
+                          },
+                          { xp: lastXpAwarded }
+                        )
+                      : tx({
+                          tr: 'Doğru (bu A2 sorusu daha önce tamamlandığı için 0 ek XP)',
+                          en: 'Correct (0 extra XP — this A2 question was already completed)',
+                        })
+                    : tx({ tr: 'Tekrar edilmeli', en: 'Needs review' })}
                 </p>
                 <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                   {currentItem.explanationTr}
@@ -340,8 +368,8 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-[#7C1D2E] px-5 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] whitespace-nowrap shrink-0"
               >
                 {questionIdx + 1 >= GERMAN_A2_ARENA_ITEMS.length
-                  ? 'Sonuçları Gör'
-                  : 'Sonraki Soru'}
+                  ? tx({ tr: 'Sonuçları Gör', en: 'View Results' })
+                  : tx({ tr: 'Sonraki Soru', en: 'Next Question' })}
               </button>
             </div>
           )}
@@ -355,37 +383,45 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
             <Trophy className="mt-0.5 h-6 w-6 text-[#9A6B16] dark:text-[#D9A13B] shrink-0" />
             <div>
               <h2 className="font-display text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                A2 Arena Turu Tamamlandı
+                {tx({ tr: 'A2 Arena Turu Tamamlandı', en: 'A2 Arena Round Complete' })}
               </h2>
               <p className="mt-1 text-sm text-[#52525B] dark:text-[#A1A1AA]">
                 {format === 'timed'
-                  ? '60 saniyelik A2 hız turu özeti'
-                  : '12 soruluk A2 seri turu özeti'}
+                  ? tx({ tr: '60 saniyelik A2 hız turu özeti', en: '60-second A2 speed round summary' })
+                  : tx({ tr: '12 soruluk A2 seri turu özeti', en: '12-question A2 streak round summary' })}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Doğru / Yanıt</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Doğru / Yanıt', en: 'Correct / Answered' })}
+              </p>
               <p className="mt-1 font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {sessionCorrect} / {sessionAnswered}
               </p>
             </div>
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tur Doğruluğu</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Tur Doğruluğu', en: 'Round Accuracy' })}
+              </p>
               <p className="mt-1 font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                %{sessionAccuracy}
+                {tx({ tr: '%{{pct}}', en: '{{pct}}%' }, { pct: sessionAccuracy })}
               </p>
             </div>
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Tur / En İyi Seri</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Tur / En İyi Seri', en: 'Round / Best Streak' })}
+              </p>
               <p className="mt-1 font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
                 {sessionBestStreak} / {a2Progress.a2ArenaBestStreak}
               </p>
             </div>
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Yeni A2 XP</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Yeni A2 XP', en: 'New A2 XP' })}
+              </p>
               <p className="mt-1 font-mono text-xl font-semibold text-[#15803D] dark:text-[#4ADE80] tabular-nums">
                 +{sessionXpEarned} XP
               </p>
@@ -399,21 +435,21 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-xs sm:text-sm font-semibold text-white hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113]"
             >
               <RotateCcw className="h-4 w-4" />
-              <span>Aynı Modda Tekrar Oyna</span>
+              <span>{tx({ tr: 'Aynı Modda Tekrar Oyna', en: 'Play Again in Same Mode' })}</span>
             </button>
             <button
               type="button"
               onClick={() => setPhase('lobby')}
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs sm:text-sm font-medium text-[#0D0D0D] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#0D0D0D] dark:text-[#FFFFFF]"
             >
-              <span>{isEn ? 'Back to Modes' : 'Mod Seçimine Dön'}</span>
+              <span>{tx({ tr: 'Mod Seçimine Dön', en: 'Back to Modes' })}</span>
             </button>
             <button
               type="button"
               onClick={() => onNavigate('ogrenme-yolum')}
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-xs sm:text-sm font-medium text-[#7A1C24] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#D4AF37]"
             >
-              <span>{isEn ? 'View Progress' : 'İlerlememi Gör'}</span>
+              <span>{locale.common.viewProgress}</span>
             </button>
           </div>
         </section>

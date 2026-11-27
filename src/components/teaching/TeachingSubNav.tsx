@@ -1,6 +1,7 @@
 import React from 'react';
 import { ClipboardList, GraduationCap, Users } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { NavRouteId } from '../../types';
 
 interface TeachingSubNavProps {
@@ -10,6 +11,7 @@ interface TeachingSubNavProps {
 
 export const TeachingSubNav: React.FC<TeachingSubNavProps> = ({ activeRoute, onNavigate }) => {
   const { progress } = useAppState();
+  const { tx } = useI18n();
 
   const completedAssignments = progress.teachingAssignments.filter(
     (a) => a.status === 'completed' || a.status === 'reviewed'
@@ -17,25 +19,25 @@ export const TeachingSubNav: React.FC<TeachingSubNavProps> = ({ activeRoute, onN
 
   const items: Array<{
     routeId: NavRouteId;
-    labelTr: string;
+    label: string;
     countLabel: string;
     icon: React.ComponentType<{ className?: string }>;
   }> = [
     {
       routeId: 'siniflarim',
-      labelTr: 'Sınıflarım',
+      label: tx({ tr: 'Sınıflarım', en: 'My Classes' }),
       countLabel: `${progress.teachingClasses.length}`,
       icon: Users,
     },
     {
       routeId: 'odevler',
-      labelTr: 'Ödevler',
+      label: tx({ tr: 'Ödevler', en: 'Assignments' }),
       countLabel: `${completedAssignments}/${progress.teachingAssignments.length}`,
       icon: ClipboardList,
     },
     {
       routeId: 'ogretmen-studyosu',
-      labelTr: 'Öğretmen Stüdyosu',
+      label: tx({ tr: 'Öğretmen Stüdyosu', en: 'Teacher Studio' }),
       countLabel: `${progress.studioDrafts.length}`,
       icon: GraduationCap,
     },
@@ -43,7 +45,13 @@ export const TeachingSubNav: React.FC<TeachingSubNavProps> = ({ activeRoute, onN
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-[#ECECE8] bg-[#FFFFFF] p-2 dark:border-[#24242C] dark:bg-[#16161A]">
-      <nav aria-label="Öğretim ve yönetim modülleri" className="flex flex-wrap items-center gap-1.5">
+      <nav
+        aria-label={tx({
+          tr: 'Öğretim ve yönetim modülleri',
+          en: 'Teaching and management modules',
+        })}
+        className="flex flex-wrap items-center gap-1.5"
+      >
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeRoute === item.routeId;
@@ -61,7 +69,7 @@ export const TeachingSubNav: React.FC<TeachingSubNavProps> = ({ activeRoute, onN
               }`}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span>{item.labelTr}</span>
+              <span>{item.label}</span>
               <span
                 className={`font-mono text-[11px] tabular-nums ${
                   isActive ? 'opacity-90' : 'text-[#71717A] dark:text-[#8E8E98]'
@@ -75,7 +83,10 @@ export const TeachingSubNav: React.FC<TeachingSubNavProps> = ({ activeRoute, onN
       </nav>
 
       <p className="px-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-        A1 &amp; A2 Yerel Tarayıcı Kaydı · Harici Bulut Senkronizasyonu Sonraki Fazda
+        {tx({
+          tr: 'A1 & A2 Yerel Tarayıcı Kaydı · Harici Bulut Senkronizasyonu Sonraki Fazda',
+          en: 'A1 & A2 Local Browser Storage · Cloud Sync Planned for Next Phase',
+        })}
       </p>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, Moon, Sun, Volume2 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
-import { getLocale } from '../i18n/tr';
+import { useI18n } from '../hooks/useI18n';
 import { isSpeechSynthesisSupported, speakGermanText } from '../utils/speech';
 import { DataPortabilityPanel } from './DataPortabilityPanel';
 
@@ -16,33 +16,36 @@ export const SettingsView: React.FC = () => {
     uiLanguage,
     setUiLanguage,
   } = useAppState();
-  const locale = getLocale(uiLanguage);
+  const { locale, tx } = useI18n();
 
   const [ttsStatusMsg, setTtsStatusMsg] = useState<string | null>(null);
   const speechSupported = isSpeechSynthesisSupported();
 
   const handleTestVoice = () => {
     setTtsStatusMsg(
-      uiLanguage === 'en' ? 'Starting speech engine…' : 'Ses motoru başlatılıyor…'
+      tx({ tr: 'Ses motoru başlatılıyor…', en: 'Starting speech engine…' })
     );
     const res = speakGermanText('Guten Tag! Willkommen bei Teachers Kingdom.', speechSpeed, {
       onStart: () =>
         setTtsStatusMsg(
-          uiLanguage === 'en'
-            ? 'Playing German sample audio…'
-            : 'Almanca örnek seslendirme oynatılıyor…'
+          tx({
+            tr: 'Almanca örnek seslendirme oynatılıyor…',
+            en: 'Playing German sample audio…',
+          })
         ),
       onEnd: () =>
         setTtsStatusMsg(
-          uiLanguage === 'en'
-            ? 'Browser speech synthesis tested successfully.'
-            : 'Tarayıcı seslendirmesi başarıyla test edildi.'
+          tx({
+            tr: 'Tarayıcı seslendirmesi başarıyla test edildi.',
+            en: 'Browser speech synthesis tested successfully.',
+          })
         ),
       onError: () =>
         setTtsStatusMsg(
-          uiLanguage === 'en'
-            ? 'Speech playback could not start. Please check your browser audio settings.'
-            : 'Seslendirme başlatılamadı. Tarayıcı ses ayarlarınızı kontrol edebilirsiniz.'
+          tx({
+            tr: 'Seslendirme başlatılamadı. Tarayıcı ses ayarlarınızı kontrol edebilirsiniz.',
+            en: 'Speech playback could not start. Please check your browser audio settings.',
+          })
         ),
     });
     if (!res.queued) {
@@ -54,12 +57,13 @@ export const SettingsView: React.FC = () => {
     <div className="mx-auto max-w-4xl space-y-8 pb-8">
       <div className="border-b border-[#D9D9D3] pb-6 dark:border-[#282830]">
         <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-          {uiLanguage === 'en'
-            ? 'Personal · Platform Preferences & Data Portability'
-            : 'Kişisel Alan · Platform Tercihleri & Veri Taşınabilirliği'}
+          {tx({
+            tr: 'Kişisel Alan · Platform Tercihleri & Veri Taşınabilirliği',
+            en: 'Personal · Platform Preferences & Data Portability',
+          })}
         </p>
         <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
-          {uiLanguage === 'en' ? 'Settings' : 'Ayarlar'}
+          {tx({ tr: 'Ayarlar', en: 'Settings' })}
         </h1>
       </div>
 
@@ -69,15 +73,20 @@ export const SettingsView: React.FC = () => {
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
-              {uiLanguage === 'en' ? 'Interface Language' : 'Arayüz Dili'}
+              {tx({ tr: 'Arayüz Dili', en: 'Interface Language' })}
             </h2>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {uiLanguage === 'en'
-                ? 'Switch navigation and shell labels between Turkish and English.'
-                : 'Gezinme ve arayüz etiketlerini Türkçe veya İngilizce olarak kullanın.'}
+              {tx({
+                tr: 'Gezinme ve arayüz etiketlerini Türkçe veya İngilizce olarak kullanın.',
+                en: 'Switch navigation and interface labels between Turkish and English.',
+              })}
             </p>
           </div>
-          <div role="group" aria-label="Interface Language" className="flex items-center gap-2 shrink-0">
+          <div
+            role="group"
+            aria-label={tx({ tr: 'Arayüz Dili', en: 'Interface Language' })}
+            className="flex items-center gap-2 shrink-0"
+          >
             <button
               type="button"
               aria-pressed={uiLanguage === 'tr'}
@@ -111,15 +120,20 @@ export const SettingsView: React.FC = () => {
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
-              {uiLanguage === 'en' ? 'Appearance Theme' : 'Görünüm Teması'}
+              {tx({ tr: 'Görünüm Teması', en: 'Appearance Theme' })}
             </h2>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {uiLanguage === 'en'
-                ? 'Switch between Light (Platinum) and Dark (Obsidian) theme.'
-                : 'Açık (Platin) veya Koyu (Obsidyen) kurumsal tema arasında geçiş yapın.'}
+              {tx({
+                tr: 'Açık (Platin) veya Koyu (Obsidyen) kurumsal tema arasında geçiş yapın.',
+                en: 'Switch between Light (Platinum) and Dark (Obsidian) theme.',
+              })}
             </p>
           </div>
-          <div role="group" aria-label="Appearance Theme" className="flex items-center gap-2 shrink-0">
+          <div
+            role="group"
+            aria-label={tx({ tr: 'Görünüm Teması', en: 'Appearance Theme' })}
+            className="flex items-center gap-2 shrink-0"
+          >
             <button
               type="button"
               aria-pressed={theme === 'light'}
@@ -131,7 +145,7 @@ export const SettingsView: React.FC = () => {
               }`}
             >
               <Sun className="h-4 w-4" />
-              <span>{uiLanguage === 'en' ? 'Light Theme' : 'Açık Tema'}</span>
+              <span>{tx({ tr: 'Açık Tema', en: 'Light Theme' })}</span>
             </button>
             <button
               type="button"
@@ -144,7 +158,7 @@ export const SettingsView: React.FC = () => {
               }`}
             >
               <Moon className="h-4 w-4" />
-              <span>{uiLanguage === 'en' ? 'Dark Theme' : 'Koyu Tema'}</span>
+              <span>{tx({ tr: 'Koyu Tema', en: 'Dark Theme' })}</span>
             </button>
           </div>
         </div>
@@ -153,12 +167,13 @@ export const SettingsView: React.FC = () => {
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
-              {uiLanguage === 'en' ? 'Role View Mode' : 'Rol Önizleme Modu'}
+              {tx({ tr: 'Rol Önizleme Modu', en: 'Role View Mode' })}
             </h2>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {uiLanguage === 'en'
-                ? 'Explore the homepage and modules from Student or Teacher perspective.'
-                : 'Ana sayfa ve modül vurgularını Öğrenci veya Öğretmen bakış açısıyla inceleyin.'}
+              {tx({
+                tr: 'Ana sayfa ve modül vurgularını Öğrenci veya Öğretmen bakış açısıyla inceleyin.',
+                en: 'Explore the homepage and modules from Student or Teacher perspective.',
+              })}
             </p>
           </div>
           <div role="group" aria-label={locale.roles.previewLabel} className="flex items-center gap-2 shrink-0">
@@ -193,9 +208,10 @@ export const SettingsView: React.FC = () => {
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
-              {uiLanguage === 'en'
-                ? 'German Speech Speed (Web Speech API)'
-                : 'Almanca Telaffuz Hızı (Web Speech API)'}
+              {tx({
+                tr: 'Almanca Telaffuz Hızı (Web Speech API)',
+                en: 'German Speech Speed (Web Speech API)',
+              })}
             </h2>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
               {locale.common.browserTtsNotice}
@@ -210,7 +226,11 @@ export const SettingsView: React.FC = () => {
               </p>
             )}
           </div>
-          <div role="group" aria-label="German Speech Speed" className="flex flex-wrap items-center gap-2 shrink-0">
+          <div
+            role="group"
+            aria-label={tx({ tr: 'Almanca Telaffuz Hızı', en: 'German Speech Speed' })}
+            className="flex flex-wrap items-center gap-2 shrink-0"
+          >
             <button
               type="button"
               aria-pressed={speechSpeed === 'normal'}
@@ -233,7 +253,7 @@ export const SettingsView: React.FC = () => {
                   : 'border-[#D9D9D3] bg-[#F6F6F4] text-[#52525B] dark:border-[#282830] dark:bg-[#0D0D0D] dark:text-[#A1A1AA]'
               }`}
             >
-              {uiLanguage === 'en' ? 'Slow (0.72×)' : 'Yavaş (0.72×)'}
+              {tx({ tr: 'Yavaş (0.72×)', en: 'Slow (0.72×)' })}
             </button>
             <button
               type="button"
@@ -242,7 +262,7 @@ export const SettingsView: React.FC = () => {
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#0D0D0D] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#FFFFFF] whitespace-nowrap"
             >
               <Volume2 className="h-3.5 w-3.5" />
-              <span>{uiLanguage === 'en' ? 'Test' : 'Test Et'}</span>
+              <span>{tx({ tr: 'Test Et', en: 'Test' })}</span>
             </button>
           </div>
         </div>

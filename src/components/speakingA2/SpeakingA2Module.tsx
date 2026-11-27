@@ -7,6 +7,7 @@ import {
   getA2SpeakingScenarioById,
   getA2SpeakingScenarioTaskIds,
 } from '../../data/germanA2Speaking';
+import { useI18n } from '../../hooks/useI18n';
 import type { SpeakingTaskKind } from '../../types';
 import { STORAGE_KEY_A2_STATE } from '../../utils/a2DataPortability';
 import { stopGermanSpeech } from '../../utils/speech';
@@ -18,14 +19,15 @@ interface SpeakingA2ModuleProps {
   initialScenarioId?: string;
 }
 
-const MODE_TABS: Array<{ id: SpeakingTaskKind; labelTr: string }> = [
-  { id: 'repeat', labelTr: '1. Telaffuz & Kalıp Tekrarı' },
-  { id: 'prompt', labelTr: '2. Kılavuzlu Yanıt & Deneyim' },
-  { id: 'roleplay', labelTr: '3. Çok Turlu Rol Oyunu' },
+const MODE_TABS: Array<{ id: SpeakingTaskKind; labelTr: string; labelEn: string }> = [
+  { id: 'repeat', labelTr: '1. Telaffuz & Kalıp Tekrarı', labelEn: '1. Repeat & Pronunciation' },
+  { id: 'prompt', labelTr: '2. Kılavuzlu Yanıt & Deneyim', labelEn: '2. Guided Prompt & Experience' },
+  { id: 'roleplay', labelTr: '3. Çok Turlu Rol Oyunu', labelEn: '3. Multi-Turn Roleplay' },
 ];
 
 export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScenarioId }) => {
   const { a2Progress } = useAppState();
+  const { isEn, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     () => getA2SpeakingScenarioById(initialScenarioId).id
   );
@@ -68,37 +70,51 @@ export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScena
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
             <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca CEFR A2 · Aşama 5
+              {tx({ tr: 'Almanca CEFR A2 · Aşama 5', en: 'German CEFR A2 · Stage 5' })}
             </span>
             <span aria-hidden="true">·</span>
-            <span>Sprechen (Sözlü İletişim &amp; Ortak Planlama)</span>
+            <span>
+              {tx({
+                tr: 'Sprechen (Sözlü İletişim & Ortak Planlama)',
+                en: 'Sprechen (Spoken Interaction & Joint Planning)',
+              })}
+            </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">{STORAGE_KEY_A2_STATE}</span>
           </div>
 
           <h1 className="mt-1.5 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            A2 Konuşma Stüdyosu (Sprechen)
+            {tx({
+              tr: 'A2 Konuşma Stüdyosu (Sprechen)',
+              en: 'A2 Speaking Studio (Sprechen)',
+            })}
           </h1>
         </div>
 
         {/* Isolated A2 Speaking Stats */}
         <div className="grid grid-cols-3 gap-3 shrink-0">
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-4 py-3 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">Toplam A2 XP</p>
+            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Toplam A2 XP', en: 'Total A2 XP' })}
+            </p>
             <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
               {a2Progress.xp} XP
             </p>
           </div>
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-4 py-3 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">A2 Konuşma</p>
+            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'A2 Konuşma', en: 'A2 Speaking' })}
+            </p>
             <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedCount} / {TOTAL_A2_SPEAKING_TASKS}
             </p>
           </div>
           <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-4 py-3 dark:border-[#282830] dark:bg-[#16161A]">
-            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">Tamamlanma</p>
+            <p className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Tamamlanma', en: 'Completion' })}
+            </p>
             <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              %{completionPct}
+              {isEn ? `${completionPct}%` : `%${completionPct}`}
             </p>
           </div>
         </div>
@@ -108,18 +124,35 @@ export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScena
       <div className="flex items-start gap-2.5 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-4 py-3 text-xs leading-relaxed text-[#52525B] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA]">
         <Info className="mt-0.5 h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B] shrink-0" />
         <p>
-          Seslendirme tarayıcı Web Speech (<span className="font-mono text-[#111113] dark:text-[#F4F4F5]">de-DE</span>) ile çalışır; yapay zekâ telaffuz puanlaması yapılmaz ve öz-değerlendirme doğruluk yüzdesini etkilemez.
+          {tx({
+            tr: 'Seslendirme tarayıcı Web Speech (',
+            en: 'Audio playback uses browser Web Speech (',
+          })}
+          <span className="font-mono text-[#111113] dark:text-[#F4F4F5]">de-DE</span>
+          {tx({
+            tr: ') ile çalışır; yapay zekâ telaffuz puanlaması yapılmaz ve öz-değerlendirme doğruluk yüzdesini etkilemez.',
+            en: '); no AI pronunciation grading is performed and self-assessment does not affect your accuracy percentage.',
+          })}
         </p>
       </div>
 
       {/* 4 A2 Speaking Scenario Selector Cards */}
-      <section aria-label="A2 Konuşma Senaryoları" className="space-y-3">
+      <section
+        aria-label={tx({ tr: 'A2 Konuşma Senaryoları', en: 'A2 Speaking Scenarios' })}
+        className="space-y-3"
+      >
         <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <span className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            4 Özgün CEFR A2 Konuşma Senaryosu
+            {tx({
+              tr: '4 Özgün CEFR A2 Konuşma Senaryosu',
+              en: '4 Authentic CEFR A2 Speaking Scenarios',
+            })}
           </span>
           <span className="font-mono tabular-nums">
-            Her senaryoda 5 görev (2 Tekrar · 2 Kılavuzlu Yanıt · 1 Rol Oyunu)
+            {tx({
+              tr: 'Her senaryoda 5 görev (2 Tekrar · 2 Kılavuzlu Yanıt · 1 Rol Oyunu)',
+              en: '5 tasks per scenario (2 Repeat · 2 Guided Prompts · 1 Roleplay)',
+            })}
           </span>
         </div>
 
@@ -200,7 +233,13 @@ export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScena
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-medium text-[#9A6B16] dark:text-[#D9A13B]">
-                Seçili Senaryo · {scenario.registerLabelTr} · ~{scenario.estimatedMinutes} dk
+                {tx(
+                  {
+                    tr: 'Seçili Senaryo · {{register}} · ~{{min}} dk',
+                    en: 'Selected Scenario · {{register}} · ~{{min}} min',
+                  },
+                  { register: scenario.registerLabelTr, min: scenario.estimatedMinutes }
+                )}
               </p>
               <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
                 {scenario.titleDe} — {scenario.titleTr}
@@ -213,7 +252,7 @@ export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScena
 
           <div
             role="tablist"
-            aria-label="A2 Konuşma çalışma modları"
+            aria-label={tx({ tr: 'A2 Konuşma çalışma modları', en: 'A2 Speaking practice modes' })}
             className="flex flex-wrap items-center gap-1.5 rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-1.5 dark:border-[#24242C] dark:bg-[#111113]"
           >
             {MODE_TABS.map((tab) => {
@@ -231,7 +270,7 @@ export const SpeakingA2Module: React.FC<SpeakingA2ModuleProps> = ({ initialScena
                       : 'text-[#52525B] hover:text-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]'
                   }`}
                 >
-                  {tab.labelTr}
+                  {isEn ? tab.labelEn : tab.labelTr}
                 </button>
               );
             })}

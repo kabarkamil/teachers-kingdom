@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { CHARADE_IDS, GERMAN_A1_CHARADES } from '../../data/germanA1Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { NavRouteId } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivitySubNav } from './ActivitySubNav';
@@ -24,15 +25,21 @@ interface CharadesViewProps {
 
 type CharadePlayMode = 'guess' | 'classroom';
 
+type CharadeFeedback =
+  | { kind: 'guess-correct'; xp: number }
+  | { kind: 'guess-wrong'; targetDe: string; targetTr: string }
+  | { kind: 'classroom'; xp: number };
+
 export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
   const { progress, rolePreview, recordActivityAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [playMode, setPlayMode] = useState<CharadePlayMode>(
     rolePreview === 'teacher' ? 'classroom' : 'guess'
   );
   const [cardIndex, setCardIndex] = useState(0);
   const [revealedClueLevel, setRevealedClueLevel] = useState<1 | 2 | 3>(1);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<CharadeFeedback | null>(null);
 
   // Classroom / partner card reveal & 45s timer
   const [classroomRevealed, setClassroomRevealed] = useState(false);
@@ -47,7 +54,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
   useEffect(() => {
     setRevealedClueLevel(1);
     setSelectedOption(null);
-    setFeedbackNotice(null);
+    setFeedback(null);
     setClassroomRevealed(false);
     setTimerRunning(false);
     setTimerSeconds(45);
@@ -75,12 +82,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
       `Sessiz Sinema · ${currentCard.targetDe}`,
       isCorrect
     );
-    setFeedbackNotice(
+    setFeedback(
       isCorrect
-        ? xp > 0
-          ? `Doğru tahmin! +${xp} XP kazanıldı.`
-          : 'Doğru tahmin! (Bu kart daha önce tamamlandığı için ek XP eklenmedi.)'
-        : `Doğru yanıt: ${currentCard.targetDe} (${currentCard.targetTr}).`
+        ? { kind: 'guess-correct', xp }
+        : { kind: 'guess-wrong', targetDe: currentCard.targetDe, targetTr: currentCard.targetTr }
     );
   };
 
@@ -96,12 +101,36 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
       undefined,
       false
     );
-    setFeedbackNotice(
-      xp > 0
-        ? `Kart tahmin edildi olarak kaydedildi · +${xp} XP (öz-bildirim olduğu için puanlı doğruluk oranını şişirmez).`
-        : 'Kart tekrar kaydedildi (daha önce tamamlandığı için ek XP eklenmedi).'
-    );
+    setFeedback({ kind: 'classroom', xp });
   };
+
+  const feedbackNotice =
+    feedback === null
+      ? null
+      : feedback.kind === 'guess-correct'
+      ? feedback.xp > 0
+        ? tx({ tr: 'Doğru tahmin! +{{xp}} XP kazanıldı.', en: 'Correct guess! +{{xp}} XP earned.' }, { xp: feedback.xp })
+        : tx({
+            tr: 'Doğru tahmin! (Bu kart daha önce tamamlandığı için ek XP eklenmedi.)',
+            en: 'Correct guess! (No extra XP — this card was already completed.)',
+          })
+      : feedback.kind === 'guess-wrong'
+      ? tx(
+          { tr: 'Doğru yanıt: {{de}} ({{tr}}).', en: 'Correct answer: {{de}} ({{tr}}).' },
+          { de: feedback.targetDe, tr: feedback.targetTr }
+        )
+      : feedback.xp > 0
+      ? tx(
+          {
+            tr: 'Kart tahmin edildi olarak kaydedildi · +{{xp}} XP (öz-bildirim olduğu için puanlı doğruluk oranını şişirmez).',
+            en: 'Card logged as guessed · +{{xp}} XP (self-check does not inflate scored accuracy).',
+          },
+          { xp: feedback.xp }
+        )
+      : tx({
+          tr: 'Kart tekrar kaydedildi (daha önce tamamlandığı için ek XP eklenmedi).',
+          en: 'Card logged again (no extra XP — already completed).',
+        });
 
   const goPrev = () => {
     setCardIndex((prev) => (prev === 0 ? GERMAN_A1_CHARADES.length - 1 : prev - 1));
@@ -119,27 +148,35 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1 · Sessiz Sinema (Scharade)
+              {tx({
+                tr: 'Almanca A1 · Sessiz Sinema (Scharade)',
+                en: 'German A1 · Charades (Scharade)',
+              })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Sessiz Sinema / Scharade — İpucu &amp; Mimik Kartları
+            {tx({
+              tr: 'Sessiz Sinema / Scharade — İpucu & Mimik Kartları',
+              en: 'Charades / Scharade — Clue & Mime Cards',
+            })}
           </h1>
         </div>
 
         <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Toplam XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">{locale.common.totalXp}</p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Çözülen Kart</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Çözülen Kart', en: 'Solved Cards' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedCount} / {GERMAN_A1_CHARADES.length}
             </p>
@@ -151,7 +188,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="tablist"
-          aria-label="Sessiz sinema çalışma modu"
+          aria-label={tx({ tr: 'Sessiz sinema çalışma modu', en: 'Charades practice mode' })}
           className="inline-flex rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-1 dark:border-[#282830] dark:bg-[#16161A]"
         >
           <button
@@ -166,7 +203,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
             }`}
           >
             <Lightbulb className="h-4 w-4" />
-            <span>Bireysel Tahmin Modu</span>
+            <span>{tx({ tr: 'Bireysel Tahmin Modu', en: 'Solo Guessing Mode' })}</span>
           </button>
           <button
             type="button"
@@ -180,18 +217,23 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>Sınıf / Eşli Canlandırma Modu</span>
+            <span>
+              {tx({ tr: 'Sınıf / Eşli Canlandırma Modu', en: 'Classroom / Partner Acting Mode' })}
+            </span>
           </button>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
           <span>
-            Kart {cardIndex + 1} / {GERMAN_A1_CHARADES.length}
+            {tx(
+              { tr: 'Kart {{current}} / {{total}}', en: 'Card {{current}} / {{total}}' },
+              { current: cardIndex + 1, total: GERMAN_A1_CHARADES.length }
+            )}
           </span>
           <button
             type="button"
             onClick={goPrev}
-            aria-label="Önceki kart"
+            aria-label={tx({ tr: 'Önceki kart', en: 'Previous card' })}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -199,7 +241,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={goNext}
-            aria-label="Sonraki kart"
+            aria-label={tx({ tr: 'Sonraki kart', en: 'Next card' })}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
           >
             <ChevronRight className="h-4 w-4" />
@@ -215,16 +257,21 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
               {currentCard.categoryTr}
             </span>
             <span aria-hidden="true">·</span>
-            <span>Kart 0{cardIndex + 1}</span>
+            <span>
+              {tx(
+                { tr: 'Kart {{num}}', en: 'Card {{num}}' },
+                { num: String(cardIndex + 1).padStart(2, '0') }
+              )}
+            </span>
           </div>
           {isCurrentMastered ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#15803D] dark:text-[#4ADE80]">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Tamamlandı</span>
+              <span>{locale.common.completed}</span>
             </span>
           ) : (
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              İlk doğru tahmin +10 XP
+              {tx({ tr: 'İlk doğru tahmin +10 XP', en: 'First correct guess +10 XP' })}
             </span>
           )}
         </div>
@@ -233,7 +280,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
         <div className="space-y-3">
           <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
             <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-              İpucu 1 · Mimik &amp; Beden Dili (Türkçe)
+              {tx({
+                tr: 'İpucu 1 · Mimik & Beden Dili (Türkçe)',
+                en: 'Clue 1 · Mime & Body Language (Turkish)',
+              })}
             </p>
             <p className="mt-1.5 text-sm sm:text-base font-medium leading-relaxed text-[#111113] dark:text-[#F4F4F5]">
               {currentCard.mimeCueTr}
@@ -243,19 +293,30 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
           {revealedClueLevel >= 2 && (
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 space-y-2.5 dark:border-[#24242C] dark:bg-[#111113]">
               <p className="text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                İpucu 2 · Almanca A1 Bağlam İpucu
+                {tx({
+                  tr: 'İpucu 2 · Almanca A1 Bağlam İpucu',
+                  en: 'Clue 2 · German A1 Context Clue',
+                })}
               </p>
               <p className="text-sm sm:text-base font-medium text-[#111113] dark:text-[#F4F4F5]">
                 “{currentCard.germanClueDe}”
               </p>
-              <ModelAudioBar textDe={currentCard.germanClueDe} labelTr="İpucunu Dinle" compact />
+              <ModelAudioBar
+                textDe={currentCard.germanClueDe}
+                labelTr="İpucunu Dinle"
+                labelEn="Listen to Clue"
+                compact
+              />
             </div>
           )}
 
           {revealedClueLevel >= 3 && (
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
               <p className="text-xs font-semibold text-[#52525B] dark:text-[#A1A1AA]">
-                İpucu 3 · Artikel / Dilbilgisi İpucu
+                {tx({
+                  tr: 'İpucu 3 · Artikel / Dilbilgisi İpucu',
+                  en: 'Clue 3 · Article / Grammar Hint',
+                })}
               </p>
               <p className="mt-1 text-sm text-[#111113] dark:text-[#F4F4F5]">
                 {currentCard.grammarHintTr}
@@ -274,8 +335,14 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
               <Lightbulb className="h-3.5 w-3.5 text-[#9A6B16] dark:text-[#D9A13B]" />
               <span>
                 {revealedClueLevel === 1
-                  ? '2. İpucunu Aç (Almanca A1 Cümle)'
-                  : '3. İpucunu Aç (Artikel / Tür İpucu)'}
+                  ? tx({
+                      tr: '2. İpucunu Aç (Almanca A1 Cümle)',
+                      en: 'Reveal Clue 2 (German A1 Sentence)',
+                    })
+                  : tx({
+                      tr: '3. İpucunu Aç (Artikel / Tür İpucu)',
+                      en: 'Reveal Clue 3 (Article / Grammar Hint)',
+                    })}
               </span>
             </button>
           )}
@@ -285,7 +352,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
         {playMode === 'guess' && (
           <div className="space-y-4 border-t border-[#ECECE8] pt-5 dark:border-[#24242C]">
             <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              Hangi Almanca A1 sözcüğü veya eylemi anlatılıyor?
+              {tx({
+                tr: 'Hangi Almanca A1 sözcüğü veya eylemi anlatılıyor?',
+                en: 'Which German A1 word or action is being described?',
+              })}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {currentCard.options.map((opt, idx) => {
@@ -335,6 +405,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                   <ModelAudioBar
                     textDe={currentCard.targetDe}
                     labelTr={`Telaffuzu Dinle: ${currentCard.targetDe}`}
+                    labelEn={`Listen to Pronunciation: ${currentCard.targetDe}`}
                     compact
                   />
                   <button
@@ -342,7 +413,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                     onClick={goNext}
                     className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs sm:text-sm font-medium text-[#F6F6F4] hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
                   >
-                    <span>Sonraki Kart</span>
+                    <span>{tx({ tr: 'Sonraki Kart', en: 'Next Card' })}</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -359,7 +430,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                 <Clock className="h-5 w-5 text-[#7C1D2E] dark:text-[#D9A13B]" />
                 <div>
                   <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    Yerel Canlandırma Sayacı
+                    {tx({ tr: 'Yerel Canlandırma Sayacı', en: 'Local Acting Timer' })}
                   </p>
                   <p className="font-mono text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                     00:{String(timerSeconds).padStart(2, '0')}
@@ -375,10 +446,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                 >
                   <span>
                     {timerRunning
-                      ? 'Duraklat'
+                      ? locale.audio.pause
                       : timerSeconds === 0
-                      ? 'Süre Doldu'
-                      : 'Sayacı Başlat'}
+                      ? tx({ tr: 'Süre Doldu', en: "Time's Up" })
+                      : tx({ tr: 'Sayacı Başlat', en: 'Start Timer' })}
                   </span>
                 </button>
                 <button
@@ -390,7 +461,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>45 sn Sıfırla</span>
+                  <span>{tx({ tr: '45 sn Sıfırla', en: 'Reset 45s' })}</span>
                 </button>
               </div>
             </div>
@@ -399,7 +470,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
             <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-5 space-y-3 dark:border-[#282830] dark:bg-[#111113]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-[#52525B] dark:text-[#A1A1AA]">
-                  Anlatılacak Hedef Kelime (Yalnızca anlatan kişi açmalı)
+                  {tx({
+                    tr: 'Anlatılacak Hedef Kelime (Yalnızca anlatan kişi açmalı)',
+                    en: 'Target Word to Act Out (Actor only)',
+                  })}
                 </span>
                 <button
                   type="button"
@@ -411,7 +485,11 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                   ) : (
                     <Eye className="h-3.5 w-3.5" />
                   )}
-                  <span>{classroomRevealed ? 'Kelimeyi Gizle' : 'Hedef Kelimeyi Göster'}</span>
+                  <span>
+                    {classroomRevealed
+                      ? tx({ tr: 'Kelimeyi Gizle', en: 'Hide Word' })
+                      : tx({ tr: 'Hedef Kelimeyi Göster', en: 'Show Target Word' })}
+                  </span>
                 </button>
               </div>
 
@@ -429,12 +507,16 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                   <ModelAudioBar
                     textDe={currentCard.targetDe}
                     labelTr="Telaffuzu Dinle"
+                    labelEn="Listen to Pronunciation"
                     compact
                   />
                 </div>
               ) : (
                 <p className="text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                  Hedef kelime gizli. Anlatıcı “Hedef Kelimeyi Göster” düğmesine basarak kelimeyi görebilir.
+                  {tx({
+                    tr: 'Hedef kelime gizli. Anlatıcı “Hedef Kelimeyi Göster” düğmesine basarak kelimeyi görebilir.',
+                    en: 'Target word is hidden. The actor can click “Show Target Word” to view it.',
+                  })}
                 </p>
               )}
             </div>
@@ -446,7 +528,10 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                 </span>
               ) : (
                 <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                  Grup doğru tahmin ettiğinde kartı tamamlandı olarak işaretleyebilirsiniz.
+                  {tx({
+                    tr: 'Grup doğru tahmin ettiğinde kartı tamamlandı olarak işaretleyebilirsiniz.',
+                    en: 'Once the group guesses correctly, you can mark the card as completed.',
+                  })}
                 </span>
               )}
               <div className="flex items-center gap-2">
@@ -457,7 +542,9 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                 >
                   <Sparkles className="h-4 w-4" />
                   <span>
-                    {isCurrentMastered ? 'Tekrar Kaydet (0 XP)' : 'Tahmin Edildi (+10 XP)'}
+                    {isCurrentMastered
+                      ? tx({ tr: 'Tekrar Kaydet (0 XP)', en: 'Log Repeat (0 XP)' })
+                      : tx({ tr: 'Tahmin Edildi (+10 XP)', en: 'Guessed (+10 XP)' })}
                   </span>
                 </button>
                 <button
@@ -465,7 +552,7 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
                   onClick={goNext}
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs sm:text-sm font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
                 >
-                  <span>Sonraki</span>
+                  <span>{locale.common.next}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>

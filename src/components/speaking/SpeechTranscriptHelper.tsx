@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Mic, MicOff, RotateCcw } from 'lucide-react';
+import { useI18n } from '../../hooks/useI18n';
 import {
   isSpeechRecognitionSupported,
   startGermanSpeechRecognition,
@@ -11,14 +12,20 @@ interface SpeechTranscriptHelperProps {
   taskId: string;
 }
 
+interface RecognitionErrorState {
+  status: 'unsupported' | 'permission-denied' | 'error';
+  messageTr: string;
+}
+
 export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ taskId }) => {
+  const { isEn, locale, tx } = useI18n();
   const supported = isSpeechRecognitionSupported();
   const [status, setStatus] = useState<SpeechRecognitionStatus>(
     supported ? 'idle' : 'unsupported'
   );
   const [finalText, setFinalText] = useState('');
   const [interimText, setInterimText] = useState('');
-  const [statusMessageTr, setStatusMessageTr] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<RecognitionErrorState | null>(null);
   const sessionRef = useRef<SpeechRecognitionSession | null>(null);
 
   useEffect(() => {
@@ -27,7 +34,7 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
     setStatus(supported ? 'idle' : 'unsupported');
     setFinalText('');
     setInterimText('');
-    setStatusMessageTr(null);
+    setErrorState(null);
 
     return () => {
       sessionRef.current?.abort();
@@ -42,13 +49,13 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
       return;
     }
 
-    setStatusMessageTr(null);
+    setErrorState(null);
     setInterimText('');
 
     const session = startGermanSpeechRecognition({
       onStart: () => {
         setStatus('listening');
-        setStatusMessageTr(null);
+        setErrorState(null);
       },
       onResult: ({ finalText: nextFinal, interimText: nextInterim }) => {
         setFinalText(nextFinal);
@@ -61,7 +68,7 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
       },
       onError: (errStatus, messageTr) => {
         setStatus(errStatus);
-        setStatusMessageTr(messageTr);
+        setErrorState({ status: errStatus, messageTr });
         sessionRef.current = null;
       },
     });
@@ -72,11 +79,28 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
   const handleClear = () => {
     setFinalText('');
     setInterimText('');
-    setStatusMessageTr(null);
+    setErrorState(null);
     if (supported && status !== 'listening') {
       setStatus('idle');
     }
   };
+
+  const statusMessage = (() => {
+    if (!errorState) return null;
+    if (!isEn) return errorState.messageTr;
+    if (errorState.status === 'unsupported') return locale.audio.micUnsupported;
+    if (errorState.status === 'permission-denied') return locale.audio.micPermissionDenied;
+    if (errorState.messageTr.includes('algılanamadı')) {
+      return 'No speech was detected. Move closer to the microphone and try again, or continue with self-assessment.';
+    }
+    if (errorState.messageTr.includes('aygıtı')) {
+      return 'No active microphone device was found. You can listen to the model phrases and repeat aloud without a microphone.';
+    }
+    if (errorState.messageTr.includes('servisine')) {
+      return 'Browser speech recognition service is currently unreachable. You can listen to the model audio and practice aloud.';
+    }
+    return locale.audio.micError;
+  })();
 
   const combinedText = `${finalText}${interimText ? ` ${interimText}` : ''}`.trim();
 
@@ -85,7 +109,12 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-medium text-[#111113] dark:text-[#F4F4F5]">
           <Mic className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
-          <span>İsteğe Bağlı Mikrofon Konuşma-Metin Önizlemesi (de-DE)</span>
+          <span>
+            {tx({
+              tr: 'İsteğe Bağlı Mikrofon Konuşma-Metin Önizlemesi (de-DE)',
+              en: 'Optional Microphone Speech-to-Text Preview (de-DE)',
+            })}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +125,7 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
               className="inline-flex h-10 sm:h-9 items-center gap-1 rounded-md border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#52525B] hover:text-[#111113] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Temizle</span>
+              <span>{tx({ tr: 'Temizle', en: 'Clear' })}</span>
             </button>
           )}
 
@@ -116,12 +145,16 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
             {status === 'listening' ? (
               <>
                 <MicOff className="h-3.5 w-3.5" />
-                <span>Dinlemeyi Durdur</span>
+                <span>{locale.audio.micStop}</span>
               </>
             ) : (
               <>
                 <Mic className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>{supported ? 'Mikrofonu Dene' : 'Tarayıcıda Desteklenmiyor'}</span>
+                <span>
+                  {supported
+                    ? tx({ tr: 'Mikrofonu Dene', en: 'Try Microphone' })
+                    : tx({ tr: 'Tarayıcıda Desteklenmiyor', en: 'Unsupported in Browser' })}
+                </span>
               </>
             )}
           </button>
@@ -130,32 +163,44 @@ export const SpeechTranscriptHelper: React.FC<SpeechTranscriptHelperProps> = ({ 
 
       <p className="text-[11px] leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
         {supported
-          ? 'Yalnızca yerel ses-metin önizlemesidir; telaffuz puanlaması yapılmaz ve mikrofon zorunlu değildir.'
-          : 'Bu tarayıcı konuşma tanımayı desteklemiyor; model cümleleri dinleyip öz-değerlendirme ile tamamlayabilirsiniz.'}
+          ? tx({
+              tr: 'Yalnızca yerel ses-metin önizlemesidir; telaffuz puanlaması yapılmaz ve mikrofon zorunlu değildir.',
+              en: 'Local speech-to-text preview only; no pronunciation grading is performed and a microphone is optional.',
+            })
+          : tx({
+              tr: 'Bu tarayıcı konuşma tanımayı desteklemiyor; model cümleleri dinleyip öz-değerlendirme ile tamamlayabilirsiniz.',
+              en: 'This browser does not support speech recognition; you can listen to the model sentences and complete via self-assessment.',
+            })}
       </p>
 
       {status === 'listening' && (
         <p className="text-xs font-medium text-[#7C1D2E] dark:text-[#D9A13B]">
-          Dinleniyor (de-DE)… Almanca cümlenizi söyleyin, bitince “Dinlemeyi Durdur”a basın.
+          {tx({
+            tr: 'Dinleniyor (de-DE)… Almanca cümlenizi söyleyin, bitince “Dinlemeyi Durdur”a basın.',
+            en: 'Listening (de-DE)… Say your German sentence, then press “Stop Listening” when finished.',
+          })}
         </p>
       )}
 
       {combinedText && (
         <div className="rounded-md border border-[#D9D9D3] bg-[#FFFFFF] px-3 py-2 text-xs text-[#111113] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]">
           <span className="block text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            Tarayıcı Yerel Döküm Önizlemesi (Puanlama değildir):
+            {tx({
+              tr: 'Tarayıcı Yerel Döküm Önizlemesi (Puanlama değildir):',
+              en: 'Local Browser Transcript Preview (Not graded):',
+            })}
           </span>
           <p className="mt-1 font-medium leading-relaxed">{combinedText}</p>
         </div>
       )}
 
-      {statusMessageTr && (
+      {statusMessage && (
         <div
           role="status"
           className="flex items-start gap-2 rounded-md border border-[#D9A13B]/45 bg-[#FFFBEB] px-3 py-2 text-xs text-[#78350F] dark:border-[#D9A13B]/35 dark:bg-[#231D10] dark:text-[#F6D693]"
         >
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>{statusMessageTr}</span>
+          <span>{statusMessage}</span>
         </div>
       )}
     </div>

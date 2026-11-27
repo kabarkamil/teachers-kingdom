@@ -23,7 +23,7 @@ import { TOTAL_A2_READING_EXERCISES } from '../data/germanA2Reading';
 import { TOTAL_A2_SPEAKING_TASKS } from '../data/germanA2Speaking';
 import { TOTAL_A2_WRITING_TASKS } from '../data/germanA2Writing';
 import { ALL_A2_WORDS } from '../data/germanA2Vocab';
-import { tr } from '../i18n/tr';
+import { useI18n } from '../hooks/useI18n';
 import type { NavRouteId } from '../types';
 import {
   formatBytesTr,
@@ -33,20 +33,6 @@ import {
 
 interface ProfileViewProps {
   onNavigate: (route: NavRouteId) => void;
-}
-
-function formatSavedTimeTr(iso: string | null): string {
-  if (!iso) return 'Bu oturumda hazır';
-  try {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
@@ -70,6 +56,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     overallAccuracyPercent,
     a2OverallAccuracyPercent,
   } = useAppState();
+  const { locale, isEn, tx, formatDateTime } = useI18n();
 
   const [draftName, setDraftName] = useState(displayName);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -83,6 +70,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
   const completedAssignmentsCount = progress.teachingAssignments.filter(
     (a) => a.status === 'completed' || a.status === 'reviewed'
   ).length;
+
+  const formatSavedTime = (iso: string | null) =>
+    iso ? formatDateTime(iso) : tx({ tr: 'Bu oturumda hazır', en: 'Ready in this session' });
+
+  const formatPercent = (value: number | null) =>
+    value === null ? '—' : isEn ? `${value}%` : `%${value}`;
 
   const handleSaveName = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,10 +93,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
         speechSpeed,
         theme,
         activeCourse,
+        uiLanguage,
       },
       a2Progress
     );
-    setExportMessage(`Yedek dosyası (A1 + A2) indirildi: ${filename}`);
+    setExportMessage(
+      tx(
+        {
+          tr: 'Yedek dosyası (A1 + A2) indirildi: {{filename}}',
+          en: 'Backup file (A1 + A2) downloaded: {{filename}}',
+        },
+        { filename }
+      )
+    );
     window.setTimeout(() => setExportMessage(null), 4000);
   };
 
@@ -111,10 +113,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     <div className="mx-auto max-w-4xl space-y-8 pb-8">
       <div className="border-b border-[#D9D9D3] pb-6 dark:border-[#282830]">
         <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-          Kişisel Alan · Yerel Tarayıcı Profili
+          {tx({
+            tr: 'Kişisel Alan · Yerel Tarayıcı Profili',
+            en: 'Personal · Local Browser Profile',
+          })}
         </p>
         <h1 className="mt-1 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-          Profil
+          {tx({ tr: 'Profil', en: 'Profile' })}
         </h1>
       </div>
 
@@ -127,11 +132,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
             </div>
             <div>
               <h2 className="font-display text-xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                {displayName || 'Misafir Kullanıcı'}
+                {displayName || locale.roles.guestUser}
               </h2>
               <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                {rolePreview === 'teacher' ? 'Öğretmen Önizlemesi' : 'Öğrenci Önizlemesi'} ·{' '}
-                {tr.course.language} {activeCourse === 'de-A2' ? 'A2' : 'A1'}
+                {rolePreview === 'teacher'
+                  ? tx({ tr: 'Öğretmen Önizlemesi', en: 'Teacher Preview' })
+                  : tx({ tr: 'Öğrenci Önizlemesi', en: 'Student Preview' })}{' '}
+                · {locale.course.language} {activeCourse === 'de-A2' ? 'A2' : 'A1'}
               </p>
             </div>
           </div>
@@ -150,93 +157,123 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Kelime</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Kelime', en: 'A1 Vocab' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {uniqueCompletedWordIds.length}/{ALL_A1_WORDS.length}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Kelime</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Kelime', en: 'A2 Vocab' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {uniqueA2CompletedWordIds.length}/{ALL_A2_WORDS.length}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Dinleme</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Dinleme', en: 'A2 Listening' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.listeningMasteredIds.length}/{TOTAL_A2_LISTENING_EXERCISES}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Okuma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Okuma', en: 'A2 Reading' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.readingMasteredIds.length}/{TOTAL_A2_READING_EXERCISES}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Yazma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Yazma', en: 'A2 Writing' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.writingMasteredIds.length}/{TOTAL_A2_WRITING_TASKS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Konuşma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Konuşma', en: 'A2 Speaking' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.speakingMasteredIds.length}/{TOTAL_A2_SPEAKING_TASKS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Etkinlik</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Etkinlik', en: 'A2 Activities' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.activityMasteredIds.length}/{TOTAL_A2_ACTIVITY_ITEMS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 Doğruluk</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Doğruluk', en: 'A2 Accuracy' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {a2OverallAccuracyPercent === null ? '—' : `%${a2OverallAccuracyPercent}`}
+                {formatPercent(a2OverallAccuracyPercent)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Dinleme</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Dinleme', en: 'A1 Listening' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.listeningMasteredIds.length}/{TOTAL_LISTENING_EXERCISES}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Okuma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Okuma', en: 'A1 Reading' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.readingMasteredIds.length}/{TOTAL_READING_EXERCISES}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Yazma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Yazma', en: 'A1 Writing' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.writingMasteredIds.length}/{TOTAL_WRITING_TASKS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Konuşma</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Konuşma', en: 'A1 Speaking' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.speakingMasteredIds.length}/{TOTAL_SPEAKING_TASKS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Etkinlik</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Etkinlik', en: 'A1 Activities' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {progress.activityMasteredIds.length}/{TOTAL_ACTIVITY_ITEMS}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Ödev</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'Ödev', en: 'Assignments' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {completedAssignmentsCount}/{progress.teachingAssignments.length}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A1 Doğruluk</p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A1 Doğruluk', en: 'A1 Accuracy' })}
+              </p>
               <p className="font-mono text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {overallAccuracyPercent === null ? '—' : `%${overallAccuracyPercent}`}
+                {formatPercent(overallAccuracyPercent)}
               </p>
             </div>
           </div>
@@ -250,14 +287,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
                 htmlFor="profile-display-name"
                 className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]"
               >
-                Görünen Ad (Yerel Tarayıcı Kaydı)
+                {tx({
+                  tr: 'Görünen Ad (Yerel Tarayıcı Kaydı)',
+                  en: 'Display Name (Local Browser Storage)',
+                })}
               </label>
               <input
                 id="profile-display-name"
                 type="text"
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
-                placeholder="Adınız veya takma adınız"
+                placeholder={tx({
+                  tr: 'Adınız veya takma adınız',
+                  en: 'Your name or nickname',
+                })}
                 maxLength={48}
                 className="mt-1.5 w-full rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
               />
@@ -265,9 +308,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
 
             <div>
               <span className="block text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Aktif Görünüm Rolü
+                {tx({ tr: 'Aktif Görünüm Rolü', en: 'Active View Role' })}
               </span>
-              <div role="group" aria-label="Aktif Görünüm Rolü" className="mt-1.5 grid grid-cols-2 gap-2">
+              <div
+                role="group"
+                aria-label={tx({ tr: 'Aktif Görünüm Rolü', en: 'Active View Role' })}
+                className="mt-1.5 grid grid-cols-2 gap-2"
+              >
                 <button
                   type="button"
                   aria-pressed={rolePreview === 'student'}
@@ -278,7 +325,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
                       : 'border-[#D9D9D3] bg-[#F6F6F4] text-[#52525B] dark:border-[#282830] dark:bg-[#111113] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  Öğrenci
+                  {locale.roles.student}
                 </button>
                 <button
                   type="button"
@@ -290,7 +337,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
                       : 'border-[#D9D9D3] bg-[#F6F6F4] text-[#52525B] dark:border-[#282830] dark:bg-[#111113] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  Öğretmen
+                  {locale.roles.teacher}
                 </button>
               </div>
             </div>
@@ -302,7 +349,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-4 text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
               {savedNotice && <Check className="h-4 w-4" />}
-              <span>{savedNotice ? 'Kaydedildi' : 'Yerel Profili Kaydet'}</span>
+              <span>
+                {savedNotice
+                  ? locale.common.saved
+                  : tx({ tr: 'Yerel Profili Kaydet', en: 'Save Local Profile' })}
+              </span>
             </button>
 
             <button
@@ -310,7 +361,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               onClick={() => onNavigate('ogrenme-yolum')}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
             >
-              <span>Ayrıntılı İlerleme Raporunu Gör</span>
+              <span>
+                {tx({
+                  tr: 'Ayrıntılı İlerleme Raporunu Gör',
+                  en: 'View Detailed Progress Report',
+                })}
+              </span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -323,14 +379,46 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
           <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
             <div className="flex items-center gap-2 text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
               <HardDrive className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
-              <span>Yerel Tarayıcı Depolaması · {storageInfo.available ? 'Aktif' : 'Kısıtlı'}</span>
+              <span>
+                {tx(
+                  {
+                    tr: 'Yerel Tarayıcı Depolaması · {{status}}',
+                    en: 'Local Browser Storage · {{status}}',
+                  },
+                  {
+                    status: storageInfo.available
+                      ? tx({ tr: 'Aktif', en: 'Active' })
+                      : tx({ tr: 'Kısıtlı', en: 'Restricted' }),
+                  }
+                )}
+              </span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-              Profil adınız, XP puanınız, A1 ilerlemeniz, yerel sınıflarınız ({progress.teachingClasses.length}), ödevleriniz ({progress.teachingAssignments.length}) ve Öğretmen Stüdyosu taslaklarınız ({progress.studioDrafts.length}) yalnızca bu tarayıcıda tutulur.
+              {tx(
+                {
+                  tr: 'Profil adınız, XP puanınız, A1 ilerlemeniz, yerel sınıflarınız ({{classes}}), ödevleriniz ({{assignments}}) ve Öğretmen Stüdyosu taslaklarınız ({{drafts}}) yalnızca bu tarayıcıda tutulur.',
+                  en: 'Your display name, XP, A1 & A2 progress, local classes ({{classes}}), assignments ({{assignments}}), and Teacher Studio drafts ({{drafts}}) are stored locally in this browser.',
+                },
+                {
+                  classes: progress.teachingClasses.length,
+                  assignments: progress.teachingAssignments.length,
+                  drafts: progress.studioDrafts.length,
+                }
+              )}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              <span>Boyut: {formatBytesTr(storageInfo.totalBytes)}</span>
-              <span>Son kayıt: {formatSavedTimeTr(lastSavedAt)}</span>
+              <span>
+                {tx(
+                  { tr: 'Boyut: {{size}}', en: 'Size: {{size}}' },
+                  { size: formatBytesTr(storageInfo.totalBytes) }
+                )}
+              </span>
+              <span>
+                {tx(
+                  { tr: 'Son kayıt: {{time}}', en: 'Last saved: {{time}}' },
+                  { time: formatSavedTime(lastSavedAt) }
+                )}
+              </span>
             </div>
           </div>
 
@@ -342,13 +430,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
                 <CloudOff className="h-4 w-4 text-[#9A6B16] dark:text-[#D4AF37]" />
               )}
               <span>
-                Bulut Senkronizasyonu · {formatSyncStatusLabel(cloudSyncStatus, uiLanguage)}
+                {tx(
+                  {
+                    tr: 'Bulut Senkronizasyonu · {{status}}',
+                    en: 'Cloud Synchronization · {{status}}',
+                  },
+                  { status: formatSyncStatusLabel(cloudSyncStatus, uiLanguage) }
+                )}
               </span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
               {cloudUser
-                ? `Bulut hesabı (${cloudUser.email}) bağlı. Profil, A1/A2 XP ve sınıf verileriniz son eşitleme (${formatSavedTimeTr(lastCloudSyncAt)}) ile korunur.`
-                : 'Bulut oturumu açmadan çevrimdışı öncelikli yerel modda çalışıyorsunuz. Üst çubuktan bulut hesabıyla giriş yapabilir veya verilerinizi JSON olarak yedekleyebilirsiniz.'}
+                ? tx(
+                    {
+                      tr: 'Bulut hesabı ({{email}}) bağlı. Profil, A1/A2 XP ve sınıf verileriniz son eşitleme ({{time}}) ile korunur.',
+                      en: 'Cloud account ({{email}}) connected. Your profile, A1/A2 XP, and class data are protected as of the last sync ({{time}}).',
+                    },
+                    { email: cloudUser.email, time: formatSavedTime(lastCloudSyncAt) }
+                  )
+                : tx({
+                    tr: 'Bulut oturumu açmadan çevrimdışı öncelikli yerel modda çalışıyorsunuz. Üst çubuktan bulut hesabıyla giriş yapabilir veya verilerinizi JSON olarak yedekleyebilirsiniz.',
+                    en: 'You are working in offline-first local mode without signing in. You can sign in to a cloud account from the top bar or back up your data as JSON.',
+                  })}
             </p>
           </div>
         </div>
@@ -361,7 +464,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-xs font-medium text-white transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>JSON Yedeği İndir</span>
+              <span>{tx({ tr: 'JSON Yedeği İndir', en: 'Download JSON Backup' })}</span>
             </button>
             <button
               type="button"
@@ -369,7 +472,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#F4F4F5] dark:hover:bg-[#282830]"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>Yedekle / İçe Aktar (Ayarlar)</span>
+              <span>
+                {tx({ tr: 'Yedekle / İçe Aktar (Ayarlar)', en: 'Backup / Import (Settings)' })}
+              </span>
             </button>
           </div>
 

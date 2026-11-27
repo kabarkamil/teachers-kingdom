@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { ListeningExerciseKind, ListeningScenario } from '../../types';
 
 interface ListeningExercisesProps {
@@ -22,32 +23,29 @@ interface SessionAnswer {
 
 const EXERCISE_TABS: Array<{
   id: ListeningExerciseKind;
-  labelTr: string;
-  subtitleTr: string;
+  label: { tr: string; en: string };
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   {
     id: 'tf',
-    labelTr: '1. Richtig / Falsch',
-    subtitleTr: 'Doğru / Yanlış',
+    label: { tr: '1. Richtig / Falsch', en: '1. Richtig / Falsch' },
     icon: ClipboardCheck,
   },
   {
     id: 'cloze',
-    labelTr: '2. Lückentext',
-    subtitleTr: 'Eksik Kelime',
+    label: { tr: '2. Lückentext', en: '2. Lückentext' },
     icon: TextCursorInput,
   },
   {
     id: 'mc',
-    labelTr: '3. Verstehen & Antwort',
-    subtitleTr: 'Anlama Testi',
+    label: { tr: '3. Verstehen & Antwort', en: '3. Verstehen & Antwort' },
     icon: HelpCircle,
   },
 ];
 
 export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario }) => {
   const { progress, recordListeningAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [activeTab, setActiveTab] = useState<ListeningExerciseKind>('tf');
   const [answers, setAnswers] = useState<Record<string, SessionAnswer>>({});
 
@@ -88,7 +86,7 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
       itemId,
       scenario.id,
       'cloze',
-      `${scenario.titleTr} · Eksik kelime (${correctOption})`,
+      `${scenario.titleTr} · ${tx({ tr: 'Eksik kelime', en: 'Missing word' })} (${correctOption})`,
       isCorrect
     );
     setAnswers((prev) => ({
@@ -133,7 +131,7 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
           role="tablist"
-          aria-label="Dinleme alıştırma türleri"
+          aria-label={tx({ tr: 'Dinleme alıştırma türleri', en: 'Listening exercise types' })}
           className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#D9D9D3] bg-[#ECECE8]/80 p-1 dark:border-[#282830] dark:bg-[#16161A]"
         >
           {EXERCISE_TABS.map((tab) => {
@@ -162,7 +160,7 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{tab.labelTr}</span>
+                <span>{tx(tab.label)}</span>
                 <span className="font-mono text-[11px] opacity-80 tabular-nums">
                   ({doneCount}/{totalCount})
                 </span>
@@ -178,7 +176,7 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
             className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Soruları Tekrar Çöz</span>
+            <span>{tx({ tr: 'Soruları Tekrar Çöz', en: 'Retry Questions' })}</span>
           </button>
         )}
       </div>
@@ -197,10 +195,12 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Soru {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx({ tr: 'Soru {num}', en: 'Question {num}' }, { num: idx + 1 })}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -216,8 +216,16 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                 <div className="mt-5 space-y-4">
                   <div className="grid grid-cols-2 gap-2.5">
                     {[
-                      { key: 'richtig', label: 'Richtig (Doğru)', val: true },
-                      { key: 'falsch', label: 'Falsch (Yanlış)', val: false },
+                      {
+                        key: 'richtig',
+                        label: tx({ tr: 'Richtig (Doğru)', en: 'Richtig (True)' }),
+                        val: true,
+                      },
+                      {
+                        key: 'falsch',
+                        label: tx({ tr: 'Falsch (Yanlış)', en: 'Falsch (False)' }),
+                        val: false,
+                      },
                     ].map((btn) => {
                       const isPicked = ans?.choice === btn.key;
                       const isCorrectOption = item.isTrue === btn.val;
@@ -262,15 +270,21 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} XP)', en: 'Correct! (+{xp} XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Yanlış Seçim
+                              {tx({ tr: 'Yanlış Seçim', en: 'Incorrect Choice' })}
                             </span>
                           </>
                         )}
@@ -302,10 +316,12 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Boşluk {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx({ tr: 'Boşluk {num}', en: 'Blank {num}' }, { num: idx + 1 })}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -318,7 +334,7 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                     {parts[1] ?? ''}”
                   </p>
                   <p className="mt-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    İpucu: {item.hintTr}
+                    {tx({ tr: 'İpucu:', en: 'Hint:' })} {item.hintTr}
                   </p>
                 </div>
 
@@ -366,15 +382,24 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} XP)', en: 'Correct! (+{xp} XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Doğru sözcük: {item.correctOption}
+                              {tx(
+                                { tr: 'Doğru sözcük: {word}', en: 'Correct word: {word}' },
+                                { word: item.correctOption }
+                              )}
                             </span>
                           </>
                         )}
@@ -405,10 +430,15 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                    <span className="font-mono font-semibold">Anlama Sorusu {idx + 1}</span>
+                    <span className="font-mono font-semibold">
+                      {tx(
+                        { tr: 'Anlama Sorusu {num}', en: 'Comprehension {num}' },
+                        { num: idx + 1 }
+                      )}
+                    </span>
                     {alreadyMastered && (
                       <span className="font-medium text-[#15803D] dark:text-[#4ADE80]">
-                        Tamamlandı
+                        {locale.common.completed}
                       </span>
                     )}
                   </div>
@@ -479,15 +509,24 @@ export const ListeningExercises: React.FC<ListeningExercisesProps> = ({ scenario
                             <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                             <span className="text-[#15803D] dark:text-[#4ADE80]">
                               {ans.xpAwarded > 0
-                                ? `Doğru! (+${ans.xpAwarded} XP)`
-                                : 'Doğru! (Tekrar Pekiştirme)'}
+                                ? tx(
+                                    { tr: 'Doğru! (+{xp} XP)', en: 'Correct! (+{xp} XP)' },
+                                    { xp: ans.xpAwarded }
+                                  )
+                                : tx({
+                                    tr: 'Doğru! (Tekrar Pekiştirme)',
+                                    en: 'Correct! (Repeat Practice)',
+                                  })}
                             </span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                             <span className="text-[#B91C1C] dark:text-[#F87171]">
-                              Doğru yanıt: {item.options[item.correctIndex]}
+                              {tx(
+                                { tr: 'Doğru yanıt: {answer}', en: 'Correct answer: {answer}' },
+                                { answer: item.options[item.correctIndex] }
+                              )}
                             </span>
                           </>
                         )}

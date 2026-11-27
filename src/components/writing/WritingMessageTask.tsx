@@ -14,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type { WritingMessageTaskData } from '../../types';
 import {
   getGermanVoiceInfo,
@@ -38,6 +39,7 @@ type ReadAloudRate = 0.8 | 1.0;
 
 export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenarioId, task }) => {
   const { progress, recordWritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [draft, setDraft] = useState('');
   const [evaluation, setEvaluation] = useState<MessageEvaluationResult | null>(null);
   const [hasAttemptedCheck, setHasAttemptedCheck] = useState(false);
@@ -51,10 +53,8 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
   const [speechStatus, setSpeechStatus] = useState<ModelSpeechStatus>(() =>
     isSpeechSynthesisSupported() ? 'idle' : 'unavailable'
   );
-  const [speechUnavailableReason, setSpeechUnavailableReason] = useState<string | null>(() =>
-    isSpeechSynthesisSupported()
-      ? null
-      : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor; örnek metni okuyarak inceleyebilirsiniz.'
+  const [speechFailureReason, setSpeechFailureReason] = useState<SpeechFailureReason | null>(() =>
+    isSpeechSynthesisSupported() ? null : 'unsupported'
   );
   const [rate, setRate] = useState<ReadAloudRate>(1.0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -83,11 +83,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
     setShowRedemittel(false);
     setShowModelAnswer(false);
     setSpeechStatus(speechSupported ? 'idle' : 'unavailable');
-    setSpeechUnavailableReason(
-      speechSupported
-        ? null
-        : 'Bu tarayıcıda Web Speech API seslendirmesi desteklenmiyor; örnek metni okuyarak inceleyebilirsiniz.'
-    );
+    setSpeechFailureReason(speechSupported ? null : 'unsupported');
   }, [task.id, speechSupported]);
 
   useEffect(() => {
@@ -139,20 +135,26 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
 
   const handleSpeechFailure = (reason?: SpeechFailureReason) => {
     setSpeechStatus('unavailable');
-    if (reason === 'unsupported') {
-      setSpeechUnavailableReason(
-        'Bu tarayıcıda Almanca (de-DE) seslendirme desteklenmiyor. Sahte oynatma yapılmaz; örnek cevabı doğrudan okuyabilirsiniz.'
-      );
-    } else if (reason === 'timeout') {
-      setSpeechUnavailableReason(
-        'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; örnek metni okuyarak çalışabilirsiniz.'
-      );
-    } else {
-      setSpeechUnavailableReason(
-        'Tarayıcı ses sentezleyicisi örnek metni okurken bir hata döndürdü. Örnek metni sessiz olarak inceleyebilirsiniz.'
-      );
-    }
+    setSpeechFailureReason(reason ?? 'error');
   };
+
+  const speechUnavailableMessage =
+    speechFailureReason === 'unsupported'
+      ? tx({
+          tr: 'Bu tarayıcıda Almanca (de-DE) seslendirme desteklenmiyor. Sahte oynatma yapılmaz; örnek cevabı doğrudan okuyabilirsiniz.',
+          en: 'German (de-DE) speech synthesis is not supported in this browser. No simulated playback is used; you can read the model answer directly.',
+        })
+      : speechFailureReason === 'timeout'
+      ? tx({
+          tr: 'Tarayıcı ses motoru (de-DE) bu ortamda ses oynatmayı başlatamadı. Sahte oynatma yapılmaz; örnek metni okuyarak çalışabilirsiniz.',
+          en: 'The browser speech engine (de-DE) could not start playback in this environment. No simulated playback is used; you can study by reading the model text.',
+        })
+      : speechFailureReason
+      ? tx({
+          tr: 'Tarayıcı ses sentezleyicisi örnek metni okurken bir hata döndürdü. Örnek metni sessiz olarak inceleyebilirsiniz.',
+          en: 'The browser speech synthesizer returned an error while reading the model text. You can inspect the model answer silently.',
+        })
+      : null;
 
   const handleToggleModelSpeech = () => {
     if (!speechSupported) {
@@ -166,7 +168,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
       return;
     }
 
-    setSpeechUnavailableReason(null);
+    setSpeechFailureReason(null);
     setSpeechStatus('starting');
 
     const res = speakGermanText(
@@ -225,7 +227,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                   <span aria-hidden="true">·</span>
                   <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Tamamlandı
+                    {locale.common.completed}
                   </span>
                 </>
               )}
@@ -248,7 +250,9 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             >
               <BookMarked className="h-3.5 w-3.5 shrink-0" />
               <span>
-                {showRedemittel ? 'Redemittel İpuçlarını Gizle' : 'İpuçları / Redemittel'}
+                {showRedemittel
+                  ? tx({ tr: 'Redemittel İpuçlarını Gizle', en: 'Hide Redemittel Phrases' })
+                  : tx({ tr: 'İpuçları / Redemittel', en: 'Hints / Redemittel' })}
               </span>
             </button>
 
@@ -263,7 +267,11 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
               }`}
             >
               <Languages className="h-3.5 w-3.5 shrink-0" />
-              <span>{showTurkish ? 'Türkçe Yönergeyi Gizle' : 'Türkçe Yönerge / Çeviri'}</span>
+              <span>
+                {showTurkish
+                  ? tx({ tr: 'Türkçe Yönergeyi Gizle', en: 'Hide Turkish Prompt' })
+                  : tx({ tr: 'Türkçe Yönerge / Çeviri', en: 'Turkish Prompt / Gloss' })}
+              </span>
             </button>
           </div>
         </div>
@@ -281,7 +289,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
         {/* 4 Required A1 Leitpunkte */}
         <div className="mt-4 border-t border-[#E5E5DF] pt-4 dark:border-[#24242C]">
           <p className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-            Yazınızda Bulunması Gereken 4 A1 Nokta (Leitpunkte)
+            {tx({
+              tr: 'Yazınızda Bulunması Gereken 4 A1 Nokta (Leitpunkte)',
+              en: '4 Required A1 Points (Leitpunkte) to Include',
+            })}
           </p>
           <ul className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {task.bullets.map((bullet, idx) => {
@@ -327,7 +338,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                             )}
                             <span>
                               <strong className="font-semibold">{sub.labelTr}:</strong>{' '}
-                              {sub.passed ? 'Karşılandı' : sub.missingHintTr}
+                              {sub.passed ? tx({ tr: 'Karşılandı', en: 'Met' }) : sub.missingHintTr}
                             </span>
                           </li>
                         ))}
@@ -347,14 +358,23 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h4 className="text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                Yardımcı A1 Kalıpları (Redemittel)
+                {tx({
+                  tr: 'Yardımcı A1 Kalıpları (Redemittel)',
+                  en: 'Helpful A1 Phrases (Redemittel)',
+                })}
               </h4>
               <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Kendi cümlelerinizi kurarken bu kalıplardan ilham alabilirsiniz; metni kendiniz yazın.
+                {tx({
+                  tr: 'Kendi cümlelerinizi kurarken bu kalıplardan ilham alabilirsiniz; metni kendiniz yazın.',
+                  en: 'Use these phrases as inspiration while writing your own sentences; compose the text yourself.',
+                })}
               </p>
             </div>
             <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
-              {task.phrases.length} ifade
+              {tx(
+                { tr: '{{count}} ifade', en: '{{count}} phrases' },
+                { count: task.phrases.length }
+              )}
             </span>
           </div>
 
@@ -390,7 +410,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 : 'text-[#52525B] dark:text-[#A1A1AA]'
             }`}
           >
-            {liveWordCount} / {task.minWords}+ sözcük
+            {tx(
+              { tr: '{{current}} / {{min}}+ sözcük', en: '{{current}} / {{min}}+ words' },
+              { current: liveWordCount, min: task.minWords }
+            )}
           </span>
         </div>
 
@@ -399,7 +422,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             htmlFor={`msg-editor-${task.id}`}
             className="sr-only"
           >
-            Almanca kısa mesaj yazma alanı
+            {tx({
+              tr: 'Almanca kısa mesaj yazma alanı',
+              en: 'German short message editor',
+            })}
           </label>
           <textarea
             ref={textareaRef}
@@ -407,7 +433,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             rows={6}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Almanca mesajınızı buraya yazın… (Örn. selamlama, temel bilgi, gün/saat ve kapanış)"
+            placeholder={tx({
+              tr: 'Almanca mesajınızı buraya yazın… (Örn. selamlama, temel bilgi, gün/saat ve kapanış)',
+              en: 'Write your German message here… (e.g., greeting, key details, day/time, and sign-off)',
+            })}
             className="w-full rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-4 text-sm sm:text-[15px] leading-relaxed text-[#111113] placeholder:text-[#71717A] focus:border-[#7C1D2E] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
           />
         </div>
@@ -418,7 +447,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
               type="submit"
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
             >
-              <span>Yazıyı Kontrol Et</span>
+              <span>{tx({ tr: 'Yazıyı Kontrol Et', en: 'Check Writing' })}</span>
             </button>
 
             <button
@@ -427,7 +456,7 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Temizle</span>
+              <span>{tx({ tr: 'Temizle', en: 'Clear' })}</span>
             </button>
           </div>
 
@@ -437,18 +466,27 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             onClick={() => setShowModelAnswer((prev) => !prev)}
             title={
               canRevealModel
-                ? 'Örnek A1 cevabını göster veya gizle'
-                : 'Örnek cevabı görmek için önce kendi yazınızı kontrol edin'
+                ? tx({
+                    tr: 'Örnek A1 cevabını göster veya gizle',
+                    en: 'Show or hide the A1 model answer',
+                  })
+                : tx({
+                    tr: 'Örnek cevabı görmek için önce kendi yazınızı kontrol edin',
+                    en: 'Check your own draft first to reveal the model answer',
+                  })
             }
             className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:cursor-not-allowed disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             {showModelAnswer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             <span>
               {showModelAnswer
-                ? 'Örnek A1 Cevabı Gizle'
+                ? tx({ tr: 'Örnek A1 Cevabı Gizle', en: 'Hide A1 Model Answer' })
                 : canRevealModel
-                ? 'Örnek A1 Cevabı Gör'
-                : 'Örnek Cevap (Önce Kontrol Edin)'}
+                ? tx({ tr: 'Örnek A1 Cevabı Gör', en: 'View A1 Model Answer' })
+                : tx({
+                    tr: 'Örnek Cevap (Önce Kontrol Edin)',
+                    en: 'Model Answer (Check First)',
+                  })}
             </span>
           </button>
         </div>
@@ -473,11 +511,14 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
               )}
               <div>
                 <p className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                  Yerel Kural Tabanlı A1 Kontrol Sonucu
+                  {tx({
+                    tr: 'Yerel Kural Tabanlı A1 Kontrol Sonucu',
+                    en: 'Local Rule-Based A1 Check Result',
+                  })}
                   {evaluation.passed && lastXpAwarded && lastXpAwarded > 0
                     ? ` · +${lastXpAwarded} XP`
                     : evaluation.passed && isMastered
-                    ? ' · Tamamlandı'
+                    ? ` · ${locale.common.completed}`
                     : ''}
                 </p>
                 <p className="mt-1 text-xs sm:text-sm leading-relaxed text-[#27272A] dark:text-[#E4E4E7]">
@@ -487,7 +528,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             </div>
 
             <span className="font-mono text-xs font-semibold text-[#52525B] dark:text-[#D4D4D8] tabular-nums">
-              Noktalar: {evaluation.coveredBulletsCount}/{evaluation.totalBullets}
+              {tx(
+                { tr: 'Noktalar: {{covered}}/{{total}}', en: 'Points: {{covered}}/{{total}}' },
+                { covered: evaluation.coveredBulletsCount, total: evaluation.totalBullets }
+              )}
             </span>
           </div>
 
@@ -500,7 +544,17 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 <XCircle className="h-3.5 w-3.5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
               )}
               <span className="tabular-nums">
-                Sözcük: {evaluation.wordCount}/{evaluation.minWords}+ ({evaluation.uniqueWordCount} farklı)
+                {tx(
+                  {
+                    tr: 'Sözcük: {{count}}/{{min}}+ ({{unique}} farklı)',
+                    en: 'Words: {{count}}/{{min}}+ ({{unique}} unique)',
+                  },
+                  {
+                    count: evaluation.wordCount,
+                    min: evaluation.minWords,
+                    unique: evaluation.uniqueWordCount,
+                  }
+                )}
               </span>
             </div>
 
@@ -511,7 +565,17 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 <XCircle className="h-3.5 w-3.5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
               )}
               <span>
-                Temel A1 fiil yapısı: {evaluation.hasGermanClauseStructure ? 'Uygun' : 'Yetersiz'}
+                {tx(
+                  {
+                    tr: 'Temel A1 fiil yapısı: {{status}}',
+                    en: 'Basic A1 verb structure: {{status}}',
+                  },
+                  {
+                    status: evaluation.hasGermanClauseStructure
+                      ? tx({ tr: 'Uygun', en: 'OK' })
+                      : tx({ tr: 'Yetersiz', en: 'Insufficient' }),
+                  }
+                )}
               </span>
             </div>
 
@@ -522,7 +586,17 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 <XCircle className="h-3.5 w-3.5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
               )}
               <span>
-                Noktalama (. ! ?): {evaluation.hasPunctuation ? 'Mevcut' : 'Eksik'}
+                {tx(
+                  {
+                    tr: 'Noktalama (. ! ?): {{status}}',
+                    en: 'Punctuation (. ! ?): {{status}}',
+                  },
+                  {
+                    status: evaluation.hasPunctuation
+                      ? tx({ tr: 'Mevcut', en: 'Present' })
+                      : tx({ tr: 'Eksik', en: 'Missing' }),
+                  }
+                )}
               </span>
             </div>
 
@@ -533,8 +607,17 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 <XCircle className="h-3.5 w-3.5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
               )}
               <span>
-                Cümle başı büyük harf:{' '}
-                {evaluation.hasSentenceStartCapitalization ? 'Uygun' : 'Kontrol edin'}
+                {tx(
+                  {
+                    tr: 'Cümle başı büyük harf: {{status}}',
+                    en: 'Sentence capitalization: {{status}}',
+                  },
+                  {
+                    status: evaluation.hasSentenceStartCapitalization
+                      ? tx({ tr: 'Uygun', en: 'OK' })
+                      : tx({ tr: 'Kontrol edin', en: 'Check' }),
+                  }
+                )}
               </span>
             </div>
           </div>
@@ -542,7 +625,9 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           {/* Structural Warnings (word diversity / verbless fragment guard) */}
           {evaluation.structuralWarnings.length > 0 && (
             <div className="rounded-lg border border-[#B91C1C]/30 bg-[#FFFFFF]/90 p-3 text-xs text-[#7F1D1D] dark:border-[#F87171]/30 dark:bg-[#16161A] dark:text-[#FECACA]">
-              <p className="font-semibold">Cümle Yapısı Uyarısı:</p>
+              <p className="font-semibold">
+                {tx({ tr: 'Cümle Yapısı Uyarısı:', en: 'Sentence Structure Warning:' })}
+              </p>
               <ul className="mt-1 space-y-1">
                 {evaluation.structuralWarnings.map((msg, i) => (
                   <li key={i}>• {msg}</li>
@@ -554,11 +639,20 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           {/* Noun Capitalization Warnings */}
           {evaluation.nounCapitalizationWarnings.length > 0 && (
             <div className="rounded-lg border border-[#B91C1C]/30 bg-[#FFFFFF]/90 p-3 text-xs text-[#7F1D1D] dark:border-[#F87171]/30 dark:bg-[#16161A] dark:text-[#FECACA]">
-              <p className="font-semibold">Almanca İsim Büyük Harf Uyarısı:</p>
+              <p className="font-semibold">
+                {tx({
+                  tr: 'Almanca İsim Büyük Harf Uyarısı:',
+                  en: 'German Noun Capitalization Warning:',
+                })}
+              </p>
               <ul className="mt-1 space-y-1">
                 {evaluation.nounCapitalizationWarnings.map((w) => (
                   <li key={w.expected}>
-                    • Almancada tüm isimler büyük harfle başlar:{' '}
+                    •{' '}
+                    {tx({
+                      tr: 'Almancada tüm isimler büyük harfle başlar:',
+                      en: 'In German, all nouns are capitalized:',
+                    })}{' '}
                     <span className="font-mono line-through">{w.found}</span> →{' '}
                     <strong className="font-mono">{w.expected}</strong>
                   </li>
@@ -570,7 +664,12 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           {/* Targeted A1 Case / Article / Preposition Pitfalls */}
           {evaluation.pitfallWarnings.length > 0 && (
             <div className="rounded-lg border border-[#B91C1C]/30 bg-[#FFFFFF]/90 p-3 text-xs text-[#7F1D1D] dark:border-[#F87171]/30 dark:bg-[#16161A] dark:text-[#FECACA]">
-              <p className="font-semibold">Hedef A1 Dilbilgisi / Artikel Uyarısı:</p>
+              <p className="font-semibold">
+                {tx({
+                  tr: 'Hedef A1 Dilbilgisi / Artikel Uyarısı:',
+                  en: 'Target A1 Grammar / Article Warning:',
+                })}
+              </p>
               <ul className="mt-1 space-y-1">
                 {evaluation.pitfallWarnings.map((msg, i) => (
                   <li key={i}>• {msg}</li>
@@ -580,7 +679,10 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           )}
 
           <p className="text-[11px] leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-            Yerel kural tabanlı A1 kontrolüdür; harici yapay zekâ notlandırması değildir. Örnek A1 yanıtla da karşılaştırabilirsiniz.
+            {tx({
+              tr: 'Yerel kural tabanlı A1 kontrolüdür; harici yapay zekâ notlandırması değildir. Örnek A1 yanıtla da karşılaştırabilirsiniz.',
+              en: 'This is a local rule-based A1 check, not external AI grading. You can also compare your text with the A1 model answer.',
+            })}
           </p>
         </div>
       )}
@@ -591,10 +693,16 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#E5E5DF] pb-3.5 dark:border-[#24242C]">
             <div>
               <p className="text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                Örnek A1 Cevabı (Musterlösung)
+                {tx({
+                  tr: 'Örnek A1 Cevabı (Musterlösung)',
+                  en: 'A1 Model Answer (Musterlösung)',
+                })}
               </p>
               <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Kendi yazdığınız metinle cümle düzeni ve selamlama yapısını karşılaştırabilirsiniz.
+                {tx({
+                  tr: 'Kendi yazdığınız metinle cümle düzeni ve selamlama yapısını karşılaştırabilirsiniz.',
+                  en: 'Compare sentence order and greeting structure with your own draft.',
+                })}
               </p>
             </div>
 
@@ -608,19 +716,19 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
                 {speechStatus === 'playing' || speechStatus === 'starting' ? (
                   <>
                     <Square className="h-3.5 w-3.5" />
-                    <span>Durdur</span>
+                    <span>{locale.audio.stop}</span>
                   </>
                 ) : (
                   <>
                     <Play className="h-3.5 w-3.5" />
-                    <span>Örneği Dinle</span>
+                    <span>{tx({ tr: 'Örneği Dinle', en: 'Listen to Model' })}</span>
                   </>
                 )}
               </button>
 
               <div
                 role="group"
-                aria-label="Örnek seslendirme hızı"
+                aria-label={tx({ tr: 'Örnek seslendirme hızı', en: 'Model playback speed' })}
                 className="flex items-center rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] p-0.5 dark:border-[#282830] dark:bg-[#16161A]"
               >
                 <button
@@ -665,26 +773,35 @@ export const WritingMessageTask: React.FC<WritingMessageTaskProps> = ({ scenario
             <Volume2 className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
             <span>
               {speechStatus === 'starting'
-                ? 'Ses motoru başlatılıyor…'
+                ? tx({ tr: 'Ses motoru başlatılıyor…', en: 'Starting speech engine…' })
                 : speechStatus === 'playing'
-                ? 'Örnek Almanca cevap seslendiriliyor'
+                ? tx({
+                    tr: 'Örnek Almanca cevap seslendiriliyor',
+                    en: 'Reading German model answer aloud',
+                  })
                 : speechStatus === 'ended'
-                ? 'Sesli okuma tamamlandı'
+                ? tx({ tr: 'Sesli okuma tamamlandı', en: 'Playback finished' })
                 : speechStatus === 'unavailable'
-                ? 'Sesli okuma kullanılamıyor'
+                ? tx({ tr: 'Sesli okuma kullanılamıyor', en: 'Speech playback unavailable' })
                 : voiceName
-                ? `İsteğe bağlı de-DE seslendirme (${voiceName})`
-                : 'İsteğe bağlı de-DE seslendirme'}
+                ? tx(
+                    {
+                      tr: 'İsteğe bağlı de-DE seslendirme ({{voice}})',
+                      en: 'Optional de-DE speech ({{voice}})',
+                    },
+                    { voice: voiceName }
+                  )
+                : tx({ tr: 'İsteğe bağlı de-DE seslendirme', en: 'Optional de-DE speech' })}
             </span>
           </div>
 
-          {(speechStatus === 'unavailable' || speechUnavailableReason) && (
+          {(speechStatus === 'unavailable' || speechUnavailableMessage) && (
             <div
               role="status"
               className="flex items-start gap-2 rounded-lg border border-[#9A6B16]/40 bg-[#FEF9EB] px-3.5 py-2.5 text-xs leading-relaxed text-[#713F12] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#FDE68A]"
             >
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <p>{speechUnavailableReason}</p>
+              <p>{speechUnavailableMessage}</p>
             </div>
           )}
         </div>

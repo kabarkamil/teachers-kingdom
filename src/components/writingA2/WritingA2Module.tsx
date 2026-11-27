@@ -7,6 +7,7 @@ import {
   getA2WritingScenarioTaskIds,
 } from '../../data/germanA2Writing';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import { A2WritingMessageTask } from './A2WritingMessageTask';
 import { A2WritingControlledTasks } from './A2WritingControlledTasks';
 
@@ -18,6 +19,7 @@ interface WritingA2ModuleProps {
 
 export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenarioId }) => {
   const { a2Progress, a2WritingAccuracyPercent } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     () => getA2WritingScenarioById(initialScenarioId).id
   );
@@ -46,29 +48,37 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
           <div className="max-w-2xl space-y-1.5">
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
               <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                Almanca A2 · Aşama 4
+                {tx({ tr: 'Almanca A2 · Aşama 4', en: 'German A2 · Stage 4' })}
               </span>
               <span aria-hidden="true">·</span>
               <span className="font-mono">Schreiben (CEFR A2)</span>
               <span aria-hidden="true">·</span>
-              <span>İzole A2 İlerleme Kaydı</span>
+              <span>
+                {tx({ tr: 'İzole A2 İlerleme Kaydı', en: 'Isolated A2 Progress Tracking' })}
+              </span>
             </div>
             <h1 className="font-display text-2xl font-semibold text-[#111113] dark:text-[#F4F4F5] sm:text-3xl">
-              A2 Yazma Atölyesi (Schreiben)
+              {tx({ tr: 'A2 Yazma Atölyesi (Schreiben)', en: 'A2 Writing Workshop (Schreiben)' })}
             </h1>
           </div>
 
           <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] px-3.5 py-2.5 text-center dark:border-[#24242C] dark:bg-[#111113]">
-              <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">A2 Yazma</div>
+              <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+                {tx({ tr: 'A2 Yazma', en: 'A2 Writing' })}
+              </div>
               <div className="mt-0.5 font-mono text-base font-semibold tabular-nums text-[#111113] dark:text-[#F4F4F5]">
                 {totalMastered}/{TOTAL_A2_WRITING_TASKS}
               </div>
             </div>
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] px-3.5 py-2.5 text-center dark:border-[#24242C] dark:bg-[#111113]">
-              <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">Doğruluk</div>
+              <div className="text-[11px] text-[#52525B] dark:text-[#A1A1AA]">
+                {locale.common.accuracy}
+              </div>
               <div className="mt-0.5 font-mono text-base font-semibold tabular-nums text-[#111113] dark:text-[#F4F4F5]">
-                {a2WritingAccuracyPercent !== null ? `%${a2WritingAccuracyPercent}` : '—'}
+                {a2WritingAccuracyPercent !== null
+                  ? tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: a2WritingAccuracyPercent })
+                  : '—'}
               </div>
             </div>
             <div className="rounded-xl border border-[#ECECE8] bg-[#F6F6F4] px-3.5 py-2.5 text-center dark:border-[#24242C] dark:bg-[#111113]">
@@ -82,7 +92,7 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
       </header>
 
       {/* 4 Authentic A2 Writing Scenarios */}
-      <section aria-label="A2 Yazma Senaryoları">
+      <section aria-label={tx({ tr: 'A2 Yazma Senaryoları', en: 'A2 Writing Scenarios' })}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {GERMAN_A2_WRITING_SCENARIOS.map((sc) => {
             const ids = getA2WritingScenarioTaskIds(sc);
@@ -123,7 +133,10 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
                       <span>{sc.contextLabelTr}</span>
                       <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#E5B34A]">
                         <Clock className="h-3 w-3" />
-                        {sc.estimatedMinutes} dk
+                        {tx(
+                          { tr: '{{min}} dk', en: '{{min}} min' },
+                          { min: sc.estimatedMinutes }
+                        )}
                       </span>
                     </div>
                   </div>
@@ -144,7 +157,7 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
 
                   <div className="mt-3 flex items-center justify-between border-t border-[#ECECE8] pt-2.5 text-xs dark:border-[#24242C]">
                     <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                      İlerleme:{' '}
+                      {tx({ tr: 'İlerleme:', en: 'Progress:' })}{' '}
                       <strong className="font-mono tabular-nums text-[#111113] dark:text-[#F4F4F5]">
                         {done}/{ids.length}
                       </strong>
@@ -153,7 +166,7 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
                       <CheckCircle2 className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
                     ) : (
                       <span className="font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-                        {isSelected ? 'Seçili' : 'Aç'}
+                        {isSelected ? tx({ tr: 'Seçili', en: 'Selected' }) : locale.home.openLabel}
                       </span>
                     )}
                   </div>
@@ -177,7 +190,10 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
             }`}
           >
             <FileEdit className="h-4 w-4" />
-            1. Kılavuzlu A2 E-Posta / Mesaj (3 Leitpunkte)
+            {tx({
+              tr: '1. Kılavuzlu A2 E-Posta / Mesaj (3 Leitpunkte)',
+              en: '1. Guided A2 Email / Message (3 Leitpunkte)',
+            })}
           </button>
           <button
             type="button"
@@ -189,12 +205,18 @@ export const WritingA2Module: React.FC<WritingA2ModuleProps> = ({ initialScenari
             }`}
           >
             <Layers className="h-4 w-4" />
-            2. A2 Satzbau &amp; Lückentext ({scenario.controlledItems.length} Alıştırma)
+            {tx(
+              {
+                tr: '2. A2 Satzbau & Lückentext ({{count}} Alıştırma)',
+                en: '2. A2 Satzbau & Lückentext ({{count}} Exercises)',
+              },
+              { count: scenario.controlledItems.length }
+            )}
           </button>
         </div>
 
         <span className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-          Bu senaryoda tamamlanan:{' '}
+          {tx({ tr: 'Bu senaryoda tamamlanan:', en: 'Completed in this scenario:' })}{' '}
           <strong className="font-mono tabular-nums text-[#111113] dark:text-[#F4F4F5]">
             {scenarioDoneCount}/{scenarioTaskIds.length}
           </strong>

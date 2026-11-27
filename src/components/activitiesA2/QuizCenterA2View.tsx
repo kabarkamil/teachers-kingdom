@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { A2_QUIZ_IDS, GERMAN_A2_QUIZ_QUESTIONS } from '../../data/germanA2Activities';
+import { useI18n } from '../../hooks/useI18n';
 import type { NavRouteId, QuizTopicFilter } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivityA2SubNav } from './ActivityA2SubNav';
@@ -31,8 +32,8 @@ const TOPIC_FILTERS: Array<{ id: QuizFilterValue; labelTr: string; labelEn: stri
 ];
 
 export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }) => {
-  const { a2Progress, uiLanguage, recordA2ActivityAnswer } = useAppState();
-  const isEn = uiLanguage === 'en';
+  const { a2Progress, recordA2ActivityAnswer } = useAppState();
+  const { isEn, locale, tx } = useI18n();
   const [topicFilter, setTopicFilter] = useState<QuizFilterValue>('all');
   const [answers, setAnswers] = useState<
     Record<string, { selectedIdx: number; isCorrect: boolean; xpEarned: number }>
@@ -83,27 +84,34 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
       <div className="flex flex-col gap-4 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Etkinlikler</span>
+            <span>{locale.navGroups.activities}</span>
             <span aria-hidden="true" className="mx-2">/</span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A2 · Quiz Merkezi
+              {tx({ tr: 'Almanca A2 · Quiz Merkezi', en: 'German A2 · Quiz Center' })}
             </span>
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            A2 Quiz Merkezi — Konu Filtreli Alıştırma Bankası
+            {tx({
+              tr: 'A2 Quiz Merkezi — Konu Filtreli Alıştırma Bankası',
+              en: 'A2 Quiz Center — Topic-Filtered Practice Bank',
+            })}
           </h1>
         </div>
 
         <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Oturum Skoru</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Oturum Skoru', en: 'Session Score' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
               {sessionCorrectCount} / {sessionAnsweredCount}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Ustalaşılan A2 Soru</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Ustalaşılan A2 Soru', en: 'Mastered A2 Questions' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {completedCount} / {GERMAN_A2_QUIZ_QUESTIONS.length}
             </p>
@@ -115,7 +123,7 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
           role="group"
-          aria-label="A2 Quiz konu filtresi"
+          aria-label={tx({ tr: 'A2 Quiz konu filtresi', en: 'A2 Quiz topic filter' })}
           className="flex flex-wrap items-center gap-1.5"
         >
           {TOPIC_FILTERS.map((filter) => {
@@ -145,7 +153,7 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] whitespace-nowrap self-start sm:self-auto"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Oturum Seçimlerini Temizle</span>
+            <span>{tx({ tr: 'Oturum Seçimlerini Temizle', en: 'Clear Session Answers' })}</span>
           </button>
         )}
       </div>
@@ -162,12 +170,13 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
             >
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-                  Soru {idx + 1} · {q.topicLabelTr}
+                  {tx({ tr: 'Soru {{num}}', en: 'Question {{num}}' }, { num: idx + 1 })} ·{' '}
+                  {q.topicLabelTr}
                 </span>
                 {isMastered ? (
                   <span className="inline-flex items-center gap-1 font-medium text-[#15803D] dark:text-[#4ADE80]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Ustalaşıldı</span>
+                    <span>{tx({ tr: 'Ustalaşıldı', en: 'Mastered' })}</span>
                   </span>
                 ) : (
                   <span className="font-mono text-[#52525B] dark:text-[#A1A1AA]">+10 A2 XP</span>
@@ -186,6 +195,7 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
                     <ModelAudioBar
                       textDe={q.audioTextDe ?? q.promptDe.replace(/___+/g, '...')}
                       labelTr="Almanca Cümleyi Dinle (de-DE)"
+                      labelEn="Listen to German Sentence (de-DE)"
                       compact
                     />
                   </div>
@@ -241,9 +251,24 @@ export const QuizCenterA2View: React.FC<QuizCenterA2ViewProps> = ({ onNavigate }
                   >
                     {answer.isCorrect
                       ? answer.xpEarned > 0
-                        ? `Doğru · +${answer.xpEarned} A2 XP kazanıldı`
-                        : 'Doğru (bu soru daha önce tamamlandığı için 0 ek XP)'
-                      : `Yanlış · Doğru yanıt: ${q.options[q.correctIndex]}`}
+                        ? tx(
+                            {
+                              tr: 'Doğru · +{{xp}} A2 XP kazanıldı',
+                              en: 'Correct · +{{xp}} A2 XP earned',
+                            },
+                            { xp: answer.xpEarned }
+                          )
+                        : tx({
+                            tr: 'Doğru (bu soru daha önce tamamlandığı için 0 ek XP)',
+                            en: 'Correct (0 extra XP — this question was already completed)',
+                          })
+                      : tx(
+                          {
+                            tr: 'Yanlış · Doğru yanıt: {{ans}}',
+                            en: 'Incorrect · Correct answer: {{ans}}',
+                          },
+                          { ans: q.options[q.correctIndex] }
+                        )}
                   </p>
                   <p className="leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
                     {q.explanationTr}

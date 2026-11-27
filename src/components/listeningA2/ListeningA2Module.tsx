@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Award, CheckCircle2, Headphones, Target } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   GERMAN_A2_LISTENING_SCENARIOS,
   TOTAL_A2_LISTENING_EXERCISES,
@@ -16,6 +17,7 @@ interface ListeningA2ModuleProps {
 
 export const ListeningA2Module: React.FC<ListeningA2ModuleProps> = ({ initialScenarioId }) => {
   const { a2Progress, a2ListeningAccuracyPercent } = useAppState();
+  const { locale, tx } = useI18n();
   const [activeScenarioId, setActiveScenarioId] = useState<string>(
     initialScenarioId && getA2ListeningScenarioById(initialScenarioId)
       ? initialScenarioId
@@ -46,10 +48,18 @@ export const ListeningA2Module: React.FC<ListeningA2ModuleProps> = ({ initialSce
           <div>
             <div className="flex items-center gap-2 text-xs font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
               <Headphones className="h-4 w-4" />
-              <span>ALMANCA CEFR A2 · AŞAMA 2 · HÖREN</span>
+              <span>
+                {tx({
+                  tr: 'ALMANCA CEFR A2 · AŞAMA 2 · HÖREN',
+                  en: 'GERMAN CEFR A2 · STAGE 2 · HÖREN',
+                })}
+              </span>
             </div>
             <h1 className="mt-2 font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-              A2 Dinleme (Hören) Stüdyosu
+              {tx({
+                tr: 'A2 Dinleme (Hören) Stüdyosu',
+                en: 'A2 Listening (Hören) Studio',
+              })}
             </h1>
           </div>
 
@@ -57,26 +67,34 @@ export const ListeningA2Module: React.FC<ListeningA2ModuleProps> = ({ initialSce
             <div className="rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 py-2.5 dark:border-[#282830] dark:bg-[#111113]">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#15803D] dark:text-[#4ADE80]" />
-                <span>A2 Dinleme</span>
+                <span>{tx({ tr: 'A2 Dinleme', en: 'A2 Listening' })}</span>
               </div>
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {masteredListeningCount}/{TOTAL_A2_LISTENING_EXERCISES}
               </p>
               <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA] tabular-nums">
-                %{listeningCompletionPercent} tamamlandı
+                {tx(
+                  { tr: '%{pct} tamamlandı', en: '{pct}% completed' },
+                  { pct: listeningCompletionPercent }
+                )}
               </p>
             </div>
 
             <div className="rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3.5 py-2.5 dark:border-[#282830] dark:bg-[#111113]">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#52525B] dark:text-[#A1A1AA]">
                 <Target className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>Doğruluk</span>
+                <span>{locale.common.accuracy}</span>
               </div>
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-                {a2ListeningAccuracyPercent !== null ? `%${a2ListeningAccuracyPercent}` : '—'}
+                {a2ListeningAccuracyPercent !== null
+                  ? tx({ tr: '%{pct}', en: '{pct}%' }, { pct: a2ListeningAccuracyPercent })
+                  : '—'}
               </p>
               <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA] tabular-nums">
-                {a2Progress.listeningAttempts} deneme
+                {tx(
+                  { tr: '{count} deneme', en: '{count} attempts' },
+                  { count: a2Progress.listeningAttempts }
+                )}
               </p>
             </div>
 
@@ -88,17 +106,25 @@ export const ListeningA2Module: React.FC<ListeningA2ModuleProps> = ({ initialSce
               <p className="mt-1 font-mono text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
                 {a2Progress.xp}
               </p>
-              <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA]">İzole A2 puanı</p>
+              <p className="text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
+                {tx({ tr: 'İzole A2 puanı', en: 'Isolated A2 score' })}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       {/* Scenario Selector Grid */}
-      <section aria-label="A2 dinleme senaryoları">
+      <section aria-label={tx({ tr: 'A2 dinleme senaryoları', en: 'A2 listening scenarios' })}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">
-            Senaryo Seçin ({GERMAN_A2_LISTENING_SCENARIOS.length} Özgün A2 Diyalog)
+            {tx(
+              {
+                tr: 'Senaryo Seçin ({count} Özgün A2 Diyalog)',
+                en: 'Choose a Scenario ({count} Authentic A2 Dialogues)',
+              },
+              { count: GERMAN_A2_LISTENING_SCENARIOS.length }
+            )}
           </h2>
         </div>
 
@@ -163,8 +189,14 @@ export const ListeningA2Module: React.FC<ListeningA2ModuleProps> = ({ initialSce
                       />
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
-                      <span>{isSelected ? 'Aktif Senaryo' : 'Seç ve Dinle'}</span>
-                      <span className="font-mono tabular-nums">%{pct}</span>
+                      <span>
+                        {isSelected
+                          ? tx({ tr: 'Aktif Senaryo', en: 'Active Scenario' })
+                          : tx({ tr: 'Seç ve Dinle', en: 'Select & Listen' })}
+                      </span>
+                      <span className="font-mono tabular-nums">
+                        {tx({ tr: '%{pct}', en: '{pct}%' }, { pct })}
+                      </span>
                     </div>
                   </div>
                 </div>

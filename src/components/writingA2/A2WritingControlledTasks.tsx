@@ -6,6 +6,7 @@ import type {
   WritingSatzbauItem,
 } from '../../types';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import {
   assembleSatzbauTokens,
   evaluateSatzbau,
@@ -47,6 +48,7 @@ const A2SatzbauCard: React.FC<{
   index: number;
 }> = ({ scenarioId, item, index }) => {
   const { a2Progress, recordA2WritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [bankOrder] = useState<number[]>(() =>
     deterministicShuffleIndices(item.id, item.tokens.length)
   );
@@ -105,12 +107,12 @@ const A2SatzbauCard: React.FC<{
             A2 Satzbau #{index + 1}
           </span>
           <span aria-hidden="true">·</span>
-          <span>Cümle Kurma</span>
+          <span>{tx({ tr: 'Cümle Kurma', en: 'Sentence Building' })}</span>
         </div>
         {isMastered && (
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#15803D] dark:text-[#4ADE80]">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Tamamlandı
+            {locale.common.completed}
           </span>
         )}
       </div>
@@ -127,7 +129,10 @@ const A2SatzbauCard: React.FC<{
       >
         {selectedTokens.length === 0 ? (
           <span className="text-xs text-[#71717A] dark:text-[#8E8E98]">
-            Aşağıdaki sözcük parçalarına sırayla tıklayarak A2 cümlesini oluşturun…
+            {tx({
+              tr: 'Aşağıdaki sözcük parçalarına sırayla tıklayarak A2 cümlesini oluşturun…',
+              en: 'Click the word tiles below in order to build the A2 sentence…',
+            })}
           </span>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
@@ -177,7 +182,7 @@ const A2SatzbauCard: React.FC<{
           disabled={!allPlaced}
           className="h-10 rounded-lg bg-[#7C1D2E] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#641624] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
         >
-          Cümleyi Kontrol Et
+          {tx({ tr: 'Cümleyi Kontrol Et', en: 'Check Sentence' })}
         </button>
         <button
           type="button"
@@ -186,7 +191,7 @@ const A2SatzbauCard: React.FC<{
           className="inline-flex h-10 items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
         >
           <Undo2 className="h-3.5 w-3.5" />
-          Geri Al
+          {tx({ tr: 'Geri Al', en: 'Undo' })}
         </button>
         <button
           type="button"
@@ -195,7 +200,7 @@ const A2SatzbauCard: React.FC<{
           className="inline-flex h-10 items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Sıfırla
+          {locale.common.reset}
         </button>
       </div>
 
@@ -218,7 +223,10 @@ const A2SatzbauCard: React.FC<{
                 <p className="font-semibold">{result.feedbackTr}</p>
                 {!result.isCorrect && (
                   <p className="mt-1 opacity-90" lang="de">
-                    Sizin cümleniz: {assembled}
+                    {tx(
+                      { tr: 'Sizin cümleniz: {{sentence}}', en: 'Your sentence: {{sentence}}' },
+                      { sentence: assembled }
+                    )}
                   </p>
                 )}
                 <p className="mt-1 opacity-90">{item.explanationTr}</p>
@@ -242,6 +250,7 @@ const A2TypedClozeCard: React.FC<{
   index: number;
 }> = ({ scenarioId, item, index }) => {
   const { a2Progress, recordA2WritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
   const [result, setResult] = useState<ControlledCheckResult | null>(null);
@@ -299,7 +308,7 @@ const A2TypedClozeCard: React.FC<{
             A2 Lückentext #{index + 1}
           </span>
           <span aria-hidden="true">·</span>
-          <span>Yazarak Boşluk Doldurma</span>
+          <span>{tx({ tr: 'Yazarak Boşluk Doldurma', en: 'Typed Fill-in-the-Blank' })}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -308,12 +317,12 @@ const A2TypedClozeCard: React.FC<{
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-2.5 text-[11px] font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
           >
             <HelpCircle className="h-3.5 w-3.5 text-[#9A6B16] dark:text-[#D9A13B]" />
-            {showHint ? 'İpucunu Gizle' : 'İpucu'}
+            {showHint ? locale.common.hideHint : tx({ tr: 'İpucu', en: 'Hint' })}
           </button>
           {isMastered && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#15803D] dark:text-[#4ADE80]">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Tamamlandı
+              {locale.common.completed}
             </span>
           )}
         </div>
@@ -321,7 +330,7 @@ const A2TypedClozeCard: React.FC<{
 
       {showHint && (
         <p className="mt-2.5 rounded-lg border border-[#ECECE8] bg-[#F6F6F4] px-3 py-2 text-xs text-[#52525B] dark:border-[#24242C] dark:bg-[#111113] dark:text-[#A1A1AA]">
-          İpucu (puanı etkilemez): {item.hintTr}
+          {tx({ tr: 'İpucu (puanı etkilemez):', en: 'Hint (unscored):' })} {item.hintTr}
         </p>
       )}
 
@@ -339,7 +348,7 @@ const A2TypedClozeCard: React.FC<{
             setResult(null);
           }}
           placeholder="…"
-          aria-label="Eksik Almanca sözcük"
+          aria-label={tx({ tr: 'Eksik Almanca sözcük', en: 'Missing German word' })}
           className="w-40 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 py-1.5 text-sm font-medium text-[#111113] focus:border-[#7C1D2E] focus:bg-[#FFFFFF] focus:outline-none dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
         />
         <span>{item.afterBlankDe}</span>
@@ -355,7 +364,7 @@ const A2TypedClozeCard: React.FC<{
           disabled={!answer.trim()}
           className="h-10 rounded-lg bg-[#7C1D2E] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#641624] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
         >
-          Yanıtı Kontrol Et
+          {tx({ tr: 'Yanıtı Kontrol Et', en: 'Check Answer' })}
         </button>
         <button
           type="button"
@@ -368,7 +377,7 @@ const A2TypedClozeCard: React.FC<{
           className="inline-flex h-10 items-center gap-1 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Temizle
+          {tx({ tr: 'Temizle', en: 'Clear' })}
         </button>
       </div>
 
@@ -408,12 +417,38 @@ export const A2WritingControlledTasks: React.FC<A2WritingControlledTasksProps> =
   scenarioId,
   items,
 }) => {
+  const { isEn } = useI18n();
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-[#ECECE8] bg-[#FFFFFF] px-4 py-2.5 text-xs text-[#52525B] dark:border-[#24242C] dark:bg-[#16161A] dark:text-[#A1A1AA]">
-        Yan cümle (<strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">weil / dass / wenn / obwohl</strong>),{' '}
-        <strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">deshalb</strong> ve Perfekt dizilimini yerel kurallarla doğrulayın (ilk çözüm{' '}
-        <strong className="font-mono text-[#7C1D2E] dark:text-[#D9A13B]">+10 A2 XP</strong>).
+        {isEn ? (
+          <>
+            Verify subordinate clauses (
+            <strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">
+              weil / dass / wenn / obwohl
+            </strong>
+            ),{' '}
+            <strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">
+              deshalb
+            </strong>{' '}
+            and Perfekt word order with local rules (first correct solution{' '}
+            <strong className="font-mono text-[#7C1D2E] dark:text-[#D9A13B]">+10 A2 XP</strong>).
+          </>
+        ) : (
+          <>
+            Yan cümle (
+            <strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">
+              weil / dass / wenn / obwohl
+            </strong>
+            ),{' '}
+            <strong className="text-[#111113] dark:text-[#F4F4F5]" lang="de">
+              deshalb
+            </strong>{' '}
+            ve Perfekt dizilimini yerel kurallarla doğrulayın (ilk çözüm{' '}
+            <strong className="font-mono text-[#7C1D2E] dark:text-[#D9A13B]">+10 A2 XP</strong>).
+          </>
+        )}
       </div>
       {items.map((item, idx) =>
         item.kind === 'satzbau' ? (

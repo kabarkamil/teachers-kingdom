@@ -9,6 +9,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import type {
   WritingClozeTypedItem,
   WritingControlledItem,
@@ -35,6 +36,7 @@ interface SatzbauCardProps {
 
 const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) => {
   const { progress, recordWritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [result, setResult] = useState<ControlledCheckResult | null>(null);
   const [lastXp, setLastXp] = useState<number | null>(null);
@@ -92,13 +94,13 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
             <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
               0{index + 1}.
             </span>
-            <span>Satzbau · Cümle Kurma</span>
+            <span>{tx({ tr: 'Satzbau · Cümle Kurma', en: 'Satzbau · Sentence Building' })}</span>
             {isMastered && (
               <>
                 <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Tamamlandı
+                  {locale.common.completed}
                 </span>
               </>
             )}
@@ -117,7 +119,11 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
           className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-2.5 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
         >
           <Languages className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-          <span>{showTurkish ? 'İpucunu Gizle' : 'Türkçe Anlam'}</span>
+          <span>
+            {showTurkish
+              ? locale.common.hideHint
+              : tx({ tr: 'Türkçe Anlam', en: 'Turkish Meaning' })}
+          </span>
         </button>
       </div>
 
@@ -125,7 +131,10 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
       <div className="min-h-[56px] rounded-xl border border-dashed border-[#C8C8C0] bg-[#FFFFFF] p-3 flex flex-wrap items-center gap-2 dark:border-[#34343E] dark:bg-[#16161A]">
         {selectedIndices.length === 0 ? (
           <span className="text-xs text-[#71717A]">
-            Aşağıdaki sözcük parçalarına sırayla tıklayarak Almanca cümleyi kurun…
+            {tx({
+              tr: 'Aşağıdaki sözcük parçalarına sırayla tıklayarak Almanca cümleyi kurun…',
+              en: 'Click the word tiles below in order to build the German sentence…',
+            })}
           </span>
         ) : (
           selectedIndices.map((tokenIdx, pos) => (
@@ -133,7 +142,7 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
               key={`${tokenIdx}-${pos}`}
               type="button"
               onClick={() => handleRemoveToken(pos)}
-              title="Kaldırmak için tıklayın"
+              title={tx({ tr: 'Kaldırmak için tıklayın', en: 'Click to remove' })}
               className="rounded-lg border border-[#7C1D2E] bg-[#FDF2F4] px-3 py-1.5 text-sm font-medium text-[#7C1D2E] transition-colors hover:bg-[#FCE7EB] dark:border-[#D9A13B] dark:bg-[#231D11] dark:text-[#F5D08A]"
             >
               {item.tokens[tokenIdx]}
@@ -144,7 +153,7 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
 
       {selectedTokens.length > 0 && (
         <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-          Önizleme:{' '}
+          {tx({ tr: 'Önizleme:', en: 'Preview:' })}{' '}
           <strong className="font-medium text-[#111113] dark:text-[#F4F4F5]">
             {assembleSatzbauTokens(selectedTokens)}
           </strong>
@@ -180,7 +189,7 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
           onClick={handleCheck}
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#7C1D2E] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
         >
-          <span>Cümleyi Kontrol Et</span>
+          <span>{tx({ tr: 'Cümleyi Kontrol Et', en: 'Check Sentence' })}</span>
         </button>
         <button
           type="button"
@@ -188,7 +197,7 @@ const SatzbauCard: React.FC<SatzbauCardProps> = ({ index, scenarioId, item }) =>
           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          <span>Sıfırla</span>
+          <span>{locale.common.reset}</span>
         </button>
       </div>
 
@@ -227,6 +236,7 @@ interface ClozeTypedCardProps {
 
 const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item }) => {
   const { progress, recordWritingAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [value, setValue] = useState('');
   const [result, setResult] = useState<ControlledCheckResult | null>(null);
   const [lastXp, setLastXp] = useState<number | null>(null);
@@ -268,13 +278,18 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
           <span className="font-mono font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
             0{index + 1}.
           </span>
-          <span>Lückentext-Schreiben · Boşluğu Yaz</span>
+          <span>
+            {tx({
+              tr: 'Lückentext-Schreiben · Boşluğu Yaz',
+              en: 'Lückentext · Fill in the Blank',
+            })}
+          </span>
           {isMastered && (
             <>
               <span aria-hidden="true">·</span>
               <span className="inline-flex items-center gap-1 font-semibold text-[#15803D] dark:text-[#4ADE80]">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Tamamlandı
+                {locale.common.completed}
               </span>
             </>
           )}
@@ -286,7 +301,11 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
           className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-2.5 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap shrink-0"
         >
           <Languages className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-          <span>{showHint ? 'İpucunu Gizle' : 'Türkçe İpucu'}</span>
+          <span>
+            {showHint
+              ? locale.common.hideHint
+              : tx({ tr: 'Türkçe İpucu', en: 'Turkish Hint' })}
+          </span>
         </button>
       </div>
 
@@ -300,7 +319,10 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
             setValue(e.target.value);
             if (result) setResult(null);
           }}
-          aria-label="Eksik Almanca sözcüğü yazın"
+          aria-label={tx({
+            tr: 'Eksik Almanca sözcüğü yazın',
+            en: 'Type the missing German word',
+          })}
           placeholder="…"
           autoComplete="off"
           className="w-36 sm:w-44 rounded-lg border border-[#7C1D2E]/50 bg-[#FFFFFF] px-3 py-1.5 font-mono text-sm font-semibold text-[#111113] focus:border-[#7C1D2E] focus:outline-none dark:border-[#D9A13B]/50 dark:bg-[#16161A] dark:text-[#F4F4F5] dark:focus:border-[#D9A13B]"
@@ -309,7 +331,9 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
       </div>
 
       {showHint && (
-        <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">İpucu: {item.hintTr}</p>
+        <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+          {tx({ tr: 'İpucu:', en: 'Hint:' })} {item.hintTr}
+        </p>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -318,7 +342,7 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
             type="submit"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#7C1D2E] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452] whitespace-nowrap"
           >
-            <span>Yanıtı Kontrol Et</span>
+            <span>{tx({ tr: 'Yanıtı Kontrol Et', en: 'Check Answer' })}</span>
           </button>
           <button
             type="button"
@@ -330,7 +354,7 @@ const ClozeTypedCard: React.FC<ClozeTypedCardProps> = ({ index, scenarioId, item
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24] whitespace-nowrap"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Temizle</span>
+            <span>{tx({ tr: 'Temizle', en: 'Clear' })}</span>
           </button>
         </div>
 

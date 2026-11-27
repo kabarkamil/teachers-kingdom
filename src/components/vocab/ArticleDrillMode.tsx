@@ -8,9 +8,16 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
-import type { GermanArticle, VocabTopic, VocabWord } from '../../types';
+import type { GermanArticle, UiLanguage, VocabTopic, VocabWord } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
+
+const GENDER_LABELS: Record<GermanArticle, Record<UiLanguage, string>> = {
+  der: { tr: 'Eril', en: 'Masculine' },
+  die: { tr: 'Dişil', en: 'Feminine' },
+  das: { tr: 'Nötr', en: 'Neuter' },
+};
 
 interface ArticleDrillModeProps {
   topic: VocabTopic;
@@ -35,6 +42,7 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
   onSpeechError,
 }) => {
   const { speechSpeed, recordArticleAnswer } = useAppState();
+  const { tx } = useI18n();
   const [deck, setDeck] = useState<VocabWord[]>(() => shuffleWords(topic.words));
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedArticle, setSelectedArticle] = useState<GermanArticle | null>(null);
@@ -112,15 +120,30 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
     return (
       <div className="mx-auto max-w-xl rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-8 text-center dark:border-[#282830] dark:bg-[#16161A]">
         <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-          Artikel Alıştırması Tamamlandı · {topic.titleTr}
+          {tx(
+            {
+              tr: 'Artikel Alıştırması Tamamlandı · {{topic}}',
+              en: 'Article Drill Completed · {{topic}}',
+            },
+            { topic: topic.titleTr }
+          )}
         </p>
         <h3 className="mt-2 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-          {roundCorrect} / {deck.length} Doğru Artikel
+          {tx(
+            {
+              tr: '{{correct}} / {{total}} Doğru Artikel',
+              en: '{{correct}} / {{total}} Correct Articles',
+            },
+            { correct: roundCorrect, total: deck.length }
+          )}
         </h3>
         <p className="mt-2 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-          Bu turdaki doğruluk oranınız:{' '}
+          {tx({
+            tr: 'Bu turdaki doğruluk oranınız:',
+            en: 'Your accuracy in this round:',
+          })}{' '}
           <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-            %{accuracy}
+            {tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: accuracy })}
           </span>
         </p>
 
@@ -131,7 +154,7 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
             className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>Karıştır ve Tekrar Çalış</span>
+            <span>{tx({ tr: 'Karıştır ve Tekrar Çalış', en: 'Shuffle & Practice Again' })}</span>
           </button>
         </div>
       </div>
@@ -149,10 +172,19 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <span>
-            {topic.titleTr} · Artikel Seçme
+            {tx(
+              { tr: '{{topic}} · Artikel Seçme', en: '{{topic}} · Article Drill' },
+              { topic: topic.titleTr }
+            )}
           </span>
           <span className="font-mono tabular-nums">
-            Soru {currentIdx + 1} / {deck.length} · Doğru: {roundCorrect}
+            {tx(
+              {
+                tr: 'Soru {{current}} / {{total}} · Doğru: {{correct}}',
+                en: 'Question {{current}} / {{total}} · Correct: {{correct}}',
+              },
+              { current: currentIdx + 1, total: deck.length, correct: roundCorrect }
+            )}
           </span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
@@ -167,7 +199,10 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
       <div className="rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-6 sm:p-8 dark:border-[#282830] dark:bg-[#16161A]">
         <div className="text-center">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            Bu isim hangi artikeli alır?
+            {tx({
+              tr: 'Bu isim hangi artikeli alır?',
+              en: 'Which article does this noun take?',
+            })}
           </p>
           <p className="mt-4 font-display text-3xl sm:text-4xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
             <span
@@ -189,7 +224,10 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
             <div className="mt-4">
               {showContextHint ? (
                 <p className="text-xs italic text-[#52525B] dark:text-[#A1A1AA]">
-                  Bağlam: “{currentWord.contextClozeDe}”
+                  {tx(
+                    { tr: 'Bağlam: “{{cloze}}”', en: 'Context: “{{cloze}}”' },
+                    { cloze: currentWord.contextClozeDe }
+                  )}
                 </p>
               ) : (
                 <button
@@ -198,7 +236,12 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7C1D2E] hover:underline dark:text-[#D9A13B]"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span>Örnek cümle ipucu göster</span>
+                  <span>
+                    {tx({
+                      tr: 'Örnek cümle ipucu göster',
+                      en: 'Show example sentence hint',
+                    })}
+                  </span>
                 </button>
               )}
             </div>
@@ -236,7 +279,7 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
                 className={`flex flex-col items-center justify-center rounded-xl border px-3 py-4 transition-colors ${buttonStyle}`}
               >
                 <span className="font-display text-xl sm:text-2xl font-semibold">{art}</span>
-                <span className="mt-0.5 text-xs opacity-85">{tok.genderLabelTr}</span>
+                <span className="mt-0.5 text-xs opacity-85">{tx(GENDER_LABELS[art])}</span>
               </button>
             );
           })}
@@ -256,15 +299,27 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
                     <CheckCircle2 className="h-5 w-5 text-[#15803D] dark:text-[#4ADE80] shrink-0" />
                     <span className="text-sm font-semibold text-[#15803D] dark:text-[#4ADE80]">
                       {lastXpAwarded > 0
-                        ? `Doğru! (+${lastXpAwarded} XP)`
-                        : 'Doğru! (Tekrar — XP daha önce kazanıldı)'}
+                        ? tx(
+                            { tr: 'Doğru! (+{{xp}} XP)', en: 'Correct! (+{{xp}} XP)' },
+                            { xp: lastXpAwarded }
+                          )
+                        : tx({
+                            tr: 'Doğru! (Tekrar — XP daha önce kazanıldı)',
+                            en: 'Correct! (Repeat — XP already earned)',
+                          })}
                     </span>
                   </>
                 ) : (
                   <>
                     <XCircle className="h-5 w-5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                     <span className="text-sm font-semibold text-[#B91C1C] dark:text-[#F87171]">
-                      Doğru artikel: {currentWord.article} {currentWord.word}
+                      {tx(
+                        {
+                          tr: 'Doğru artikel: {{article}} {{word}}',
+                          en: 'Correct article: {{article}} {{word}}',
+                        },
+                        { article: currentWord.article, word: currentWord.word }
+                      )}
                     </span>
                   </>
                 )}
@@ -277,7 +332,7 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5] dark:hover:bg-[#1E1E24]"
               >
                 <Volume2 className="h-3.5 w-3.5" />
-                <span>Telaffuzu Dinle</span>
+                <span>{tx({ tr: 'Telaffuzu Dinle', en: 'Listen to Pronunciation' })}</span>
               </button>
             </div>
 
@@ -285,7 +340,11 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
               {currentWord.articleTipTr}
             </p>
             <p className="mt-2 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              Örnek: <strong className="font-medium text-[#111113] dark:text-[#F4F4F5]">{currentWord.exampleDe}</strong> — {currentWord.exampleTr}
+              {tx({ tr: 'Örnek:', en: 'Example:' })}{' '}
+              <strong className="font-medium text-[#111113] dark:text-[#F4F4F5]">
+                {currentWord.exampleDe}
+              </strong>{' '}
+              — {currentWord.exampleTr}
             </p>
 
             <div className="mt-5 flex justify-end">
@@ -294,7 +353,11 @@ export const ArticleDrillMode: React.FC<ArticleDrillModeProps> = ({
                 onClick={handleNext}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-sm font-medium text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
               >
-                <span>{currentIdx + 1 >= deck.length ? 'Sonucu Gör' : 'Sonraki Kelime'}</span>
+                <span>
+                  {currentIdx + 1 >= deck.length
+                    ? tx({ tr: 'Sonucu Gör', en: 'View Results' })
+                    : tx({ tr: 'Sonraki Kelime', en: 'Next Word' })}
+                </span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

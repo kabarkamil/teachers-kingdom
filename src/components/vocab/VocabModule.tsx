@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { ALL_A1_WORDS, GERMAN_A1_TOPICS, getTopicById } from '../../data/germanA1Vocab';
-import { tr } from '../../i18n/tr';
-import type { VocabMode } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
+import type { UiLanguage, VocabMode } from '../../types';
 import { isSpeechSynthesisSupported } from '../../utils/speech';
 import { ArticleDrillMode } from './ArticleDrillMode';
 import { FlashcardsMode } from './FlashcardsMode';
@@ -23,32 +23,27 @@ interface VocabModuleProps {
 
 const MODES: Array<{
   id: VocabMode;
-  labelTr: string;
-  shortDescTr: string;
+  label: Record<UiLanguage, string>;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   {
     id: 'flashcards',
-    labelTr: 'Kelime Kartları',
-    shortDescTr: 'Çevirmeli kart, artikel ve telaffuz',
+    label: { tr: 'Kelime Kartları', en: 'Flashcards' },
     icon: Layers,
   },
   {
     id: 'articles',
-    labelTr: 'Artikel Seçme',
-    shortDescTr: 'der / die / das kural alıştırması',
+    label: { tr: 'Artikel Seçme', en: 'Article Drill' },
     icon: BookOpen,
   },
   {
     id: 'quiz',
-    labelTr: 'Doğru Anlamı Bulma',
-    shortDescTr: 'Anlam ve cümle içi bağlam testi',
+    label: { tr: 'Doğru Anlamı Bulma', en: 'Meaning Quiz' },
     icon: CheckSquare,
   },
   {
     id: 'memory',
-    labelTr: 'Hafıza Eşleştirme',
-    shortDescTr: 'Almanca–Türkçe kart eşleştirme',
+    label: { tr: 'Hafıza Eşleştirme', en: 'Memory Match' },
     icon: Grid2X2,
   },
 ];
@@ -62,6 +57,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
     setSpeechSpeed,
     rolePreview,
   } = useAppState();
+  const { locale, tx } = useI18n();
 
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     initialTopicId ?? GERMAN_A1_TOPICS[0].id
@@ -85,47 +81,57 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
       <div className="flex flex-col gap-5 border-b border-[#D9D9D3] pb-6 md:flex-row md:items-end md:justify-between dark:border-[#282830]">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
-            <span>Öğrenme Alanı</span>
+            <span>{locale.navGroups.learning}</span>
             <span aria-hidden="true" className="mx-2">
               /
             </span>
             <span className="font-mono font-semibold text-[#7C1D2E] dark:text-[#D9A13B]">
-              Almanca A1
+              {locale.course.a1Label}
             </span>
             {rolePreview === 'teacher' && (
               <>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
-                <span>Öğretmen Önizleme Görünümü</span>
+                <span>
+                  {tx({ tr: 'Öğretmen Önizleme Görünümü', en: 'Teacher Preview Mode' })}
+                </span>
               </>
             )}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[#111113] dark:text-[#F4F4F5]">
-            Almanca A1 Kelime Stüdyosu
+            {tx({ tr: 'Almanca A1 Kelime Stüdyosu', en: 'German A1 Vocabulary Studio' })}
           </h1>
         </div>
 
         {/* Real Progress Strip (strictly from localStorage/session actions) */}
         <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Kazanılan XP</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Kazanılan XP', en: 'Earned XP' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#D9A13B] tabular-nums">
               {progress.xp}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Çalışılan Kelime</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Çalışılan Kelime', en: 'Words Studied' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
               {uniqueCompletedWordIds.length} / {ALL_A1_WORDS.length}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Kelime Doğruluğu</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {tx({ tr: 'Kelime Doğruluğu', en: 'Vocabulary Accuracy' })}
+            </p>
             <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-              {vocabAccuracyPercent === null ? '—' : `%${vocabAccuracyPercent}`}
+              {vocabAccuracyPercent === null
+                ? '—'
+                : tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: vocabAccuracyPercent })}
             </p>
           </div>
         </div>
@@ -138,10 +144,13 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
             id="topic-selector-heading"
             className="text-sm font-semibold text-[#111113] dark:text-[#F4F4F5]"
           >
-            1. Ünite / Konu Seçin
+            {tx({ tr: '1. Ünite / Konu Seçin', en: '1. Select a Unit / Topic' })}
           </h2>
           <span className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            3 A1 Temel Kategori · Toplam 30 Kelime
+            {tx({
+              tr: '3 A1 Temel Kategori · Toplam 30 Kelime',
+              en: '3 Core A1 Categories · 30 Words Total',
+            })}
           </span>
         </div>
 
@@ -205,7 +214,13 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
                   </p>
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-[#52525B] dark:text-[#A1A1AA]">
-                      {topic.words.length} kelime · der/die/das
+                      {tx(
+                        {
+                          tr: '{{count}} kelime · der/die/das',
+                          en: '{{count}} words · der/die/das',
+                        },
+                        { count: topic.words.length }
+                      )}
                     </span>
                     <span
                       className={`font-semibold ${
@@ -214,7 +229,9 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
                           : 'text-[#111113] dark:text-[#E4E4E7]'
                       }`}
                     >
-                      {isSelected ? 'Seçili Ünite' : 'Seç'}
+                      {isSelected
+                        ? tx({ tr: 'Seçili Ünite', en: 'Selected Unit' })
+                        : tx({ tr: 'Seç', en: 'Select' })}
                     </span>
                   </div>
                 </div>
@@ -225,12 +242,18 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
       </section>
 
       {/* Mode Switcher + Browser TTS Attribution & Speed Control */}
-      <section aria-label="Çalışma modu ve seslendirme kontrolleri" className="space-y-4">
+      <section
+        aria-label={tx({
+          tr: 'Çalışma modu ve seslendirme kontrolleri',
+          en: 'Study mode and audio controls',
+        })}
+        className="space-y-4"
+      >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* 4-Mode Interactive Tabs */}
           <div
             role="tablist"
-            aria-label="Kelime öğrenme modları"
+            aria-label={tx({ tr: 'Kelime öğrenme modları', en: 'Vocabulary study modes' })}
             className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#D9D9D3] bg-[#ECECE8]/80 p-1 dark:border-[#282830] dark:bg-[#16161A]"
           >
             {MODES.map((mode) => {
@@ -250,7 +273,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span>{mode.labelTr}</span>
+                  <span>{tx(mode.label)}</span>
                 </button>
               );
             })}
@@ -260,7 +283,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 py-2 text-xs dark:border-[#282830] dark:bg-[#16161A]">
             <div className="flex items-center gap-2 text-[#52525B] dark:text-[#A1A1AA]">
               <Volume2 className="h-4 w-4 text-[#7C1D2E] dark:text-[#D9A13B] shrink-0" />
-              <span>{tr.common.browserTtsNotice}</span>
+              <span>{locale.common.browserTtsNotice}</span>
             </div>
 
             {speechSupported && (
@@ -274,7 +297,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
                       : 'text-[#52525B] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  {tr.common.speedNormal}
+                  {locale.common.speedNormal}
                 </button>
                 <button
                   type="button"
@@ -285,7 +308,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
                       : 'text-[#52525B] dark:text-[#A1A1AA]'
                   }`}
                 >
-                  {tr.common.speedSlow}
+                  {locale.common.speedSlow}
                 </button>
               </div>
             )}
@@ -299,7 +322,7 @@ export const VocabModule: React.FC<VocabModuleProps> = ({ initialTopicId }) => {
             className="flex items-start gap-2.5 rounded-xl border border-[#9A6B16]/40 bg-[#FEF9EB] px-4 py-3 text-xs text-[#713F12] dark:border-[#D9A13B]/40 dark:bg-[#231D11] dark:text-[#FDE68A]"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{tr.common.ttsUnavailable}</p>
+            <p>{locale.common.ttsUnavailable}</p>
           </div>
         )}
       </section>

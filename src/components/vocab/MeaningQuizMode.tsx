@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { ALL_A1_WORDS } from '../../data/germanA1Vocab';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
 import type { VocabTopic, VocabWord } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
@@ -126,6 +127,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
   onSpeechError,
 }) => {
   const { speechSpeed, recordQuizAnswer } = useAppState();
+  const { locale, tx } = useI18n();
   const [questions, setQuestions] = useState<QuizQuestion[]>(() => buildQuestions(topic));
   const [currentIdx, setCurrentIdx] = useState(0);
   const [pickedOptionId, setPickedOptionId] = useState<string | null>(null);
@@ -195,15 +197,30 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
     return (
       <div className="mx-auto max-w-xl rounded-xl border border-[#D9D9D3] bg-[#FFFFFF] p-8 text-center dark:border-[#282830] dark:bg-[#16161A]">
         <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-          Anlam ve Bağlam Testi Tamamlandı · {topic.titleTr}
+          {tx(
+            {
+              tr: 'Anlam ve Bağlam Testi Tamamlandı · {{topic}}',
+              en: 'Meaning & Context Quiz Completed · {{topic}}',
+            },
+            { topic: topic.titleTr }
+          )}
         </p>
         <h3 className="mt-2 font-display text-2xl sm:text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
-          {roundCorrect} / {questions.length} Doğru Yanıt
+          {tx(
+            {
+              tr: '{{correct}} / {{total}} Doğru Yanıt',
+              en: '{{correct}} / {{total}} Correct Answers',
+            },
+            { correct: roundCorrect, total: questions.length }
+          )}
         </h3>
         <p className="mt-2 text-sm text-[#52525B] dark:text-[#A1A1AA]">
-          Bu testteki başarı oranınız:{' '}
+          {tx({
+            tr: 'Bu testteki başarı oranınız:',
+            en: 'Your score in this quiz:',
+          })}{' '}
           <span className="font-mono font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
-            %{accuracy}
+            {tx({ tr: '%{{n}}', en: '{{n}}%' }, { n: accuracy })}
           </span>
         </p>
 
@@ -214,7 +231,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
             className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#7C1D2E] px-5 text-sm font-medium text-white transition-colors hover:bg-[#641624] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>Yeni Test Başlat</span>
+            <span>{tx({ tr: 'Yeni Test Başlat', en: 'Start New Quiz' })}</span>
           </button>
         </div>
       </div>
@@ -234,10 +251,19 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-[#52525B] dark:text-[#A1A1AA]">
           <span>
-            {topic.titleTr} · {type === 'meaning' ? 'Doğru Anlamı Bul' : 'Cümleyi Tamamla'}
+            {topic.titleTr} ·{' '}
+            {type === 'meaning'
+              ? tx({ tr: 'Doğru Anlamı Bul', en: 'Find the Meaning' })
+              : tx({ tr: 'Cümleyi Tamamla', en: 'Complete the Sentence' })}
           </span>
           <span className="font-mono tabular-nums">
-            Soru {currentIdx + 1} / {questions.length} · Doğru: {roundCorrect}
+            {tx(
+              {
+                tr: 'Soru {{current}} / {{total}} · Doğru: {{correct}}',
+                en: 'Question {{current}} / {{total}} · Correct: {{correct}}',
+              },
+              { current: currentIdx + 1, total: questions.length, correct: roundCorrect }
+            )}
           </span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#ECECE8] dark:bg-[#23232B]">
@@ -256,8 +282,14 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
           <div>
             <p className="text-xs font-medium text-[#52525B] dark:text-[#A1A1AA]">
               {type === 'meaning'
-                ? 'Aşağıdaki Almanca sözcüğün Türkçe karşılığını seçin:'
-                : 'Cümledeki boşluğa uygun Almanca ismi seçin (artikelsiz biçim):'}
+                ? tx({
+                    tr: 'Aşağıdaki Almanca sözcüğün Türkçe karşılığını seçin:',
+                    en: 'Select the Turkish meaning of the German word below:',
+                  })
+                : tx({
+                    tr: 'Cümledeki boşluğa uygun Almanca ismi seçin (artikelsiz biçim):',
+                    en: 'Select the German noun that fits the blank (without article):',
+                  })}
             </p>
             {type === 'meaning' ? (
               <p className="mt-3 font-display text-3xl sm:text-4xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
@@ -273,7 +305,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
                   {clozeParts[1] ?? ''}”
                 </p>
                 <p className="text-sm text-[#52525B] dark:text-[#A1A1AA]">
-                  Türkçesi: {word.exampleTr}
+                  {tx({ tr: 'Türkçesi: {{text}}', en: 'Turkish: {{text}}' }, { text: word.exampleTr })}
                 </p>
               </div>
             )}
@@ -284,7 +316,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
               type="button"
               disabled={!speechSupported}
               onClick={() => handleListen(`${word.article} ${dictionaryNoun}`)}
-              aria-label="Kelimeyi dinle"
+              aria-label={locale.common.listenWord}
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#1E1E24] dark:text-[#F4F4F5] shrink-0"
             >
               <Volume2 className="h-4.5 w-4.5" />
@@ -352,11 +384,32 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
                     <span className="text-sm font-semibold text-[#15803D] dark:text-[#4ADE80]">
                       {type === 'context'
                         ? lastXpAwarded > 0
-                          ? `Harika! Doğru sözcük: ${expectedBlankForm} (+${lastXpAwarded} XP)`
-                          : `Doğru sözcük: ${expectedBlankForm} (Tekrar — XP daha önce kazanıldı)`
+                          ? tx(
+                              {
+                                tr: 'Harika! Doğru sözcük: {{word}} (+{{xp}} XP)',
+                                en: 'Great! Correct word: {{word}} (+{{xp}} XP)',
+                              },
+                              { word: expectedBlankForm, xp: lastXpAwarded }
+                            )
+                          : tx(
+                              {
+                                tr: 'Doğru sözcük: {{word}} (Tekrar — XP daha önce kazanıldı)',
+                                en: 'Correct word: {{word}} (Repeat — XP already earned)',
+                              },
+                              { word: expectedBlankForm }
+                            )
                         : lastXpAwarded > 0
-                        ? `Harika! Doğru yanıt (+${lastXpAwarded} XP)`
-                        : 'Doğru yanıt! (Tekrar — XP daha önce kazanıldı)'}
+                        ? tx(
+                            {
+                              tr: 'Harika! Doğru yanıt (+{{xp}} XP)',
+                              en: 'Great! Correct answer (+{{xp}} XP)',
+                            },
+                            { xp: lastXpAwarded }
+                          )
+                        : tx({
+                            tr: 'Doğru yanıt! (Tekrar — XP daha önce kazanıldı)',
+                            en: 'Correct answer! (Repeat — XP already earned)',
+                          })}
                     </span>
                   </>
                 ) : (
@@ -364,8 +417,29 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
                     <XCircle className="h-5 w-5 text-[#B91C1C] dark:text-[#F87171] shrink-0" />
                     <span className="text-sm font-semibold text-[#B91C1C] dark:text-[#F87171]">
                       {type === 'context'
-                        ? `Doğru sözcük: ${expectedBlankForm} (${word.article} ${dictionaryNoun} = ${word.turkish})`
-                        : `Doğru karşılık: ${word.article} ${dictionaryNoun} = ${word.turkish}`}
+                        ? tx(
+                            {
+                              tr: 'Doğru sözcük: {{blank}} ({{article}} {{noun}} = {{meaning}})',
+                              en: 'Correct word: {{blank}} ({{article}} {{noun}} = {{meaning}})',
+                            },
+                            {
+                              blank: expectedBlankForm,
+                              article: word.article,
+                              noun: dictionaryNoun,
+                              meaning: word.turkish,
+                            }
+                          )
+                        : tx(
+                            {
+                              tr: 'Doğru karşılık: {{article}} {{noun}} = {{meaning}}',
+                              en: 'Correct meaning: {{article}} {{noun}} = {{meaning}}',
+                            },
+                            {
+                              article: word.article,
+                              noun: dictionaryNoun,
+                              meaning: word.turkish,
+                            }
+                          )}
                     </span>
                   </>
                 )}
@@ -378,7 +452,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] transition-colors hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
               >
                 <Volume2 className="h-3.5 w-3.5" />
-                <span>Cümleyi Dinle</span>
+                <span>{tx({ tr: 'Cümleyi Dinle', en: 'Listen to Sentence' })}</span>
               </button>
             </div>
 
@@ -386,7 +460,7 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
               “{word.exampleDe}”
             </p>
             <p className="mt-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              {word.exampleTr} · Sözlük biçimi:{' '}
+              {word.exampleTr} · {tx({ tr: 'Sözlük biçimi:', en: 'Dictionary form:' })}{' '}
               <strong className="font-medium text-[#111113] dark:text-[#F4F4F5]">
                 {word.article} {dictionaryNoun}
               </strong>{' '}
@@ -399,7 +473,11 @@ export const MeaningQuizMode: React.FC<MeaningQuizModeProps> = ({
                 onClick={handleNext}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#111113] px-4 text-sm font-medium text-[#F6F6F4] transition-colors hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113] dark:hover:bg-[#E6B452]"
               >
-                <span>{currentIdx + 1 >= questions.length ? 'Testi Bitir' : 'Sonraki Soru'}</span>
+                <span>
+                  {currentIdx + 1 >= questions.length
+                    ? tx({ tr: 'Testi Bitir', en: 'Finish Quiz' })
+                    : tx({ tr: 'Sonraki Soru', en: 'Next Question' })}
+                </span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

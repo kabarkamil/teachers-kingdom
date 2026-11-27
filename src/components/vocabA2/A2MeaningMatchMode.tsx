@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { ALL_A2_WORDS } from '../../data/germanA2Vocab';
+import { useI18n } from '../../hooks/useI18n';
 import { ARTICLE_TOKENS } from '../../theme/tokens';
 import type { A2VocabTopic } from '../../types';
 import { speakGermanText, stopGermanSpeech } from '../../utils/speech';
@@ -40,6 +41,7 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
   onSpeechError,
 }) => {
   const { a2Progress, speechSpeed, recordA2MeaningAnswer } = useAppState();
+  const { tx } = useI18n();
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [lastXp, setLastXp] = useState(0);
@@ -105,11 +107,20 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
           <span className="font-medium text-[#111113] dark:text-[#F4F4F5]">{topic.titleTr}</span>
           <span aria-hidden="true">·</span>
           <span className="font-mono tabular-nums">
-            Soru {index + 1} / {topic.words.length}
+            {tx(
+              { tr: 'Soru {{current}} / {{total}}', en: 'Question {{current}} / {{total}}' },
+              { current: index + 1, total: topic.words.length }
+            )}
           </span>
         </div>
         <span className="font-mono text-xs font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
-          Ustalaşılan: {masteredInTopic} / {topic.words.length}
+          {tx(
+            {
+              tr: 'Ustalaşılan: {{mastered}} / {{total}}',
+              en: 'Mastered: {{mastered}} / {{total}}',
+            },
+            { mastered: masteredInTopic, total: topic.words.length }
+          )}
         </span>
       </div>
 
@@ -117,7 +128,10 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-[#9A6B16] dark:text-[#D9A13B]">
-              Anlam Eşleştirme · Almanca → Türkçe
+              {tx({
+                tr: 'Anlam Eşleştirme · Almanca → Türkçe',
+                en: 'Meaning Match · German → Turkish',
+              })}
             </p>
             <h3 className="mt-2 font-display text-3xl font-semibold text-[#111113] dark:text-[#F4F4F5]">
               <span className={`mr-2 font-mono ${articleToken.textClass}`}>{currentWord.article}</span>
@@ -131,14 +145,20 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             {isMastered && (
               <span className="font-mono text-xs font-semibold text-[#15803D] dark:text-[#4ADE80]">
-                Ustalaşıldı
+                {tx({ tr: 'Ustalaşıldı', en: 'Mastered' })}
               </span>
             )}
             <button
               type="button"
               disabled={!speechSupported}
               onClick={() => handleSpeak(`${currentWord.article} ${currentWord.word}`)}
-              aria-label={`${currentWord.article} ${currentWord.word} kelimesini dinle`}
+              aria-label={tx(
+                {
+                  tr: '{{article}} {{word}} kelimesini dinle',
+                  en: 'Listen to {{article}} {{word}}',
+                },
+                { article: currentWord.article, word: currentWord.word }
+              )}
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] text-[#7C1D2E] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#111113] dark:text-[#D9A13B]"
             >
               <Volume2 className="h-4 w-4" />
@@ -199,9 +219,24 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
                 <p className="font-semibold text-[#111113] dark:text-[#F4F4F5]">
                   {isCorrect
                     ? lastXp > 0
-                      ? `Doğru eşleştirme (+${lastXp} XP)!`
-                      : 'Doğru eşleştirme (bu sözcük zaten ustalaşıldı).'
-                    : `Doğru karşılık: "${currentWord.turkish}"`}
+                      ? tx(
+                          {
+                            tr: 'Doğru eşleştirme (+{{xp}} XP)!',
+                            en: 'Correct match (+{{xp}} XP)!',
+                          },
+                          { xp: lastXp }
+                        )
+                      : tx({
+                          tr: 'Doğru eşleştirme (bu sözcük zaten ustalaşıldı).',
+                          en: 'Correct match (this word is already mastered).',
+                        })
+                    : tx(
+                        {
+                          tr: 'Doğru karşılık: "{{meaning}}"',
+                          en: 'Correct meaning: "{{meaning}}"',
+                        },
+                        { meaning: currentWord.turkish }
+                      )}
                 </p>
                 <p className="text-[#111113] dark:text-[#F4F4F5]">{currentWord.exampleDe}</p>
                 <p className="text-[#52525B] dark:text-[#D4D4D8]">{currentWord.exampleTr}</p>
@@ -216,7 +251,7 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#111113] hover:bg-[#ECECE8] disabled:opacity-45 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#F4F4F5]"
               >
                 <Volume2 className="h-3.5 w-3.5 text-[#7C1D2E] dark:text-[#D9A13B]" />
-                <span>Örnek Cümleyi Dinle</span>
+                <span>{tx({ tr: 'Örnek Cümleyi Dinle', en: 'Listen to Example Sentence' })}</span>
               </button>
 
               <button
@@ -224,7 +259,7 @@ export const A2MeaningMatchMode: React.FC<A2MeaningMatchModeProps> = ({
                 onClick={handleNext}
                 className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#111113] px-4 text-xs font-semibold text-white hover:bg-[#27272A] dark:bg-[#D9A13B] dark:text-[#111113]"
               >
-                <span>Sonraki Kelime</span>
+                <span>{tx({ tr: 'Sonraki Kelime', en: 'Next Word' })}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>
