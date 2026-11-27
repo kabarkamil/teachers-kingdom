@@ -65,6 +65,7 @@ export const DataPortabilityPanel: React.FC = () => {
     cloudConfigured,
     cloudUser,
     cloudSyncStatus,
+    cloudAutoPushPaused,
     lastCloudSyncAt,
     cloudSyncError,
     syncCloudNow,
@@ -74,6 +75,7 @@ export const DataPortabilityPanel: React.FC = () => {
     resetProgress,
     resetA2Progress,
     resetAllLocalData,
+    resetCloudAndLocal,
   } = useAppState();
   const isEn = uiLanguage === 'en';
   const [cloudActionBusy, setCloudActionBusy] = useState(false);
@@ -94,13 +96,17 @@ export const DataPortabilityPanel: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
-  // Safe two-step reset state
+  // Safe two-step reset state (local-only vs. cloud-inclusive)
   const [resetPanelOpen, setResetPanelOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<'local-only' | 'local-and-cloud'>('local-only');
   const [resetScope, setResetScope] = useState<'progress-only' | 'a2-only' | 'all-local'>(
     'progress-only'
   );
   const [resetConfirmedCheck, setResetConfirmedCheck] = useState(false);
+  const [resetKeywordInput, setResetKeywordInput] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
   const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const diagnostics = useMemo(() => {
     void progress;
@@ -121,6 +127,7 @@ export const DataPortabilityPanel: React.FC = () => {
         speechSpeed,
         theme,
         activeCourse,
+        uiLanguage,
       },
       a2Progress
     );
@@ -137,6 +144,7 @@ export const DataPortabilityPanel: React.FC = () => {
         speechSpeed,
         theme,
         activeCourse,
+        uiLanguage,
       },
       a2Progress
     );
@@ -235,27 +243,64 @@ export const DataPortabilityPanel: React.FC = () => {
     window.setTimeout(() => setImportSuccess(null), 5000);
   };
 
-  const handleExecuteReset = () => {
-    if (!resetConfirmedCheck) return;
+  const expectedResetKeyword = isEn ? 'RESET' : 'SIFIRLA';
+  const isCloudResetSelected = resetTarget === 'local-and-cloud' && Boolean(cloudUser);
+  const isResetKeywordMatched =
+    resetKeywordInput.trim().toLocaleUpperCase('tr-TR') === expectedResetKeyword ||
+    resetKeywordInput.trim().toUpperCase() === 'RESET';
+  const canConfirmReset =
+    resetConfirmedCheck && (!isCloudResetSelected || isResetKeywordMatched) && !resetBusy;
+
+  const handleExecuteReset = async () => {
+    if (!canConfirmReset) return;
+    setResetError(null);
+    setResetNotice(null);
+
+    if (isCloudResetSelected) {
+      const cloudScope =
+        resetScope === 'all-local' ? 'all' : resetScope === 'a2-only' ? 'a2' : 'a1';
+      setResetBusy(true);
+      const outcome = await resetCloudAndLocal(cloudScope);
+      setResetBusy(false);
+      if (!outcome.ok) {
+        setResetError(isEn ? outcome.summaryEn : outcome.summaryTr);
+        return;
+      }
+      setResetNotice(isEn ? outcome.summaryEn : outcome.summaryTr);
+      setResetPanelOpen(false);
+      setResetConfirmedCheck(false);
+      setResetKeywordInput('');
+      setResetTarget('local-only');
+      window.setTimeout(() => setResetNotice(null), 6000);
+      return;
+    }
+
+    const cloudSafeSuffix = cloudUser
+      ? isEn
+        ? ' Cloud data was preserved and automatic cloud upload was paused until you manually sync.'
+        : ' Bulut verileriniz korundu; manuel eşitleme yapana kadar otomatik bulut gönderimi duraklatıldı.'
+      : '';
+
     if (resetScope === 'all-local') {
       resetAllLocalData();
       setResetNotice(
-        'A1 ve A2 ilerleme kayıtları, yerel sınıflar, ödevler, taslaklar ve profil tercihleri sıfırlandı.'
+        `A1 ve A2 yerel ilerleme kayıtları, sınıflar, ödevler, taslaklar ve profil tercihleri sıfırlandı.${cloudSafeSuffix}`
       );
     } else if (resetScope === 'a2-only') {
       resetA2Progress();
       setResetNotice(
-        `Almanca A2 ilerleme kaydı (${STORAGE_KEY_A2_STATE}) sıfırlandı; Almanca A1 ilerlemeniz ve tercihleriniz korundu.`
+        `Almanca A2 yerel ilerleme kaydı (${STORAGE_KEY_A2_STATE}) sıfırlandı; A1 kaydınız ve tercihleriniz korundu.${cloudSafeSuffix}`
       );
     } else {
       resetProgress();
       setResetNotice(
-        `Almanca A1 ilerleme kaydı (${STORAGE_KEY_STATE}) sıfırlandı; A2 kaydınız, tema ve profil adınız korundu.`
+        `Almanca A1 yerel ilerleme kaydı (${STORAGE_KEY_STATE}) sıfırlandı; A2 kaydınız, tema ve profil adınız korundu.${cloudSafeSuffix}`
       );
     }
     setResetPanelOpen(false);
     setResetConfirmedCheck(false);
-    window.setTimeout(() => setResetNotice(null), 4000);
+    setResetKeywordInput('');
+    window.setTimeout(() => setResetNotice(null), 6000);
   };
 
   const pendingStats = useMemo(() => {
@@ -466,6 +511,17 @@ export const DataPortabilityPanel: React.FC = () => {
                     <span>{isEn ? 'Push' : 'Gönder'}</span>
                   </button>
                 </div>
+
+                {cloudAutoPushPaused && (
+                  <div
+                    role="status"
+                    className="rounded-lg border border-[#D4AF37]/50 bg-[#FEF9EB] px-3 py-2 text-[11px] leading-relaxed text-[#78350F] dark:border-[#D4AF37]/40 dark:bg-[#231D10] dark:text-[#F6D693]"
+                  >
+                    {isEn
+                      ? 'Auto-upload is paused after a local-only reset to protect your cloud data. Click Sync or Pull whenever you want to reconnect.'
+                      : 'Yerel sıfırlama sonrası bulut verilerinizi korumak için otomatik bulut gönderimi duraklatıldı. Tekrar bağlamak için Eşitle veya Çek butonunu kullanabilirsiniz.'}
+                  </div>
+                )}
 
                 {(cloudActionNotice || cloudSyncError) && (
                   <p
@@ -808,7 +864,10 @@ export const DataPortabilityPanel: React.FC = () => {
               type="button"
               onClick={() => {
                 setResetPanelOpen(true);
+                setResetTarget('local-only');
                 setResetConfirmedCheck(false);
+                setResetKeywordInput('');
+                setResetError(null);
               }}
               className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#B91C1C]/40 px-4 text-xs font-medium text-[#991B1B] transition-colors hover:bg-[#FEF2F2] dark:border-[#EF4444]/40 dark:text-[#FCA5A5] dark:hover:bg-[#450A0A]/40 whitespace-nowrap shrink-0"
             >
@@ -827,12 +886,28 @@ export const DataPortabilityPanel: React.FC = () => {
           </div>
         )}
 
+        {resetError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-[#B91C1C]/40 bg-[#FEF2F2] px-4 py-3 text-xs sm:text-sm font-medium text-[#991B1B] dark:border-[#EF4444]/40 dark:bg-[#3B1014] dark:text-[#FCA5A5]"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{resetError}</span>
+          </div>
+        )}
+
         {resetPanelOpen && (
           <div className="rounded-xl border border-[#B91C1C]/35 bg-[#FEF2F2]/60 p-5 space-y-4 dark:border-[#EF4444]/35 dark:bg-[#2A1013]/60">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-[#991B1B] dark:text-[#FCA5A5]">
-                  Dikkat: Yerel Tarayıcı Verisi Sıfırlanacak
+                  {isCloudResetSelected
+                    ? isEn
+                      ? 'Warning: Local & Cloud Data Will Be Permanently Erased'
+                      : 'Dikkat: Hem Yerel Hem Bulut Verileri Kalıcı Olarak Sıfırlanacak'
+                    : isEn
+                    ? 'Notice: Only Local Browser Data Will Be Reset (Cloud Protected)'
+                    : 'Dikkat: Yalnızca Yerel Tarayıcı Verisi Sıfırlanacak (Bulut Korunur)'}
                 </p>
                 <p className="mt-0.5 text-xs text-[#7F1D1D] dark:text-[#FECACA]">
                   İşlemden önce ilerlemenizi kaybetmemek için JSON yedeği indirmeniz önerilir.
@@ -845,6 +920,68 @@ export const DataPortabilityPanel: React.FC = () => {
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Önce Yedek İndir</span>
+              </button>
+            </div>
+
+            {/* Reset Target Selector: Local-only vs. Local + Cloud */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetTarget('local-only');
+                  setResetConfirmedCheck(false);
+                  setResetKeywordInput('');
+                  setResetError(null);
+                }}
+                aria-pressed={resetTarget === 'local-only'}
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  resetTarget === 'local-only'
+                    ? 'border-[#0D0D0D] bg-[#FFFFFF] text-[#0D0D0D] dark:border-[#D4AF37] dark:bg-[#16161A] dark:text-[#FFFFFF]'
+                    : 'border-[#D9D9D3] bg-[#FFFFFF]/60 text-[#52525B] dark:border-[#282830] dark:bg-[#16161A]/60 dark:text-[#A1A1AA]'
+                }`}
+              >
+                <p className="font-semibold">
+                  {isEn
+                    ? '1. Reset Local Data Only (Cloud Safe)'
+                    : '1. Yalnızca Yerel Verileri Sıfırla (Bulut Korunur)'}
+                </p>
+                <p className="mt-0.5 opacity-85">
+                  {isEn
+                    ? 'Clears only this browser. Supabase cloud data is untouched and auto-upload pauses safely.'
+                    : 'Yalnızca bu tarayıcıyı temizler. Supabase bulut kaydına dokunulmaz ve otomatik gönderim duraklatılır.'}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                disabled={!cloudUser}
+                onClick={() => {
+                  setResetTarget('local-and-cloud');
+                  setResetConfirmedCheck(false);
+                  setResetKeywordInput('');
+                  setResetError(null);
+                }}
+                aria-pressed={isCloudResetSelected}
+                className={`rounded-lg border p-3 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isCloudResetSelected
+                    ? 'border-[#7A1C24] bg-[#FFFFFF] text-[#7A1C24] ring-1 ring-[#7A1C24] dark:border-[#FCA5A5] dark:bg-[#16161A] dark:text-[#FCA5A5] dark:ring-[#FCA5A5]'
+                    : 'border-[#D9D9D3] bg-[#FFFFFF]/60 text-[#52525B] dark:border-[#282830] dark:bg-[#16161A]/60 dark:text-[#A1A1AA]'
+                }`}
+              >
+                <p className="font-semibold">
+                  {isEn
+                    ? '2. Reset Local + Cloud Data (Permanent)'
+                    : '2. Bulut Dahil Sıfırla (Kalıcı / Geri Alınamaz)'}
+                </p>
+                <p className="mt-0.5 opacity-85">
+                  {cloudUser
+                    ? isEn
+                      ? `Erases selected data both locally and in Supabase (${cloudUser.email}).`
+                      : `Seçili kapsamı hem yerelde hem de Supabase hesabınızda (${cloudUser.email}) kalıcı olarak sıfırlar.`
+                    : isEn
+                    ? 'Sign in with a cloud account to reset remote cloud data.'
+                    : 'Bulut verilerini sıfırlamak için aktif bir bulut oturumu gerekir.'}
+                </p>
               </button>
             </div>
 
@@ -888,7 +1025,11 @@ export const DataPortabilityPanel: React.FC = () => {
                     : 'border-[#D9D9D3] bg-[#FFFFFF]/60 text-[#52525B] dark:border-[#282830] dark:bg-[#16161A]/60 dark:text-[#A1A1AA]'
                 }`}
               >
-                <p className="font-semibold">Tüm Yerel Oturumu Temizle</p>
+                <p className="font-semibold">
+                  {isCloudResetSelected
+                    ? 'Tüm Yerel + Bulut Oturumunu Temizle'
+                    : 'Tüm Yerel Oturumu Temizle'}
+                </p>
                 <p className="mt-0.5 opacity-85">
                   A1 ve A2 kayıtlarına ek olarak görünen ad ve rol/hız tercihleri de sıfırlanır.
                 </p>
@@ -903,16 +1044,47 @@ export const DataPortabilityPanel: React.FC = () => {
                 className="mt-0.5 h-4 w-4 rounded accent-[#B91C1C]"
               />
               <span>
-                Seçili yerel tarayıcı verisinin geri alınamayacak biçimde sıfırlanacağını anlıyor ve onaylıyorum.
+                {isCloudResetSelected
+                  ? isEn
+                    ? 'I understand that the selected data will be permanently deleted from BOTH this browser and my Supabase cloud account and cannot be undone.'
+                    : 'Seçili verilerin HEM bu tarayıcıdan HEM de Supabase bulut hesabımdan geri alınamayacak biçimde silineceğini anlıyor ve onaylıyorum.'
+                  : isEn
+                  ? 'I understand that the selected local browser data will be permanently reset (my cloud backup will remain safe).'
+                  : 'Seçili yerel tarayıcı verisinin geri alınamayacak biçimde sıfırlanacağını anlıyor ve onaylıyorum (bulut verilerim korunacaktır).'}
               </span>
             </label>
+
+            {isCloudResetSelected && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="tk-cloud-reset-confirm-input"
+                  className="block text-xs font-semibold text-[#991B1B] dark:text-[#FCA5A5]"
+                >
+                  {isEn
+                    ? `Type "${expectedResetKeyword}" to confirm irreversible cloud reset:`
+                    : `Geri döndürülemez bulut sıfırlamasını onaylamak için "${expectedResetKeyword}" yazın:`}
+                </label>
+                <input
+                  id="tk-cloud-reset-confirm-input"
+                  type="text"
+                  value={resetKeywordInput}
+                  onChange={(e) => setResetKeywordInput(e.target.value)}
+                  placeholder={expectedResetKeyword}
+                  autoComplete="off"
+                  className="w-full max-w-xs rounded-lg border border-[#B91C1C]/45 bg-[#FFFFFF] px-3 py-2 font-mono text-xs text-[#0D0D0D] focus:border-[#7A1C24] focus:outline-none dark:border-[#EF4444]/45 dark:bg-[#0D0D0D] dark:text-[#FFFFFF]"
+                />
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
+                disabled={resetBusy}
                 onClick={() => {
                   setResetPanelOpen(false);
                   setResetConfirmedCheck(false);
+                  setResetKeywordInput('');
+                  setResetError(null);
                 }}
                 className="h-9 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3.5 text-xs font-medium text-[#52525B] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA]"
               >
@@ -920,11 +1092,20 @@ export const DataPortabilityPanel: React.FC = () => {
               </button>
               <button
                 type="button"
-                disabled={!resetConfirmedCheck}
-                onClick={handleExecuteReset}
-                className="h-9 rounded-lg bg-[#B91C1C] px-4 text-xs font-semibold text-white hover:bg-[#991B1B] disabled:opacity-40"
+                disabled={!canConfirmReset}
+                onClick={() => void handleExecuteReset()}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#B91C1C] px-4 text-xs font-semibold text-white hover:bg-[#991B1B] disabled:opacity-40"
               >
-                Evet, Seçili Veriyi Sıfırla
+                {resetBusy && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                <span>
+                  {isCloudResetSelected
+                    ? isEn
+                      ? 'Confirm Local + Cloud Reset'
+                      : 'Evet, Yerel ve Bulut Verisini Sıfırla'
+                    : isEn
+                    ? 'Confirm Local-Only Reset'
+                    : 'Evet, Yalnızca Yerel Veriyi Sıfırla'}
+                </span>
               </button>
             </div>
           </div>

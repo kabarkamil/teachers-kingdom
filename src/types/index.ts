@@ -574,6 +574,7 @@ export interface TeachingClassGroup {
   descriptionTr: string;
   roster: TeachingRosterEntry[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TeachingAssignment {
@@ -591,7 +592,14 @@ export interface TeachingAssignment {
   reviewedAt?: string;
   reviewNoteTr?: string;
   createdAt: string;
+  updatedAt?: string;
   isStarter?: boolean;
+}
+
+export interface TeachingDeletionTombstones {
+  classes: Record<string, string>;
+  assignments: Record<string, string>;
+  drafts: Record<string, string>;
 }
 
 export type StudioDraftKind = 'lesson' | 'quiz' | 'homework';
@@ -646,6 +654,7 @@ export interface ProgressState {
   teachingClasses: TeachingClassGroup[];
   teachingAssignments: TeachingAssignment[];
   studioDrafts: StudioDraft[];
+  deletedTeachingIds?: TeachingDeletionTombstones;
   assignmentCompletedIds: string[];
   teachingMilestoneIds: string[];
   xp: number;

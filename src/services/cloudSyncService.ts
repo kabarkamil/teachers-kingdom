@@ -38,6 +38,34 @@ export interface LocalSyncMeta {
   localUpdatedAt: string | null;
   lastCloudSyncAt: string | null;
   lastSyncedUserId: string | null;
+  autoPushPaused?: boolean;
+}
+
+export type CloudResetScope = 'a1' | 'a2' | 'all';
+
+export interface CloudResetResult {
+  ok: boolean;
+  updatedAt?: string | null;
+  errorTr?: string;
+  errorEn?: string;
+}
+
+export interface AutoPushGuardInput {
+  cloudConfigured: boolean;
+  hasSession: boolean;
+  isOnline: boolean;
+  autoPushPaused: boolean;
+  suppressAutoPush: boolean;
+}
+
+export function canAutoPushToCloud(input: AutoPushGuardInput): boolean {
+  return (
+    input.cloudConfigured &&
+    input.hasSession &&
+    input.isOnline &&
+    !input.autoPushPaused &&
+    !input.suppressAutoPush
+  );
 }
 
 export interface CloudAuthResult {
@@ -87,9 +115,13 @@ interface RawCloudRow {
 let cachedClient: SupabaseClient | null = null;
 
 function readSupabaseEnv(): { url: string; anonKey: string } {
-  const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
-  const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
-  return { url, anonKey };
+  const rawUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_URL : '';
+  const rawKey =
+    typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_ANON_KEY : '';
+  return {
+    url: typeof rawUrl === 'string' ? rawUrl.trim() : '',
+    anonKey: typeof rawKey === 'string' ? rawKey.trim() : '',
+  };
 }
 
 export function isCloudConfigured(): boolean {
@@ -122,6 +154,7 @@ export function readSyncMeta(): LocalSyncMeta {
     localUpdatedAt: null,
     lastCloudSyncAt: null,
     lastSyncedUserId: null,
+    autoPushPaused: false,
   };
   if (typeof window === 'undefined') return empty;
   try {
@@ -133,6 +166,7 @@ export function readSyncMeta(): LocalSyncMeta {
       lastCloudSyncAt: typeof parsed.lastCloudSyncAt === 'string' ? parsed.lastCloudSyncAt : null,
       lastSyncedUserId:
         typeof parsed.lastSyncedUserId === 'string' ? parsed.lastSyncedUserId : null,
+      autoPushPaused: Boolean(parsed.autoPushPaused),
     };
   } catch {
     return empty;
@@ -502,9 +536,124 @@ export async function pushCloudState(
   }
 }
 
+export async function deleteCloudState(userId: string): Promise<CloudResetResult> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      ok: false,
+      errorTr: 'Bulut bağlantısı yapılandırılmadı.',
+      errorEn: 'Cloud sync is not configured.',
+    };
+  }
+  if (!isBrowserOnline()) {
+    return {
+      ok: false,
+      errorTr: 'Çevrimdışı durumdasınız; bulut verileri yalnızca çevrimiçi iken sıfırlanabilir.',
+      errorEn: 'You are offline; cloud data can only be reset while online.',
+    };
+  }
+
+  try {
+    const { error } = await client.from(CLOUD_TABLE).delete().eq('user_id', userId);
+    if (error) {
+      return {
+        ok: false,
+        errorTr: `Bulut kaydı silinemedi: ${error.message}`,
+        errorEn: `Could not delete cloud record: ${error.message}`,
+      };
+    }
+    return { ok: true, updatedAt: null };
+  } catch {
+    return {
+      ok: false,
+      errorTr: 'Bulut sunucusuna erişilemedi; bulut verileriniz değiştirilmedi.',
+      errorEn: 'Could not reach cloud server; cloud data was not modified.',
+    };
+  }
+}
+
+export interface CloudResetTransport {
+  isConfigured: () => boolean;
+  isOnline: () => boolean;
+  deleteAll: (userId: string) => Promise<CloudResetResult>;
+  pushSnapshot: (session: CloudUserSession, snapshot: CloudStateSnapshot) => Promise<CloudPushResult>;
+}
+
+const DEFAULT_CLOUD_RESET_TRANSPORT: CloudResetTransport = {
+  isConfigured: isCloudConfigured,
+  isOnline: isBrowserOnline,
+  deleteAll: deleteCloudState,
+  pushSnapshot: pushCloudState,
+};
+
+/**
+ * Executes an explicit user-confirmed reset that includes Supabase cloud data.
+ * Never runs automatically; fails closed when offline or unconfigured.
+ */
+export async function executeCloudReset(
+  session: CloudUserSession | null,
+  scope: CloudResetScope,
+  nextSnapshot: CloudStateSnapshot,
+  transport: CloudResetTransport = DEFAULT_CLOUD_RESET_TRANSPORT
+): Promise<CloudResetResult> {
+  if (!transport.isConfigured() || !session) {
+    return {
+      ok: false,
+      errorTr: 'Bulut sıfırlaması için aktif bir bulut oturumu gereklidir.',
+      errorEn: 'An active cloud session is required to reset cloud data.',
+    };
+  }
+  if (!transport.isOnline()) {
+    return {
+      ok: false,
+      errorTr: 'Çevrimdışı durumdasınız; bulut verileri sıfırlanamadı. İnternet bağlantısıyla tekrar deneyin.',
+      errorEn: 'You are offline; cloud data could not be reset. Please try again when online.',
+    };
+  }
+
+  if (scope === 'all') {
+    return transport.deleteAll(session.userId);
+  }
+
+  const pushRes = await transport.pushSnapshot(session, nextSnapshot);
+  if (!pushRes.ok) {
+    return {
+      ok: false,
+      errorTr: pushRes.errorTr,
+      errorEn: pushRes.errorEn,
+    };
+  }
+  return {
+    ok: true,
+    updatedAt: pushRes.updatedAt ?? nextSnapshot.updatedAt,
+  };
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue);
+  }
+  if (value !== null && typeof value === 'object') {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      const val = (value as Record<string, unknown>)[key];
+      if (val !== undefined) {
+        sorted[key] = stableJsonValue(val);
+      }
+    }
+    return sorted;
+  }
+  return value;
+}
+
+function areCanonicalEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(stableJsonValue(a)) === JSON.stringify(stableJsonValue(b));
+}
+
 /**
  * Resolves local vs. cloud state conflicts using `updatedAt` timestamps for scalar
- * preferences while merging A1/A2 mastered sets safely (zero lost progress, zero double XP).
+ * preferences while merging A1/A2 mastered sets and deletion tombstones safely
+ * (zero lost progress, zero double XP, zero resurrection of deleted teaching items).
  */
 export function reconcileCloudAndLocal(
   local: CloudStateSnapshot,
@@ -529,33 +678,18 @@ export function reconcileCloudAndLocal(
         displayName: local.prefs.displayName || remote.prefs.displayName,
       };
 
-  const remoteChanged =
-    mergedA1.xp !== remote.progressA1.xp ||
-    mergedA2.xp !== remote.progressA2.xp ||
-    mergedA1.activityMasteredIds.length !== remote.progressA1.activityMasteredIds.length ||
-    mergedA2.activityMasteredIds.length !== remote.progressA2.activityMasteredIds.length ||
-    mergedA1.arenaBestStreak !== remote.progressA1.arenaBestStreak ||
-    mergedA2.a2ArenaBestStreak !== remote.progressA2.a2ArenaBestStreak ||
-    mergedA1.examBestScorePercent !== remote.progressA1.examBestScorePercent ||
-    mergedA2.a2ExamBestScorePercent !== remote.progressA2.a2ExamBestScorePercent ||
-    mergedA1.teachingClasses.length !== remote.progressA1.teachingClasses.length ||
-    mergedA1.teachingAssignments.length !== remote.progressA1.teachingAssignments.length ||
-    mergedA1.studioDrafts.length !== remote.progressA1.studioDrafts.length ||
-    localIsNewer;
+  const remoteContentDiffers =
+    !areCanonicalEqual(mergedA1, remote.progressA1) ||
+    !areCanonicalEqual(mergedA2, remote.progressA2) ||
+    !areCanonicalEqual(preferredPrefs, remote.prefs);
 
-  const localChanged =
-    mergedA1.xp !== local.progressA1.xp ||
-    mergedA2.xp !== local.progressA2.xp ||
-    mergedA1.activityMasteredIds.length !== local.progressA1.activityMasteredIds.length ||
-    mergedA2.activityMasteredIds.length !== local.progressA2.activityMasteredIds.length ||
-    mergedA1.arenaBestStreak !== local.progressA1.arenaBestStreak ||
-    mergedA2.a2ArenaBestStreak !== local.progressA2.a2ArenaBestStreak ||
-    mergedA1.examBestScorePercent !== local.progressA1.examBestScorePercent ||
-    mergedA2.a2ExamBestScorePercent !== local.progressA2.a2ExamBestScorePercent ||
-    mergedA1.teachingClasses.length !== local.progressA1.teachingClasses.length ||
-    mergedA1.teachingAssignments.length !== local.progressA1.teachingAssignments.length ||
-    mergedA1.studioDrafts.length !== local.progressA1.studioDrafts.length ||
-    remoteIsNewer;
+  const localContentDiffers =
+    !areCanonicalEqual(mergedA1, local.progressA1) ||
+    !areCanonicalEqual(mergedA2, local.progressA2) ||
+    !areCanonicalEqual(preferredPrefs, local.prefs);
+
+  const remoteChanged = remoteContentDiffers || localIsNewer;
+  const localChanged = localContentDiffers || remoteIsNewer;
 
   const resolvedUpdatedAt = remoteChanged
     ? new Date(Math.max(localMs, remoteMs, Date.now())).toISOString()

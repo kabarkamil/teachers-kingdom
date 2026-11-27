@@ -38,7 +38,9 @@ import { STARTER_A1_ASSIGNMENTS } from '../data/germanA1Teaching';
 import type { LocalUserPrefs, ProgressLoadOutcome } from '../services/contracts';
 import { DEFAULT_LOCAL_PREFS, platformServices } from '../services/localAdapters';
 import {
+  canAutoPushToCloud,
   clearSyncMeta,
+  executeCloudReset,
   getCurrentCloudSession,
   isBrowserOnline,
   isCloudConfigured,
@@ -52,6 +54,7 @@ import {
   subscribeCloudAuth,
   writeSyncMeta,
   type CloudAuthResult,
+  type CloudResetScope,
   type CloudStateSnapshot,
 } from '../services/cloudSyncService';
 import {
@@ -65,6 +68,7 @@ import {
 } from '../utils/a2DataPortability';
 import {
   TK_BACKUP_SCHEMA_VERSION,
+  createEmptyTeachingTombstones,
   type ValidatedBackupPayload,
 } from '../utils/dataPortability';
 
@@ -99,6 +103,7 @@ const INITIAL_PROGRESS: ProgressState = {
   teachingClasses: [],
   teachingAssignments: STARTER_A1_ASSIGNMENTS,
   studioDrafts: [],
+  deletedTeachingIds: createEmptyTeachingTombstones(),
   assignmentCompletedIds: [],
   teachingMilestoneIds: [],
   xp: 0,
@@ -353,6 +358,7 @@ interface AppStateContextValue {
   cloudConfigured: boolean;
   cloudUser: CloudUserSession | null;
   cloudSyncStatus: CloudSyncStatus;
+  cloudAutoPushPaused: boolean;
   lastCloudSyncAt: string | null;
   cloudSyncError: string | null;
   cloudSignIn: (email: string, password: string) => Promise<CloudAuthResult>;
@@ -369,6 +375,9 @@ interface AppStateContextValue {
   resetProgress: () => void;
   resetA2Progress: () => void;
   resetAllLocalData: () => void;
+  resetCloudAndLocal: (
+    scope: CloudResetScope
+  ) => Promise<{ ok: boolean; summaryTr: string; summaryEn: string }>;
 }
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
@@ -402,11 +411,16 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>(() =>
     isBrowserOnline() ? 'local' : 'offline'
   );
+  const [cloudAutoPushPaused, setCloudAutoPushPaused] = useState<boolean>(() =>
+    Boolean(initialSyncMeta.current.autoPushPaused)
+  );
   const [lastCloudSyncAt, setLastCloudSyncAt] = useState<string | null>(
     () => initialSyncMeta.current.lastCloudSyncAt
   );
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
 
+  const cloudAutoPushPausedRef = useRef<boolean>(cloudAutoPushPaused);
+  cloudAutoPushPausedRef.current = cloudAutoPushPaused;
   const localUpdatedAtRef = useRef<string | null>(initialSyncMeta.current.localUpdatedAt);
   const suppressAutoPushRef = useRef<boolean>(false);
   const hasMountedSyncRef = useRef<boolean>(false);
@@ -1575,18 +1589,30 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const deleteTeachingClass = useCallback((classId: string) => {
-    setProgress((prev) => ({
-      ...prev,
-      teachingClasses: prev.teachingClasses.filter((c) => c.id !== classId),
-      teachingAssignments: prev.teachingAssignments.map((a) =>
-        a.classId === classId ? { ...a, classId: undefined } : a
-      ),
-    }));
+    const deletedAt = new Date().toISOString();
+    setProgress((prev) => {
+      const prevTombstones = prev.deletedTeachingIds ?? createEmptyTeachingTombstones();
+      return {
+        ...prev,
+        teachingClasses: prev.teachingClasses.filter((c) => c.id !== classId),
+        teachingAssignments: prev.teachingAssignments.map((a) =>
+          a.classId === classId ? { ...a, classId: undefined, updatedAt: deletedAt } : a
+        ),
+        deletedTeachingIds: {
+          ...prevTombstones,
+          classes: {
+            ...prevTombstones.classes,
+            [classId]: deletedAt,
+          },
+        },
+      };
+    });
   }, []);
 
   const addClassRosterEntry = useCallback((classId: string, name: string, noteTr: string) => {
     const cleanName = name.trim().slice(0, 60);
     if (!cleanName) return;
+    const nowIso = new Date().toISOString();
     const entryId = `roster-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     setProgress((prev) => ({
@@ -1595,13 +1621,14 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cls.id === classId
           ? {
               ...cls,
+              updatedAt: nowIso,
               roster: [
                 ...cls.roster,
                 {
                   id: entryId,
                   name: cleanName,
                   noteTr: noteTr.trim().slice(0, 120),
-                  addedAt: new Date().toISOString(),
+                  addedAt: nowIso,
                 },
               ],
             }
@@ -1611,11 +1638,12 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const removeClassRosterEntry = useCallback((classId: string, entryId: string) => {
+    const nowIso = new Date().toISOString();
     setProgress((prev) => ({
       ...prev,
       teachingClasses: prev.teachingClasses.map((cls) =>
         cls.id === classId
-          ? { ...cls, roster: cls.roster.filter((r) => r.id !== entryId) }
+          ? { ...cls, updatedAt: nowIso, roster: cls.roster.filter((r) => r.id !== entryId) }
           : cls
       ),
     }));
@@ -1748,6 +1776,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateAssignmentReview = useCallback(
     (assignmentId: string, reviewed: boolean, reviewNoteTr: string) => {
       const cleanNote = reviewNoteTr.trim().slice(0, 240);
+      const nowIso = new Date().toISOString();
       setProgress((prev) => ({
         ...prev,
         teachingAssignments: prev.teachingAssignments.map((a) => {
@@ -1760,7 +1789,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return {
             ...a,
             status: nextStatus,
-            reviewedAt: reviewed ? new Date().toISOString() : undefined,
+            reviewedAt: reviewed ? nowIso : undefined,
+            updatedAt: nowIso,
             reviewNoteTr: cleanNote || undefined,
           };
         }),
@@ -1770,10 +1800,21 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const deleteTeachingAssignment = useCallback((assignmentId: string) => {
-    setProgress((prev) => ({
-      ...prev,
-      teachingAssignments: prev.teachingAssignments.filter((a) => a.id !== assignmentId),
-    }));
+    const deletedAt = new Date().toISOString();
+    setProgress((prev) => {
+      const prevTombstones = prev.deletedTeachingIds ?? createEmptyTeachingTombstones();
+      return {
+        ...prev,
+        teachingAssignments: prev.teachingAssignments.filter((a) => a.id !== assignmentId),
+        deletedTeachingIds: {
+          ...prevTombstones,
+          assignments: {
+            ...prevTombstones.assignments,
+            [assignmentId]: deletedAt,
+          },
+        },
+      };
+    });
   }, []);
 
   const saveStudioDraft = useCallback(
@@ -1842,10 +1883,21 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const deleteStudioDraft = useCallback((draftId: string) => {
-    setProgress((prev) => ({
-      ...prev,
-      studioDrafts: prev.studioDrafts.filter((d) => d.id !== draftId),
-    }));
+    const deletedAt = new Date().toISOString();
+    setProgress((prev) => {
+      const prevTombstones = prev.deletedTeachingIds ?? createEmptyTeachingTombstones();
+      return {
+        ...prev,
+        studioDrafts: prev.studioDrafts.filter((d) => d.id !== draftId),
+        deletedTeachingIds: {
+          ...prevTombstones,
+          drafts: {
+            ...prevTombstones.drafts,
+            [draftId]: deletedAt,
+          },
+        },
+      };
+    });
   }, []);
 
   const toggleStudioDraftItem = useCallback((draftId: string, itemId: string) => {
@@ -1939,7 +1991,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             mode === 'replace' && payload.prefs?.activeCourse
               ? payload.prefs.activeCourse
               : prev.activeCourse,
-          uiLanguage: prev.uiLanguage,
+          uiLanguage:
+            mode === 'replace' && payload.prefs?.uiLanguage
+              ? payload.prefs.uiLanguage
+              : prev.uiLanguage,
         }));
         if (mode === 'replace' && payload.prefs.theme) {
           setThemeState(payload.prefs.theme);
@@ -1957,7 +2012,34 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [progress, a2Progress]
   );
 
-  const resetProgress = useCallback(() => {
+  const pauseAutoPushForLocalReset = useCallback(() => {
+    if (autoPushTimerRef.current !== null) {
+      window.clearTimeout(autoPushTimerRef.current);
+      autoPushTimerRef.current = null;
+    }
+    suppressAutoPushRef.current = true;
+    window.setTimeout(() => {
+      suppressAutoPushRef.current = false;
+    }, 350);
+
+    const session = latestStateRef.current.cloudUser;
+    if (session || cloudConfigured) {
+      cloudAutoPushPausedRef.current = true;
+      setCloudAutoPushPaused(true);
+      const prevMeta = readSyncMeta();
+      writeSyncMeta({
+        localUpdatedAt: prevMeta.localUpdatedAt,
+        lastCloudSyncAt: prevMeta.lastCloudSyncAt,
+        lastSyncedUserId: session?.userId ?? prevMeta.lastSyncedUserId,
+        autoPushPaused: true,
+      });
+      if (session) {
+        setCloudSyncStatus(isBrowserOnline() ? 'local' : 'offline');
+      }
+    }
+  }, [cloudConfigured]);
+
+  const clearLocalA1State = useCallback(() => {
     studiedFlashcardsRef.current.clear();
     masteredArticleRef.current.clear();
     masteredQuizRef.current.clear();
@@ -1972,55 +2054,56 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProgress(INITIAL_PROGRESS);
     platformServices.progressSync.clearProgress();
   }, []);
+
+  const clearLocalA2State = useCallback(() => {
+    a2FlashcardsRef.current.clear();
+    a2ArticlePluralRef.current.clear();
+    a2MeaningRef.current.clear();
+    a2ContextRef.current.clear();
+    a2ListeningRef.current.clear();
+    a2ReadingRef.current.clear();
+    a2WritingRef.current.clear();
+    a2SpeakingRef.current.clear();
+    a2ActivityRef.current.clear();
+    a2SkipInitialWriteRef.current = true;
+    setStorageWarning(null);
+    setA2Progress({ ...INITIAL_A2_PROGRESS });
+    clearA2ProgressFromStorage();
+  }, []);
+
+  const resetProgress = useCallback(() => {
+    pauseAutoPushForLocalReset();
+    clearLocalA1State();
+  }, [pauseAutoPushForLocalReset, clearLocalA1State]);
 
   const resetA2Progress = useCallback(() => {
-    a2FlashcardsRef.current.clear();
-    a2ArticlePluralRef.current.clear();
-    a2MeaningRef.current.clear();
-    a2ContextRef.current.clear();
-    a2ListeningRef.current.clear();
-    a2ReadingRef.current.clear();
-    a2WritingRef.current.clear();
-    a2SpeakingRef.current.clear();
-    a2ActivityRef.current.clear();
-    a2SkipInitialWriteRef.current = true;
-    setStorageWarning(null);
-    setA2Progress({ ...INITIAL_A2_PROGRESS });
-    clearA2ProgressFromStorage();
-  }, []);
+    pauseAutoPushForLocalReset();
+    clearLocalA2State();
+  }, [pauseAutoPushForLocalReset, clearLocalA2State]);
 
   const resetAllLocalData = useCallback(() => {
-    studiedFlashcardsRef.current.clear();
-    masteredArticleRef.current.clear();
-    masteredQuizRef.current.clear();
-    masteredListeningRef.current.clear();
-    masteredReadingRef.current.clear();
-    masteredWritingRef.current.clear();
-    masteredSpeakingRef.current.clear();
-    masteredActivityRef.current.clear();
-    completedAssignmentRef.current.clear();
-    teachingMilestoneRef.current.clear();
-    a2FlashcardsRef.current.clear();
-    a2ArticlePluralRef.current.clear();
-    a2MeaningRef.current.clear();
-    a2ContextRef.current.clear();
-    a2ListeningRef.current.clear();
-    a2ReadingRef.current.clear();
-    a2WritingRef.current.clear();
-    a2SpeakingRef.current.clear();
-    a2ActivityRef.current.clear();
-    a2SkipInitialWriteRef.current = true;
-    setStorageWarning(null);
-    setProgress(INITIAL_PROGRESS);
-    setA2Progress({ ...INITIAL_A2_PROGRESS });
+    pauseAutoPushForLocalReset();
+    clearLocalA1State();
+    clearLocalA2State();
     setPrefs(DEFAULT_LOCAL_PREFS);
-    platformServices.progressSync.clearProgress();
-    clearA2ProgressFromStorage();
     platformServices.auth.clearPrefs();
-    clearSyncMeta();
-    localUpdatedAtRef.current = null;
-    setLastCloudSyncAt(null);
-  }, []);
+    const session = latestStateRef.current.cloudUser;
+    if (session) {
+      // Preserve paused-sync guard so cloud data is never overwritten or silently resurrected
+      const prevMeta = readSyncMeta();
+      writeSyncMeta({
+        localUpdatedAt: null,
+        lastCloudSyncAt: prevMeta.lastCloudSyncAt,
+        lastSyncedUserId: session.userId,
+        autoPushPaused: true,
+      });
+      localUpdatedAtRef.current = null;
+    } else {
+      clearSyncMeta();
+      localUpdatedAtRef.current = null;
+      setLastCloudSyncAt(null);
+    }
+  }, [pauseAutoPushForLocalReset, clearLocalA1State, clearLocalA2State]);
 
   const buildCurrentCloudSnapshot = useCallback(
     (overrideUpdatedAt?: string): CloudStateSnapshot => {
@@ -2081,10 +2164,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localUpdatedAtRef.current = snapshot.updatedAt;
       const syncStamp = new Date().toISOString();
       setLastCloudSyncAt(syncStamp);
+      cloudAutoPushPausedRef.current = false;
+      setCloudAutoPushPaused(false);
       writeSyncMeta({
         localUpdatedAt: snapshot.updatedAt,
         lastCloudSyncAt: syncStamp,
         lastSyncedUserId: userId,
+        autoPushPaused: false,
       });
 
       window.setTimeout(() => {
@@ -2131,10 +2217,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const finalStamp = res.updatedAt ?? nowIso;
     localUpdatedAtRef.current = finalStamp;
     setLastCloudSyncAt(finalStamp);
+    cloudAutoPushPausedRef.current = false;
+    setCloudAutoPushPaused(false);
     writeSyncMeta({
       localUpdatedAt: finalStamp,
       lastCloudSyncAt: finalStamp,
       lastSyncedUserId: session.userId,
+      autoPushPaused: false,
     });
     setCloudSyncStatus('synced');
     return {
@@ -2287,10 +2376,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const stamp = new Date().toISOString();
       localUpdatedAtRef.current = mergedSnapshot.updatedAt;
       setLastCloudSyncAt(stamp);
+      cloudAutoPushPausedRef.current = false;
+      setCloudAutoPushPaused(false);
       writeSyncMeta({
         localUpdatedAt: mergedSnapshot.updatedAt,
         lastCloudSyncAt: stamp,
         lastSyncedUserId: session.userId,
+        autoPushPaused: false,
       });
       setCloudSyncStatus('synced');
 
@@ -2367,6 +2459,124 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [syncCloudWithSession]
   );
 
+  const resetCloudAndLocal = useCallback(
+    async (
+      scope: CloudResetScope
+    ): Promise<{ ok: boolean; summaryTr: string; summaryEn: string }> => {
+      const session = latestStateRef.current.cloudUser;
+      if (autoPushTimerRef.current !== null) {
+        window.clearTimeout(autoPushTimerRef.current);
+        autoPushTimerRef.current = null;
+      }
+
+      if (!cloudConfigured || !session) {
+        return {
+          ok: false,
+          summaryTr: 'Bulut sıfırlaması için aktif bir bulut oturumu gereklidir.',
+          summaryEn: 'An active cloud session is required to reset cloud data.',
+        };
+      }
+
+      if (!isBrowserOnline()) {
+        setCloudSyncStatus('offline');
+        return {
+          ok: false,
+          summaryTr:
+            'Çevrimdışı durumdasınız; bulut verileri sıfırlanmadı. Yerel verileriniz değiştirilmedi.',
+          summaryEn:
+            'You are offline; cloud data was not reset and local data was left unchanged.',
+        };
+      }
+
+      const { theme: curTheme, prefs: curPrefs, progress: curA1, a2Progress: curA2 } =
+        latestStateRef.current;
+      const nowIso = new Date().toISOString();
+      const nextA1 = scope === 'a1' || scope === 'all' ? INITIAL_PROGRESS : curA1;
+      const nextA2 = scope === 'a2' || scope === 'all' ? { ...INITIAL_A2_PROGRESS } : curA2;
+      const nextPrefs = scope === 'all' ? DEFAULT_LOCAL_PREFS : curPrefs;
+      const nextSnapshot: CloudStateSnapshot = {
+        updatedAt: nowIso,
+        schemaVersion: TK_BACKUP_SCHEMA_VERSION,
+        prefs: {
+          ...nextPrefs,
+          theme: curTheme,
+        },
+        progressA1: nextA1,
+        progressA2: nextA2,
+      };
+
+      setCloudSyncStatus('syncing');
+      setCloudSyncError(null);
+      const res = await executeCloudReset(session, scope, nextSnapshot);
+      if (!res.ok) {
+        setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+        setCloudSyncError(res.errorTr ?? 'Bulut sıfırlaması tamamlanamadı.');
+        return {
+          ok: false,
+          summaryTr: res.errorTr ?? 'Bulut sıfırlaması tamamlanamadı; verileriniz değiştirilmedi.',
+          summaryEn: res.errorEn ?? 'Cloud reset failed; your data was not modified.',
+        };
+      }
+
+      suppressAutoPushRef.current = true;
+      window.setTimeout(() => {
+        suppressAutoPushRef.current = false;
+      }, 350);
+
+      if (scope === 'a1') {
+        clearLocalA1State();
+      } else if (scope === 'a2') {
+        clearLocalA2State();
+      } else {
+        clearLocalA1State();
+        clearLocalA2State();
+        setPrefs(DEFAULT_LOCAL_PREFS);
+        platformServices.auth.clearPrefs();
+      }
+
+      cloudAutoPushPausedRef.current = false;
+      setCloudAutoPushPaused(false);
+      const updatedStamp = res.updatedAt ?? null;
+      localUpdatedAtRef.current = updatedStamp;
+      setLastCloudSyncAt(updatedStamp);
+      if (scope === 'all') {
+        clearSyncMeta();
+        setCloudSyncStatus('synced');
+        return {
+          ok: true,
+          summaryTr:
+            'Hem yerel tarayıcı verileri hem de Supabase bulut kaydınız kalıcı olarak sıfırlandı.',
+          summaryEn:
+            'Both local browser data and your Supabase cloud record were permanently reset.',
+        };
+      }
+
+      writeSyncMeta({
+        localUpdatedAt: updatedStamp,
+        lastCloudSyncAt: updatedStamp,
+        lastSyncedUserId: session.userId,
+        autoPushPaused: false,
+      });
+      setCloudSyncStatus('synced');
+      return scope === 'a1'
+        ? {
+            ok: true,
+            summaryTr:
+              'Almanca A1 ilerlemesi hem yerelde hem de Supabase bulut kaydında sıfırlandı (A2 veriniz korundu).',
+            summaryEn:
+              'German A1 progress was reset locally and in Supabase cloud (A2 progress preserved).',
+          }
+        : {
+            ok: true,
+            summaryTr:
+              'Almanca A2 ilerlemesi hem yerelde hem de Supabase bulut kaydında sıfırlandı (A1 veriniz korundu).',
+            summaryEn:
+              'German A2 progress was reset locally and in Supabase cloud (A1 progress preserved).',
+          };
+    },
+    [cloudConfigured, clearLocalA1State, clearLocalA2State]
+  );
+
   const cloudSignOut = useCallback(async () => {
     if (autoPushTimerRef.current !== null) {
       window.clearTimeout(autoPushTimerRef.current);
@@ -2374,6 +2584,15 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     await signOutCloud();
     lastAutoSyncedUserRef.current = null;
+    cloudAutoPushPausedRef.current = false;
+    setCloudAutoPushPaused(false);
+    const prevMeta = readSyncMeta();
+    writeSyncMeta({
+      localUpdatedAt: prevMeta.localUpdatedAt,
+      lastCloudSyncAt: prevMeta.lastCloudSyncAt,
+      lastSyncedUserId: null,
+      autoPushPaused: false,
+    });
     setCloudUser(null);
     setCloudSyncError(null);
     setCloudSyncStatus(isBrowserOnline() ? 'local' : 'offline');
@@ -2384,7 +2603,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (typeof window === 'undefined') return;
 
     const handleOnline = () => {
-      if (latestStateRef.current.cloudUser) {
+      if (latestStateRef.current.cloudUser && !cloudAutoPushPausedRef.current) {
         void syncCloudWithSession(latestStateRef.current.cloudUser);
       } else {
         setCloudSyncStatus('local');
@@ -2402,7 +2621,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       void getCurrentCloudSession().then((session) => {
         if (session) {
           setCloudUser(session);
-          if (lastAutoSyncedUserRef.current !== session.userId) {
+          if (
+            !cloudAutoPushPausedRef.current &&
+            lastAutoSyncedUserRef.current !== session.userId
+          ) {
             lastAutoSyncedUserRef.current = session.userId;
             void syncCloudWithSession(session);
           }
@@ -2412,7 +2634,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       unsubscribe = subscribeCloudAuth((session) => {
         setCloudUser(session);
         if (session) {
-          if (lastAutoSyncedUserRef.current !== session.userId) {
+          if (
+            !cloudAutoPushPausedRef.current &&
+            lastAutoSyncedUserRef.current !== session.userId
+          ) {
             lastAutoSyncedUserRef.current = session.userId;
             void syncCloudWithSession(session);
           }
@@ -2430,7 +2655,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [cloudConfigured, syncCloudWithSession]);
 
-  // Track localUpdatedAt & debounced auto-push when signed in
+  // Track localUpdatedAt & debounced auto-push when signed in (never pushes when paused after local reset)
   useEffect(() => {
     if (!hasMountedSyncRef.current) {
       hasMountedSyncRef.current = true;
@@ -2442,15 +2667,28 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nowIso = new Date().toISOString();
     localUpdatedAtRef.current = nowIso;
+    const prevMeta = readSyncMeta();
     writeSyncMeta({
       localUpdatedAt: nowIso,
-      lastCloudSyncAt: readSyncMeta().lastCloudSyncAt,
-      lastSyncedUserId: cloudUser?.userId ?? readSyncMeta().lastSyncedUserId,
+      lastCloudSyncAt: prevMeta.lastCloudSyncAt,
+      lastSyncedUserId: cloudUser?.userId ?? prevMeta.lastSyncedUserId,
+      autoPushPaused: cloudAutoPushPaused,
     });
 
     if (!cloudConfigured || !cloudUser) return;
     if (!isBrowserOnline()) {
       setCloudSyncStatus('offline');
+      return;
+    }
+    if (
+      !canAutoPushToCloud({
+        cloudConfigured,
+        hasSession: Boolean(cloudUser),
+        isOnline: isBrowserOnline(),
+        autoPushPaused: cloudAutoPushPaused,
+        suppressAutoPush: suppressAutoPushRef.current,
+      })
+    ) {
       return;
     }
 
@@ -2459,6 +2697,17 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     autoPushTimerRef.current = window.setTimeout(() => {
       autoPushTimerRef.current = null;
+      if (
+        !canAutoPushToCloud({
+          cloudConfigured,
+          hasSession: Boolean(latestStateRef.current.cloudUser),
+          isOnline: isBrowserOnline(),
+          autoPushPaused: cloudAutoPushPausedRef.current,
+          suppressAutoPush: suppressAutoPushRef.current,
+        })
+      ) {
+        return;
+      }
       void pushToCloud();
     }, 2200);
 
@@ -2468,7 +2717,16 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         autoPushTimerRef.current = null;
       }
     };
-  }, [progress, a2Progress, prefs, theme, cloudConfigured, cloudUser, pushToCloud]);
+  }, [
+    progress,
+    a2Progress,
+    prefs,
+    theme,
+    cloudConfigured,
+    cloudUser,
+    cloudAutoPushPaused,
+    pushToCloud,
+  ]);
 
   const uniqueCompletedWordIds = useMemo(() => {
     const set = new Set<string>([
@@ -2693,6 +2951,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       cloudConfigured,
       cloudUser,
       cloudSyncStatus,
+      cloudAutoPushPaused,
       lastCloudSyncAt,
       cloudSyncError,
       cloudSignIn,
@@ -2704,6 +2963,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       resetProgress,
       resetA2Progress,
       resetAllLocalData,
+      resetCloudAndLocal,
     }),
     [
       theme,
@@ -2776,6 +3036,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       cloudConfigured,
       cloudUser,
       cloudSyncStatus,
+      cloudAutoPushPaused,
       lastCloudSyncAt,
       cloudSyncError,
       cloudSignIn,
@@ -2787,6 +3048,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       resetProgress,
       resetA2Progress,
       resetAllLocalData,
+      resetCloudAndLocal,
     ]
   );
 

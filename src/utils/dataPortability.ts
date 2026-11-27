@@ -16,8 +16,10 @@ import type {
   TeachingAssignmentModule,
   TeachingAssignmentStatus,
   TeachingClassGroup,
+  TeachingDeletionTombstones,
   TeachingRosterEntry,
   ThemeMode,
+  UiLanguage,
   UserRole,
 } from '../types';
 import {
@@ -38,6 +40,7 @@ export interface LocalBackupPrefs {
   speechSpeed: SpeechSpeed;
   theme?: ThemeMode;
   activeCourse?: ActiveCourseId;
+  uiLanguage?: UiLanguage;
 }
 
 export interface TeachersKingdomBackupV1 {
@@ -199,6 +202,104 @@ function sanitizeOptionalCourseId(value: unknown): ActiveCourseId | undefined {
   return undefined;
 }
 
+export function createEmptyTeachingTombstones(): TeachingDeletionTombstones {
+  return {
+    classes: {},
+    assignments: {},
+    drafts: {},
+  };
+}
+
+function parseMsSafe(iso: string | undefined): number {
+  if (!iso) return 0;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+function maxTimestampIso(...candidates: Array<string | undefined>): string | undefined {
+  let bestIso: string | undefined;
+  let bestMs = -1;
+  for (const iso of candidates) {
+    if (!iso) continue;
+    const ms = Date.parse(iso);
+    if (!Number.isNaN(ms) && ms > bestMs) {
+      bestMs = ms;
+      bestIso = iso;
+    }
+  }
+  return bestIso;
+}
+
+function sanitizeTombstoneBucket(value: unknown): Record<string, string> {
+  if (!isPlainObject(value)) return {};
+  const out: Record<string, string> = {};
+  let count = 0;
+  for (const [rawKey, rawVal] of Object.entries(value)) {
+    if (count >= 500) break;
+    const key = sanitizeString(rawKey, 80);
+    if (!key || typeof rawVal !== 'string' || !rawVal.trim()) continue;
+    const parsed = Date.parse(rawVal);
+    if (Number.isNaN(parsed)) continue;
+    out[key] = new Date(parsed).toISOString();
+    count += 1;
+  }
+  return out;
+}
+
+export function sanitizeTeachingTombstones(value: unknown): TeachingDeletionTombstones {
+  if (!isPlainObject(value)) return createEmptyTeachingTombstones();
+  return {
+    classes: sanitizeTombstoneBucket(value.classes),
+    assignments: sanitizeTombstoneBucket(value.assignments),
+    drafts: sanitizeTombstoneBucket(value.drafts),
+  };
+}
+
+function mergeTombstoneBucket(
+  a?: Record<string, string>,
+  b?: Record<string, string>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  const apply = (bucket?: Record<string, string>) => {
+    if (!bucket) return;
+    for (const [id, iso] of Object.entries(bucket)) {
+      const incomingMs = parseMsSafe(iso);
+      if (incomingMs <= 0) continue;
+      const existingMs = parseMsSafe(out[id]);
+      if (incomingMs > existingMs) {
+        out[id] = new Date(incomingMs).toISOString();
+      }
+    }
+  };
+  apply(a);
+  apply(b);
+  return out;
+}
+
+export function mergeTeachingTombstones(
+  a?: TeachingDeletionTombstones,
+  b?: TeachingDeletionTombstones
+): TeachingDeletionTombstones {
+  return {
+    classes: mergeTombstoneBucket(a?.classes, b?.classes),
+    assignments: mergeTombstoneBucket(a?.assignments, b?.assignments),
+    drafts: mergeTombstoneBucket(a?.drafts, b?.drafts),
+  };
+}
+
+function isItemTombstoned(
+  id: string,
+  itemTimestampIso: string | undefined,
+  bucket: Record<string, string>
+): boolean {
+  const deletedIso = bucket[id];
+  if (!deletedIso) return false;
+  const deletedMs = parseMsSafe(deletedIso);
+  if (deletedMs <= 0) return false;
+  const itemMs = parseMsSafe(itemTimestampIso);
+  return deletedMs >= itemMs;
+}
+
 function sanitizeTeachingClasses(value: unknown): TeachingClassGroup[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -220,6 +321,7 @@ function sanitizeTeachingClasses(value: unknown): TeachingClassGroup[] {
       descriptionTr: sanitizeString(item.descriptionTr, 240),
       roster: sanitizeRosterEntries(item.roster),
       createdAt: sanitizeIsoDate(item.createdAt),
+      ...(item.updatedAt ? { updatedAt: sanitizeIsoDate(item.updatedAt) } : {}),
     });
     if (out.length >= 100) break;
   }
@@ -264,6 +366,7 @@ function sanitizeTeachingAssignments(
       reviewedAt: item.reviewedAt ? sanitizeIsoDate(item.reviewedAt) : undefined,
       reviewNoteTr: sanitizeString(item.reviewNoteTr, 240) || undefined,
       createdAt: sanitizeIsoDate(item.createdAt),
+      ...(item.updatedAt ? { updatedAt: sanitizeIsoDate(item.updatedAt) } : {}),
       isStarter: Boolean(item.isStarter),
     });
     if (out.length >= 200) break;
@@ -378,6 +481,37 @@ export function sanitizeProgressState(
       ? Math.max(0, Math.min(100, Math.round(rawExamBest)))
       : null;
 
+  const deletedTeachingIds = sanitizeTeachingTombstones(raw.deletedTeachingIds);
+
+  const sanitizedClasses = sanitizeTeachingClasses(raw.teachingClasses).filter(
+    (cls) =>
+      !isItemTombstoned(
+        cls.id,
+        maxTimestampIso(cls.updatedAt, cls.createdAt),
+        deletedTeachingIds.classes
+      )
+  );
+
+  const sanitizedAssignments = sanitizeTeachingAssignments(
+    raw.teachingAssignments,
+    fallbackStarterAssignments
+  )
+    .filter(
+      (a) =>
+        !isItemTombstoned(
+          a.id,
+          maxTimestampIso(a.reviewedAt, a.completedAt, a.updatedAt, a.createdAt),
+          deletedTeachingIds.assignments
+        )
+    )
+    .map((a) =>
+      a.classId && deletedTeachingIds.classes[a.classId] ? { ...a, classId: undefined } : a
+    );
+
+  const sanitizedDrafts = sanitizeStudioDrafts(raw.studioDrafts).filter(
+    (draft) => !isItemTombstoned(draft.id, draft.updatedAt, deletedTeachingIds.drafts)
+  );
+
   return {
     studiedFlashcards: uniqueSanitizedStrings(raw.studiedFlashcards),
     articleAttempts,
@@ -406,12 +540,10 @@ export function sanitizeProgressState(
     arenaBestStreak: clampNonNegInt(raw.arenaBestStreak),
     examCompletedCount: clampNonNegInt(raw.examCompletedCount),
     examBestScorePercent,
-    teachingClasses: sanitizeTeachingClasses(raw.teachingClasses),
-    teachingAssignments: sanitizeTeachingAssignments(
-      raw.teachingAssignments,
-      fallbackStarterAssignments
-    ),
-    studioDrafts: sanitizeStudioDrafts(raw.studioDrafts),
+    teachingClasses: sanitizedClasses,
+    teachingAssignments: sanitizedAssignments,
+    studioDrafts: sanitizedDrafts,
+    deletedTeachingIds,
     assignmentCompletedIds: uniqueSanitizedStrings(raw.assignmentCompletedIds),
     teachingMilestoneIds: uniqueSanitizedStrings(raw.teachingMilestoneIds),
     xp: clampNonNegInt(raw.xp, 10_000_000),
@@ -437,6 +569,7 @@ export function createBackupEnvelope(
       speechSpeed: prefs.speechSpeed === 'slow' ? 'slow' : 'normal',
       theme: prefs.theme === 'dark' ? 'dark' : 'light',
       activeCourse: prefs.activeCourse === 'de-A2' ? 'de-A2' : 'de-A1',
+      uiLanguage: prefs.uiLanguage === 'en' ? 'en' : 'tr',
     },
     progress,
   };
@@ -578,6 +711,10 @@ export function parseAndValidateBackup(rawText: string): BackupValidationResult 
           parsed.prefs.activeCourse === 'de-A2' || parsed.prefs.activeCourse === 'de-A1'
             ? parsed.prefs.activeCourse
             : undefined,
+        uiLanguage:
+          parsed.prefs.uiLanguage === 'en' || parsed.prefs.uiLanguage === 'tr'
+            ? parsed.prefs.uiLanguage
+            : undefined,
       };
     }
 
@@ -705,7 +842,39 @@ export function mergeProgressSafely(
     deltaXp += msId === 'teach-studio-draft-saved' ? 15 : 10;
   }
 
-  // Merge assignments preserving completed/reviewed status if either copy has it
+  // Merge tombstones first so deleted classes, assignments, and studio drafts never resurrect
+  const mergedTombstones = mergeTeachingTombstones(
+    current.deletedTeachingIds,
+    incoming.deletedTeachingIds
+  );
+
+  // Merge classes by ID (preferring newer updatedAt/createdAt) and exclude tombstoned IDs
+  const mergedClassesMap = new Map<string, TeachingClassGroup>();
+  for (const cls of current.teachingClasses) {
+    mergedClassesMap.set(cls.id, cls);
+  }
+  for (const inc of incoming.teachingClasses) {
+    const existing = mergedClassesMap.get(inc.id);
+    if (!existing) {
+      mergedClassesMap.set(inc.id, inc);
+    } else {
+      const incMs = parseMsSafe(maxTimestampIso(inc.updatedAt, inc.createdAt));
+      const curMs = parseMsSafe(maxTimestampIso(existing.updatedAt, existing.createdAt));
+      if (incMs > curMs) {
+        mergedClassesMap.set(inc.id, inc);
+      }
+    }
+  }
+  const mergedClasses = Array.from(mergedClassesMap.values()).filter(
+    (cls) =>
+      !isItemTombstoned(
+        cls.id,
+        maxTimestampIso(cls.updatedAt, cls.createdAt),
+        mergedTombstones.classes
+      )
+  );
+
+  // Merge assignments preserving completed/reviewed status if either copy has it, respecting tombstones
   const mergedAssignmentsMap = new Map<string, TeachingAssignment>();
   for (const a of current.teachingAssignments) {
     mergedAssignmentsMap.set(a.id, a);
@@ -726,9 +895,44 @@ export function mergeProgressSafely(
         completedAt: inc.completedAt ?? existing.completedAt,
         reviewedAt: inc.reviewedAt ?? existing.reviewedAt,
         reviewNoteTr: inc.reviewNoteTr ?? existing.reviewNoteTr,
+        updatedAt: maxTimestampIso(inc.updatedAt, existing.updatedAt),
       });
+    } else if (
+      parseMsSafe(maxTimestampIso(inc.reviewedAt, inc.completedAt, inc.updatedAt, inc.createdAt)) >
+      parseMsSafe(
+        maxTimestampIso(existing.reviewedAt, existing.completedAt, existing.updatedAt, existing.createdAt)
+      )
+    ) {
+      mergedAssignmentsMap.set(inc.id, inc);
     }
   }
+  const mergedAssignments = Array.from(mergedAssignmentsMap.values())
+    .filter(
+      (a) =>
+        !isItemTombstoned(
+          a.id,
+          maxTimestampIso(a.reviewedAt, a.completedAt, a.updatedAt, a.createdAt),
+          mergedTombstones.assignments
+        )
+    )
+    .map((a) =>
+      a.classId && mergedTombstones.classes[a.classId] ? { ...a, classId: undefined } : a
+    );
+
+  // Merge studio drafts by ID (preferring newer updatedAt) and exclude tombstoned IDs
+  const mergedDraftsMap = new Map<string, StudioDraft>();
+  for (const draft of current.studioDrafts) {
+    mergedDraftsMap.set(draft.id, draft);
+  }
+  for (const inc of incoming.studioDrafts) {
+    const existing = mergedDraftsMap.get(inc.id);
+    if (!existing || parseMsSafe(inc.updatedAt) > parseMsSafe(existing.updatedAt)) {
+      mergedDraftsMap.set(inc.id, inc);
+    }
+  }
+  const mergedDrafts = Array.from(mergedDraftsMap.values()).filter(
+    (draft) => !isItemTombstoned(draft.id, draft.updatedAt, mergedTombstones.drafts)
+  );
 
   const nextArticleAttempts = Math.max(current.articleAttempts, incoming.articleAttempts);
   const nextQuizAttempts = Math.max(current.quizAttempts, incoming.quizAttempts);
@@ -794,9 +998,10 @@ export function mergeProgressSafely(
     arenaBestStreak: Math.max(current.arenaBestStreak, incoming.arenaBestStreak),
     examCompletedCount: Math.max(current.examCompletedCount, incoming.examCompletedCount),
     examBestScorePercent: nextExamBest,
-    teachingClasses: mergeById(current.teachingClasses, incoming.teachingClasses),
-    teachingAssignments: Array.from(mergedAssignmentsMap.values()),
-    studioDrafts: mergeById(current.studioDrafts, incoming.studioDrafts),
+    teachingClasses: mergedClasses,
+    teachingAssignments: mergedAssignments,
+    studioDrafts: mergedDrafts,
+    deletedTeachingIds: mergedTombstones,
     assignmentCompletedIds: unionStrings(
       current.assignmentCompletedIds,
       incoming.assignmentCompletedIds
