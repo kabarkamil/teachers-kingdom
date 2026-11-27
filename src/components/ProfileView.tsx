@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Check,
+  Cloud,
   CloudOff,
   Download,
   HardDrive,
@@ -9,6 +10,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
+import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import { TOTAL_ACTIVITY_ITEMS } from '../data/germanA1Activities';
 import { TOTAL_LISTENING_EXERCISES } from '../data/germanA1Listening';
 import { TOTAL_READING_EXERCISES } from '../data/germanA1Reading';
@@ -52,6 +54,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     theme,
     speechSpeed,
     activeCourse,
+    uiLanguage,
     displayName,
     setDisplayName,
     rolePreview,
@@ -59,6 +62,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     progress,
     a2Progress,
     lastSavedAt,
+    cloudUser,
+    cloudSyncStatus,
+    lastCloudSyncAt,
     uniqueCompletedWordIds,
     uniqueA2CompletedWordIds,
     overallAccuracyPercent,
@@ -328,13 +334,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#111113]">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-              <CloudOff className="h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B]" />
-              <span>Sunucu Hesabı &amp; Bulut Senkronizasyonu · Bağlı Değil</span>
+          <div className="rounded-lg border border-[#ECECE8] bg-[#F6F6F4] p-4 dark:border-[#24242C] dark:bg-[#0D0D0D]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
+              {cloudUser ? (
+                <Cloud className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
+              ) : (
+                <CloudOff className="h-4 w-4 text-[#9A6B16] dark:text-[#D4AF37]" />
+              )}
+              <span>
+                Bulut Senkronizasyonu · {formatSyncStatusLabel(cloudSyncStatus, uiLanguage)}
+              </span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-              Harici arka uç (backend) bağlı olmadığı için bulut hesabı, parola girişi veya cihazlar arası otomatik eşitleme aktif değildir. Verilerinizi başka bir cihaza taşımak için JSON yedeği indirip Ayarlar bölümünden içe aktarabilirsiniz.
+              {cloudUser
+                ? `Bulut hesabı (${cloudUser.email}) bağlı. Profil, A1/A2 XP ve sınıf verileriniz son eşitleme (${formatSavedTimeTr(lastCloudSyncAt)}) ile korunur.`
+                : 'Bulut oturumu açmadan çevrimdışı öncelikli yerel modda çalışıyorsunuz. Üst çubuktan bulut hesabıyla giriş yapabilir veya verilerinizi JSON olarak yedekleyebilirsiniz.'}
             </p>
           </div>
         </div>

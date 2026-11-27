@@ -3,16 +3,21 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  Cloud,
+  CloudDownload,
   CloudOff,
+  CloudUpload,
   Copy,
   Download,
   FileJson,
   HardDrive,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Upload,
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
+import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import {
   STORAGE_KEY_STATE,
   TK_BACKUP_SCHEMA_VERSION,
@@ -52,15 +57,27 @@ export const DataPortabilityPanel: React.FC = () => {
     rolePreview,
     speechSpeed,
     activeCourse,
+    uiLanguage,
     displayName,
     progress,
     a2Progress,
     lastSavedAt,
+    cloudConfigured,
+    cloudUser,
+    cloudSyncStatus,
+    lastCloudSyncAt,
+    cloudSyncError,
+    syncCloudNow,
+    pullFromCloud,
+    pushToCloud,
     importLocalData,
     resetProgress,
     resetA2Progress,
     resetAllLocalData,
   } = useAppState();
+  const isEn = uiLanguage === 'en';
+  const [cloudActionBusy, setCloudActionBusy] = useState(false);
+  const [cloudActionNotice, setCloudActionNotice] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -348,26 +365,148 @@ export const DataPortabilityPanel: React.FC = () => {
             </dl>
           </div>
 
-          {/* External Backend / Cloud Sync Layer */}
-          <div className="rounded-xl border border-[#D9D9D3] bg-[#F6F6F4] p-5 space-y-3 dark:border-[#282830] dark:bg-[#111113]">
+          {/* Cloud Sync Layer */}
+          <div className="rounded-xl border border-[#D9D9D3] bg-[#F6F6F4] p-5 space-y-3 dark:border-[#282830] dark:bg-[#0D0D0D]">
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#111113] dark:text-[#F4F4F5]">
-                <CloudOff className="h-4 w-4 text-[#9A6B16] dark:text-[#D9A13B]" />
-                <span>Harici Sunucu &amp; Bulut Senkronizasyonu</span>
+              <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
+                {cloudSyncStatus === 'synced' ? (
+                  <Cloud className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" />
+                ) : cloudSyncStatus === 'syncing' ? (
+                  <RefreshCw className="h-4 w-4 animate-spin text-[#9A6B16] dark:text-[#D4AF37]" />
+                ) : (
+                  <CloudOff className="h-4 w-4 text-[#9A6B16] dark:text-[#D4AF37]" />
+                )}
+                <span>
+                  {isEn ? 'Cloud Synchronization' : 'Bulut Senkronizasyonu'}
+                </span>
               </span>
-              <span className="font-mono text-xs text-[#52525B] dark:text-[#A1A1AA]">
-                Bağlı Değil
+              <span
+                className={`font-mono text-xs font-semibold ${
+                  cloudSyncStatus === 'synced'
+                    ? 'text-[#15803D] dark:text-[#4ADE80]'
+                    : cloudSyncStatus === 'error'
+                    ? 'text-[#7A1C24] dark:text-[#FCA5A5]'
+                    : 'text-[#9A6B16] dark:text-[#D4AF37]'
+                }`}
+              >
+                {formatSyncStatusLabel(cloudSyncStatus, uiLanguage)}
               </span>
             </div>
 
-            <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
-              İstemci servis arayüzleri (kimlik doğrulama, bulut eşitleme ve sınıf kalıcılığı) arka uç bağlantısı için ayrılmıştır; ancak şu an bağlı bir sunucu olmadığından tüm işlemler yerel tarayıcıda çalışır.
-            </p>
-            <ul className="space-y-1.5 text-xs text-[#52525B] dark:text-[#A1A1AA]">
-              <li>• Çoklu cihaz otomatik eşitleme için harici veritabanı ve API gerekir.</li>
-              <li>• Kalıcı öğretmen/öğrenci oturumu için kimlik doğrulama servisi gerekir.</li>
-              <li>• Cihazlar arası taşıma için aşağıdaki JSON yedekleme aracını bugün kullanabilirsiniz.</li>
-            </ul>
+            {cloudUser ? (
+              <>
+                <dl className="divide-y divide-[#ECECE8] text-xs dark:divide-[#24242C]">
+                  <div className="flex items-center justify-between gap-2 py-1.5">
+                    <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                      {isEn ? 'Account' : 'Bulut Hesabı'}
+                    </dt>
+                    <dd className="font-mono text-[#0D0D0D] dark:text-[#FFFFFF] truncate max-w-[200px]">
+                      {cloudUser.email}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 py-1.5">
+                    <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                      {isEn ? 'Last Cloud Sync' : 'Son Bulut Eşitleme'}
+                    </dt>
+                    <dd className="font-mono text-[#52525B] dark:text-[#A1A1AA] tabular-nums">
+                      {formatClockTr(lastCloudSyncAt)}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 py-1.5">
+                    <dt className="text-[#52525B] dark:text-[#A1A1AA]">
+                      {isEn ? 'Conflict Policy' : 'Çakışma Çözümü'}
+                    </dt>
+                    <dd className="font-mono text-[11px] text-[#7A1C24] dark:text-[#D4AF37]">
+                      updatedAt + Safe XP Merge
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={cloudActionBusy}
+                    onClick={async () => {
+                      setCloudActionBusy(true);
+                      const res = await syncCloudNow();
+                      setCloudActionBusy(false);
+                      setCloudActionNotice(isEn ? res.summaryEn : res.summaryTr);
+                    }}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#7A1C24] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#62151C] disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#0D0D0D]"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${cloudActionBusy ? 'animate-spin' : ''}`} />
+                    <span>{isEn ? 'Sync' : 'Eşitle'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cloudActionBusy}
+                    onClick={async () => {
+                      setCloudActionBusy(true);
+                      const res = await pullFromCloud();
+                      setCloudActionBusy(false);
+                      setCloudActionNotice(isEn ? res.summaryEn : res.summaryTr);
+                    }}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#0D0D0D] transition-colors hover:bg-[#ECECE8] disabled:opacity-50 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#FFFFFF]"
+                  >
+                    <CloudDownload className="h-3.5 w-3.5 text-[#7A1C24] dark:text-[#D4AF37]" />
+                    <span>{isEn ? 'Pull' : 'Çek'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cloudActionBusy}
+                    onClick={async () => {
+                      setCloudActionBusy(true);
+                      const res = await pushToCloud();
+                      setCloudActionBusy(false);
+                      setCloudActionNotice(isEn ? res.summaryEn : res.summaryTr);
+                    }}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-3 text-xs font-medium text-[#0D0D0D] transition-colors hover:bg-[#ECECE8] disabled:opacity-50 dark:border-[#282830] dark:bg-[#16161A] dark:text-[#FFFFFF]"
+                  >
+                    <CloudUpload className="h-3.5 w-3.5 text-[#7A1C24] dark:text-[#D4AF37]" />
+                    <span>{isEn ? 'Push' : 'Gönder'}</span>
+                  </button>
+                </div>
+
+                {(cloudActionNotice || cloudSyncError) && (
+                  <p
+                    role="status"
+                    className={`text-xs font-medium ${
+                      cloudSyncError && !cloudActionNotice
+                        ? 'text-[#7A1C24] dark:text-[#FCA5A5]'
+                        : 'text-[#15803D] dark:text-[#86EFAC]'
+                    }`}
+                  >
+                    {cloudActionNotice ?? cloudSyncError}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs leading-relaxed text-[#52525B] dark:text-[#A1A1AA]">
+                  {cloudConfigured
+                    ? isEn
+                      ? 'Cloud sync backend is configured. Sign in from the top bar to sync A1/A2 progress, XP, classes, and assignments across devices.'
+                      : 'Bulut senkronizasyon altyapısı hazır. Üst çubuktan bulut hesabıyla giriş yaparak A1/A2 ilerlemenizi, XP puanlarınızı ve sınıflarınızı cihazlar arasında eşitleyebilirsiniz.'
+                    : isEn
+                    ? 'Running in offline-first localStorage mode. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable automatic cloud sync; JSON backup remains available anytime.'
+                    : 'Çevrimdışı öncelikli yerel mod aktif. Otomatik bulut eşitlemesi için .env / Netlify ortam değişkenlerine VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenebilir; JSON yedekleme her zaman aktiftir.'}
+                </p>
+                <ul className="space-y-1 text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                  <li>
+                    •{' '}
+                    {isEn
+                      ? 'Automatic conflict resolution via updatedAt + safe single-grant XP merge.'
+                      : 'updatedAt zaman damgası ve çift XP korumalı güvenli birleştirme.'}
+                  </li>
+                  <li>
+                    •{' '}
+                    {isEn
+                      ? 'Full offline fallback to localStorage when disconnected.'
+                      : 'Bağlantı koptuğunda localStorage üzerinden kesintisiz çalışma.'}
+                  </li>
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </section>

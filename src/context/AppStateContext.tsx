@@ -15,6 +15,8 @@ import type {
   ActivityLogEntry,
   ActivityMode,
   ActivitySubKind,
+  CloudSyncStatus,
+  CloudUserSession,
   GermanA2ProgressState,
   ListeningExerciseKind,
   ProgressState,
@@ -36,6 +38,23 @@ import { STARTER_A1_ASSIGNMENTS } from '../data/germanA1Teaching';
 import type { LocalUserPrefs, ProgressLoadOutcome } from '../services/contracts';
 import { DEFAULT_LOCAL_PREFS, platformServices } from '../services/localAdapters';
 import {
+  clearSyncMeta,
+  getCurrentCloudSession,
+  isBrowserOnline,
+  isCloudConfigured,
+  pullCloudState,
+  pushCloudState,
+  readSyncMeta,
+  reconcileCloudAndLocal,
+  signInCloudWithEmail,
+  signOutCloud,
+  signUpCloudWithEmail,
+  subscribeCloudAuth,
+  writeSyncMeta,
+  type CloudAuthResult,
+  type CloudStateSnapshot,
+} from '../services/cloudSyncService';
+import {
   INITIAL_A2_PROGRESS,
   clearA2ProgressFromStorage,
   getUniqueA2CompletedWordIds,
@@ -44,7 +63,10 @@ import {
   saveA2ProgressToStorage,
   type A2ProgressLoadOutcome,
 } from '../utils/a2DataPortability';
-import type { ValidatedBackupPayload } from '../utils/dataPortability';
+import {
+  TK_BACKUP_SCHEMA_VERSION,
+  type ValidatedBackupPayload,
+} from '../utils/dataPortability';
 
 const INITIAL_PROGRESS: ProgressState = {
   studiedFlashcards: [],
@@ -327,6 +349,22 @@ interface AppStateContextValue {
   lastSavedAt: string | null;
   storageWarning: string | null;
   dismissStorageWarning: () => void;
+  cloudConfigured: boolean;
+  cloudUser: CloudUserSession | null;
+  cloudSyncStatus: CloudSyncStatus;
+  lastCloudSyncAt: string | null;
+  cloudSyncError: string | null;
+  cloudSignIn: (email: string, password: string) => Promise<CloudAuthResult>;
+  cloudSignUp: (
+    email: string,
+    password: string,
+    displayName: string,
+    role: UserRole
+  ) => Promise<CloudAuthResult>;
+  cloudSignOut: () => Promise<void>;
+  syncCloudNow: () => Promise<{ ok: boolean; summaryTr: string; summaryEn: string }>;
+  pullFromCloud: () => Promise<{ ok: boolean; summaryTr: string; summaryEn: string }>;
+  pushToCloud: () => Promise<{ ok: boolean; summaryTr: string; summaryEn: string }>;
   resetProgress: () => void;
   resetA2Progress: () => void;
   resetAllLocalData: () => void;
@@ -355,6 +393,33 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [storageWarning, setStorageWarning] = useState<string | null>(
     () => initialLoadRef.current!.warningTr ?? initialA2LoadRef.current!.warningTr
   );
+
+  // Cloud Sync State (offline-first: defaults cleanly to localStorage mode)
+  const cloudConfigured = isCloudConfigured();
+  const initialSyncMeta = useRef(readSyncMeta());
+  const [cloudUser, setCloudUser] = useState<CloudUserSession | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>(() =>
+    isBrowserOnline() ? 'local' : 'offline'
+  );
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<string | null>(
+    () => initialSyncMeta.current.lastCloudSyncAt
+  );
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+
+  const localUpdatedAtRef = useRef<string | null>(initialSyncMeta.current.localUpdatedAt);
+  const suppressAutoPushRef = useRef<boolean>(false);
+  const hasMountedSyncRef = useRef<boolean>(false);
+  const autoPushTimerRef = useRef<number | null>(null);
+  const lastAutoSyncedUserRef = useRef<string | null>(null);
+
+  const latestStateRef = useRef({
+    theme,
+    prefs,
+    progress,
+    a2Progress,
+    cloudUser,
+  });
+  latestStateRef.current = { theme, prefs, progress, a2Progress, cloudUser };
 
   // Synced refs guarantee single-award XP across rapid actions without side-effecting inside setState
   const studiedFlashcardsRef = useRef<Set<string>>(new Set(progress.studiedFlashcards));
@@ -1949,7 +2014,458 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     platformServices.progressSync.clearProgress();
     clearA2ProgressFromStorage();
     platformServices.auth.clearPrefs();
+    clearSyncMeta();
+    localUpdatedAtRef.current = null;
+    setLastCloudSyncAt(null);
   }, []);
+
+  const buildCurrentCloudSnapshot = useCallback(
+    (overrideUpdatedAt?: string): CloudStateSnapshot => {
+      const { theme: curTheme, prefs: curPrefs, progress: curA1, a2Progress: curA2 } =
+        latestStateRef.current;
+      const updatedAt =
+        overrideUpdatedAt ?? localUpdatedAtRef.current ?? new Date().toISOString();
+      return {
+        updatedAt,
+        schemaVersion: TK_BACKUP_SCHEMA_VERSION,
+        prefs: {
+          ...curPrefs,
+          theme: curTheme,
+        },
+        progressA1: curA1,
+        progressA2: curA2,
+      };
+    },
+    []
+  );
+
+  const applyCloudSnapshotLocally = useCallback(
+    (snapshot: CloudStateSnapshot, userId: string) => {
+      suppressAutoPushRef.current = true;
+
+      studiedFlashcardsRef.current = new Set(snapshot.progressA1.studiedFlashcards);
+      masteredArticleRef.current = new Set(snapshot.progressA1.articleMasteredIds);
+      masteredQuizRef.current = new Set(snapshot.progressA1.quizMasteredIds);
+      masteredListeningRef.current = new Set(snapshot.progressA1.listeningMasteredIds);
+      masteredReadingRef.current = new Set(snapshot.progressA1.readingMasteredIds);
+      masteredWritingRef.current = new Set(snapshot.progressA1.writingMasteredIds);
+      masteredSpeakingRef.current = new Set(snapshot.progressA1.speakingMasteredIds);
+      masteredActivityRef.current = new Set(snapshot.progressA1.activityMasteredIds);
+      completedAssignmentRef.current = new Set(snapshot.progressA1.assignmentCompletedIds);
+      teachingMilestoneRef.current = new Set(snapshot.progressA1.teachingMilestoneIds);
+
+      a2FlashcardsRef.current = new Set(snapshot.progressA2.studiedFlashcards);
+      a2ArticlePluralRef.current = new Set(snapshot.progressA2.articlePluralMasteredIds);
+      a2MeaningRef.current = new Set(snapshot.progressA2.meaningMasteredIds);
+      a2ContextRef.current = new Set(snapshot.progressA2.contextMasteredIds);
+      a2ListeningRef.current = new Set(snapshot.progressA2.listeningMasteredIds);
+      a2ReadingRef.current = new Set(snapshot.progressA2.readingMasteredIds);
+      a2WritingRef.current = new Set(snapshot.progressA2.writingMasteredIds);
+      a2SpeakingRef.current = new Set(snapshot.progressA2.speakingMasteredIds);
+      a2ActivityRef.current = new Set(snapshot.progressA2.activityMasteredIds);
+
+      setProgress(snapshot.progressA1);
+      setA2Progress(snapshot.progressA2);
+      setPrefs({
+        displayName: snapshot.prefs.displayName,
+        rolePreview: snapshot.prefs.rolePreview,
+        speechSpeed: snapshot.prefs.speechSpeed,
+        activeCourse: snapshot.prefs.activeCourse,
+        uiLanguage: snapshot.prefs.uiLanguage,
+      });
+      setThemeState(snapshot.prefs.theme);
+
+      localUpdatedAtRef.current = snapshot.updatedAt;
+      const syncStamp = new Date().toISOString();
+      setLastCloudSyncAt(syncStamp);
+      writeSyncMeta({
+        localUpdatedAt: snapshot.updatedAt,
+        lastCloudSyncAt: syncStamp,
+        lastSyncedUserId: userId,
+      });
+
+      window.setTimeout(() => {
+        suppressAutoPushRef.current = false;
+      }, 300);
+    },
+    []
+  );
+
+  const pushToCloud = useCallback(async () => {
+    const session = latestStateRef.current.cloudUser;
+    if (!cloudConfigured || !session) {
+      return {
+        ok: false,
+        summaryTr: 'Bulut oturumu aktif değil; veriler yerel depolamada güvende.',
+        summaryEn: 'No active cloud session; your data remains safe locally.',
+      };
+    }
+    if (!isBrowserOnline()) {
+      setCloudSyncStatus('offline');
+      return {
+        ok: false,
+        summaryTr: 'Çevrimdışı durumdasınız; yerel kayıt aktif.',
+        summaryEn: 'You are offline; local storage remains active.',
+      };
+    }
+
+    setCloudSyncStatus('syncing');
+    setCloudSyncError(null);
+    const nowIso = new Date().toISOString();
+    const snapshot = buildCurrentCloudSnapshot(nowIso);
+    const res = await pushCloudState(session, snapshot);
+
+    if (!res.ok) {
+      setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+      setCloudSyncError(res.errorTr ?? 'Bulut gönderimi başarısız.');
+      return {
+        ok: false,
+        summaryTr: res.errorTr ?? 'Buluta gönderilemedi.',
+        summaryEn: res.errorEn ?? 'Could not push to cloud.',
+      };
+    }
+
+    const finalStamp = res.updatedAt ?? nowIso;
+    localUpdatedAtRef.current = finalStamp;
+    setLastCloudSyncAt(finalStamp);
+    writeSyncMeta({
+      localUpdatedAt: finalStamp,
+      lastCloudSyncAt: finalStamp,
+      lastSyncedUserId: session.userId,
+    });
+    setCloudSyncStatus('synced');
+    return {
+      ok: true,
+      summaryTr: 'Yerel veriler buluta başarıyla gönderildi.',
+      summaryEn: 'Local data pushed to cloud successfully.',
+    };
+  }, [cloudConfigured, buildCurrentCloudSnapshot]);
+
+  const pullFromCloud = useCallback(async () => {
+    const session = latestStateRef.current.cloudUser;
+    if (!cloudConfigured || !session) {
+      return {
+        ok: false,
+        summaryTr: 'Bulut oturumu aktif değil.',
+        summaryEn: 'No active cloud session.',
+      };
+    }
+    if (!isBrowserOnline()) {
+      setCloudSyncStatus('offline');
+      return {
+        ok: false,
+        summaryTr: 'Çevrimdışı durumdasınız; buluttan çekilemedi.',
+        summaryEn: 'You are offline; unable to pull from cloud.',
+      };
+    }
+
+    setCloudSyncStatus('syncing');
+    setCloudSyncError(null);
+    const res = await pullCloudState(session.userId);
+    if (!res.ok) {
+      setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+      setCloudSyncError(res.errorTr ?? 'Buluttan veri çekilemedi.');
+      return {
+        ok: false,
+        summaryTr: res.errorTr ?? 'Buluttan veri çekilemedi.',
+        summaryEn: res.errorEn ?? 'Could not pull cloud data.',
+      };
+    }
+
+    if (!res.snapshot) {
+      setCloudSyncStatus('synced');
+      return {
+        ok: true,
+        summaryTr: 'Bulutta henüz kayıt bulunamadı; yerel veriniz korundu.',
+        summaryEn: 'No cloud record found yet; your local data was kept.',
+      };
+    }
+
+    applyCloudSnapshotLocally(res.snapshot, session.userId);
+    setCloudSyncStatus('synced');
+    return {
+      ok: true,
+      summaryTr: 'Bulut verisi çekildi ve yerel oturuma uygulandı.',
+      summaryEn: 'Cloud data pulled and applied locally.',
+    };
+  }, [cloudConfigured, applyCloudSnapshotLocally]);
+
+  const syncCloudWithSession = useCallback(
+    async (session: CloudUserSession) => {
+      if (!cloudConfigured) {
+        setCloudSyncStatus('local');
+        return {
+          ok: false,
+          summaryTr: 'Bulut bağlantısı yapılandırılmadı; yerel mod aktif.',
+          summaryEn: 'Cloud sync is not configured; local mode is active.',
+        };
+      }
+      if (!isBrowserOnline()) {
+        setCloudSyncStatus('offline');
+        return {
+          ok: false,
+          summaryTr: 'Çevrimdışı durumdasınız; yerel veriniz güvende.',
+          summaryEn: 'You are offline; your local data is safe.',
+        };
+      }
+
+      setCloudSyncStatus('syncing');
+      setCloudSyncError(null);
+
+      const pulled = await pullCloudState(session.userId);
+      if (!pulled.ok) {
+        setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+        setCloudSyncError(pulled.errorTr ?? 'Bulut eşitleme hatası.');
+        return {
+          ok: false,
+          summaryTr: pulled.errorTr ?? 'Bulut eşitleme hatası.',
+          summaryEn: pulled.errorEn ?? 'Cloud sync failed.',
+        };
+      }
+
+      const localSnapshot = buildCurrentCloudSnapshot(
+        localUpdatedAtRef.current ?? new Date(0).toISOString()
+      );
+
+      if (!pulled.snapshot) {
+        const freshIso = new Date().toISOString();
+        const pushRes = await pushCloudState(session, { ...localSnapshot, updatedAt: freshIso });
+        if (!pushRes.ok) {
+          setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+          setCloudSyncError(pushRes.errorTr ?? 'Buluta ilk gönderim başarısız.');
+          return {
+            ok: false,
+            summaryTr: pushRes.errorTr ?? 'Buluta ilk gönderim başarısız.',
+            summaryEn: pushRes.errorEn ?? 'Initial cloud upload failed.',
+          };
+        }
+        const stamp = pushRes.updatedAt ?? freshIso;
+        localUpdatedAtRef.current = stamp;
+        setLastCloudSyncAt(stamp);
+        writeSyncMeta({
+          localUpdatedAt: stamp,
+          lastCloudSyncAt: stamp,
+          lastSyncedUserId: session.userId,
+        });
+        setCloudSyncStatus('synced');
+        return {
+          ok: true,
+          summaryTr: 'Yerel verileriniz buluta ilk kez eşitlendi.',
+          summaryEn: 'Your local progress was uploaded to the cloud for the first time.',
+        };
+      }
+
+      const reconciled = reconcileCloudAndLocal(localSnapshot, pulled.snapshot);
+      const mergedSnapshot: CloudStateSnapshot = {
+        updatedAt: reconciled.resolvedUpdatedAt,
+        schemaVersion: TK_BACKUP_SCHEMA_VERSION,
+        prefs: reconciled.mergedPrefs,
+        progressA1: reconciled.mergedProgressA1,
+        progressA2: reconciled.mergedProgressA2,
+      };
+
+      if (reconciled.shouldApplyToLocal) {
+        applyCloudSnapshotLocally(mergedSnapshot, session.userId);
+      }
+
+      if (reconciled.shouldPushToRemote) {
+        const pushRes = await pushCloudState(session, mergedSnapshot);
+        if (!pushRes.ok) {
+          setCloudSyncStatus(isBrowserOnline() ? 'error' : 'offline');
+          setCloudSyncError(pushRes.errorTr ?? 'Birleştirilmiş veri buluta gönderilemedi.');
+          return {
+            ok: false,
+            summaryTr: pushRes.errorTr ?? 'Birleştirilmiş veri buluta gönderilemedi.',
+            summaryEn: pushRes.errorEn ?? 'Could not push merged state to cloud.',
+          };
+        }
+      }
+
+      const stamp = new Date().toISOString();
+      localUpdatedAtRef.current = mergedSnapshot.updatedAt;
+      setLastCloudSyncAt(stamp);
+      writeSyncMeta({
+        localUpdatedAt: mergedSnapshot.updatedAt,
+        lastCloudSyncAt: stamp,
+        lastSyncedUserId: session.userId,
+      });
+      setCloudSyncStatus('synced');
+
+      if (reconciled.winner === 'remote') {
+        return {
+          ok: true,
+          summaryTr: 'Bulut kaydı daha günceldi; çakışmasız birleştirilip eşitlendi.',
+          summaryEn: 'Cloud record was newer; merged safely and synced.',
+        };
+      }
+      if (reconciled.winner === 'local') {
+        return {
+          ok: true,
+          summaryTr: 'Yerel kaydınız daha günceldi; bulutla güvenli biçimde eşitlendi.',
+          summaryEn: 'Local record was newer; merged safely and pushed to cloud.',
+        };
+      }
+      return {
+        ok: true,
+        summaryTr: 'Yerel ve bulut verileriniz güncel ve senkronize.',
+        summaryEn: 'Local and cloud records are up to date.',
+      };
+    },
+    [cloudConfigured, buildCurrentCloudSnapshot, applyCloudSnapshotLocally]
+  );
+
+  const syncCloudNow = useCallback(async () => {
+    const session = latestStateRef.current.cloudUser;
+    if (!session) {
+      return {
+        ok: false,
+        summaryTr: 'Eşitleme için önce bulut hesabıyla giriş yapın.',
+        summaryEn: 'Sign in with a cloud account to sync.',
+      };
+    }
+    return syncCloudWithSession(session);
+  }, [syncCloudWithSession]);
+
+  const cloudSignIn = useCallback(
+    async (email: string, password: string): Promise<CloudAuthResult> => {
+      const res = await signInCloudWithEmail(email, password);
+      if (res.ok && res.session) {
+        setCloudUser(res.session);
+        lastAutoSyncedUserRef.current = res.session.userId;
+        await syncCloudWithSession(res.session);
+      }
+      return res;
+    },
+    [syncCloudWithSession]
+  );
+
+  const cloudSignUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      displayNameInput: string,
+      roleInput: UserRole
+    ): Promise<CloudAuthResult> => {
+      if (displayNameInput.trim()) {
+        setPrefs((prev) => ({
+          ...prev,
+          displayName: displayNameInput.trim().slice(0, 48),
+          rolePreview: roleInput,
+        }));
+      }
+      const res = await signUpCloudWithEmail(email, password, displayNameInput, roleInput);
+      if (res.ok && res.session && !res.needsEmailConfirmation) {
+        setCloudUser(res.session);
+        lastAutoSyncedUserRef.current = res.session.userId;
+        await syncCloudWithSession(res.session);
+      }
+      return res;
+    },
+    [syncCloudWithSession]
+  );
+
+  const cloudSignOut = useCallback(async () => {
+    if (autoPushTimerRef.current !== null) {
+      window.clearTimeout(autoPushTimerRef.current);
+      autoPushTimerRef.current = null;
+    }
+    await signOutCloud();
+    lastAutoSyncedUserRef.current = null;
+    setCloudUser(null);
+    setCloudSyncError(null);
+    setCloudSyncStatus(isBrowserOnline() ? 'local' : 'offline');
+  }, []);
+
+  // Initialize Supabase session listener & online/offline handlers
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      if (latestStateRef.current.cloudUser) {
+        void syncCloudWithSession(latestStateRef.current.cloudUser);
+      } else {
+        setCloudSyncStatus('local');
+      }
+    };
+    const handleOffline = () => {
+      setCloudSyncStatus('offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    let unsubscribe = () => {};
+    if (cloudConfigured) {
+      void getCurrentCloudSession().then((session) => {
+        if (session) {
+          setCloudUser(session);
+          if (lastAutoSyncedUserRef.current !== session.userId) {
+            lastAutoSyncedUserRef.current = session.userId;
+            void syncCloudWithSession(session);
+          }
+        }
+      });
+
+      unsubscribe = subscribeCloudAuth((session) => {
+        setCloudUser(session);
+        if (session) {
+          if (lastAutoSyncedUserRef.current !== session.userId) {
+            lastAutoSyncedUserRef.current = session.userId;
+            void syncCloudWithSession(session);
+          }
+        } else {
+          lastAutoSyncedUserRef.current = null;
+          setCloudSyncStatus(isBrowserOnline() ? 'local' : 'offline');
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      unsubscribe();
+    };
+  }, [cloudConfigured, syncCloudWithSession]);
+
+  // Track localUpdatedAt & debounced auto-push when signed in
+  useEffect(() => {
+    if (!hasMountedSyncRef.current) {
+      hasMountedSyncRef.current = true;
+      return;
+    }
+    if (suppressAutoPushRef.current) {
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    localUpdatedAtRef.current = nowIso;
+    writeSyncMeta({
+      localUpdatedAt: nowIso,
+      lastCloudSyncAt: readSyncMeta().lastCloudSyncAt,
+      lastSyncedUserId: cloudUser?.userId ?? readSyncMeta().lastSyncedUserId,
+    });
+
+    if (!cloudConfigured || !cloudUser) return;
+    if (!isBrowserOnline()) {
+      setCloudSyncStatus('offline');
+      return;
+    }
+
+    if (autoPushTimerRef.current !== null) {
+      window.clearTimeout(autoPushTimerRef.current);
+    }
+    autoPushTimerRef.current = window.setTimeout(() => {
+      autoPushTimerRef.current = null;
+      void pushToCloud();
+    }, 2200);
+
+    return () => {
+      if (autoPushTimerRef.current !== null) {
+        window.clearTimeout(autoPushTimerRef.current);
+        autoPushTimerRef.current = null;
+      }
+    };
+  }, [progress, a2Progress, prefs, theme, cloudConfigured, cloudUser, pushToCloud]);
 
   const uniqueCompletedWordIds = useMemo(() => {
     const set = new Set<string>([
@@ -2171,6 +2687,17 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastSavedAt,
       storageWarning,
       dismissStorageWarning,
+      cloudConfigured,
+      cloudUser,
+      cloudSyncStatus,
+      lastCloudSyncAt,
+      cloudSyncError,
+      cloudSignIn,
+      cloudSignUp,
+      cloudSignOut,
+      syncCloudNow,
+      pullFromCloud,
+      pushToCloud,
       resetProgress,
       resetA2Progress,
       resetAllLocalData,
@@ -2243,6 +2770,17 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastSavedAt,
       storageWarning,
       dismissStorageWarning,
+      cloudConfigured,
+      cloudUser,
+      cloudSyncStatus,
+      lastCloudSyncAt,
+      cloudSyncError,
+      cloudSignIn,
+      cloudSignUp,
+      cloudSignOut,
+      syncCloudNow,
+      pullFromCloud,
+      pushToCloud,
       resetProgress,
       resetA2Progress,
       resetAllLocalData,

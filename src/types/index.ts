@@ -4,6 +4,13 @@ export type UiLanguage = 'tr' | 'en';
 
 export type UserRole = 'student' | 'teacher';
 
+export type CloudSyncStatus = 'local' | 'syncing' | 'synced' | 'offline' | 'error';
+
+export interface CloudUserSession {
+  userId: string;
+  email: string;
+}
+
 export type SpeechSpeed = 'normal' | 'slow';
 
 export type GermanArticle = 'der' | 'die' | 'das';

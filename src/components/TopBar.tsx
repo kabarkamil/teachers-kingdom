@@ -1,7 +1,19 @@
 import React from 'react';
-import { Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, User } from 'lucide-react';
+import {
+  AlertCircle,
+  Cloud,
+  CloudOff,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+  Sun,
+  User,
+} from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { getLocale } from '../i18n/tr';
+import { formatSyncStatusLabel } from '../services/cloudSyncService';
 import { BrandMark } from './BrandMark';
 
 interface TopBarProps {
@@ -31,8 +43,11 @@ export const TopBar: React.FC<TopBarProps> = ({
     uiLanguage,
     toggleUiLanguage,
     displayName,
+    cloudUser,
+    cloudSyncStatus,
   } = useAppState();
   const locale = getLocale(uiLanguage);
+  const syncLabel = formatSyncStatusLabel(cloudSyncStatus, uiLanguage);
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-[#D9D9D3] bg-[#FFFFFF]/95 backdrop-blur-sm dark:border-[#282830] dark:bg-[#0D0D0D]/95">
@@ -160,6 +175,38 @@ export const TopBar: React.FC<TopBarProps> = ({
               {locale.roles.teacher}
             </button>
           </div>
+
+          {/* Cloud Sync Status Pill */}
+          <button
+            type="button"
+            onClick={onOpenAuthModal}
+            title={
+              cloudUser
+                ? `${cloudUser.email} · ${syncLabel}`
+                : `${syncLabel} — ${locale.topBar.authAction}`
+            }
+            aria-label={`Sync status: ${syncLabel}`}
+            className={`hidden xl:inline-flex h-10 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+              cloudSyncStatus === 'synced'
+                ? 'border-[#15803D]/35 bg-[#F0FDF4] text-[#166534] dark:border-[#4ADE80]/35 dark:bg-[#0D2315] dark:text-[#86EFAC]'
+                : cloudSyncStatus === 'syncing'
+                ? 'border-[#D4AF37]/50 bg-[#FEF9EB] text-[#9A6B16] dark:border-[#D4AF37]/45 dark:bg-[#231D10] dark:text-[#D4AF37]'
+                : cloudSyncStatus === 'error'
+                ? 'border-[#7A1C24]/50 bg-[#FDF2F4] text-[#7A1C24] dark:border-[#EF4444]/40 dark:bg-[#3B1014] dark:text-[#FCA5A5]'
+                : 'border-[#D9D9D3] bg-[#F6F6F4] text-[#52525B] hover:border-[#7A1C24] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#A1A1AA] dark:hover:border-[#D4AF37]'
+            }`}
+          >
+            {cloudSyncStatus === 'syncing' ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0" />
+            ) : cloudSyncStatus === 'synced' ? (
+              <Cloud className="h-3.5 w-3.5 shrink-0" />
+            ) : cloudSyncStatus === 'error' ? (
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <CloudOff className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>{syncLabel}</span>
+          </button>
 
           {/* TR / EN Language Switcher */}
           <button
