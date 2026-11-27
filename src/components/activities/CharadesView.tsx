@@ -87,15 +87,18 @@ export const CharadesView: React.FC<CharadesViewProps> = ({ onNavigate }) => {
   const handleClassroomSolved = () => {
     setTimerRunning(false);
     setClassroomRevealed(true);
+    // Classroom self-check awards single-grant +10 XP without inflating scored A1 accuracy
     const xp = recordActivityAnswer(
       currentCard.id,
       'charades',
       `Sessiz Sinema (Sınıf) · ${currentCard.targetDe}`,
-      true
+      true,
+      undefined,
+      false
     );
     setFeedbackNotice(
       xp > 0
-        ? `Kart tahmin edildi olarak kaydedildi · +${xp} XP.`
+        ? `Kart tahmin edildi olarak kaydedildi · +${xp} XP (öz-bildirim olduğu için puanlı doğruluk oranını şişirmez).`
         : 'Kart tekrar kaydedildi (daha önce tamamlandığı için ek XP eklenmedi).'
     );
   };

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { GERMAN_A1_QUIZ_QUESTIONS, QUIZ_IDS } from '../../data/germanA1Activities';
 import type { NavRouteId, QuizTopicFilter } from '../../types';
@@ -12,16 +12,27 @@ interface QuizCenterViewProps {
 
 type TopicOption = 'all' | QuizTopicFilter;
 
-const TOPIC_FILTERS: Array<{ id: TopicOption; labelTr: string }> = [
-  { id: 'all', labelTr: 'Tüm Konular (12)' },
-  { id: 'artikel', labelTr: 'Artikel & İsimler' },
-  { id: 'grammatik', labelTr: 'Fiil Çekimi & Cümle' },
-  { id: 'alltag', labelTr: 'Günlük İletişim' },
-  { id: 'verstehen', labelTr: 'Okuma & Dinleme' },
+const TOPIC_TO_SKILL: Record<
+  QuizTopicFilter,
+  { route: NavRouteId; labelTr: string; labelEn: string }
+> = {
+  artikel: { route: 'kelime', labelTr: 'A1 Kelime Modülünde Tekrar Et', labelEn: 'Review in A1 Vocab' },
+  grammatik: { route: 'yazma', labelTr: 'A1 Yazma & Dilbilgisinde Çalış', labelEn: 'Practice in A1 Writing' },
+  alltag: { route: 'konusma', labelTr: 'A1 Konuşmada Pratik Yap', labelEn: 'Practice in A1 Speaking' },
+  verstehen: { route: 'okuma', labelTr: 'A1 Okuma / Dinlemeye Geç', labelEn: 'Go to A1 Reading' },
+};
+
+const TOPIC_FILTERS: Array<{ id: TopicOption; labelTr: string; labelEn: string }> = [
+  { id: 'all', labelTr: 'Tüm Konular (12)', labelEn: 'All Topics (12)' },
+  { id: 'artikel', labelTr: 'Artikel & İsimler', labelEn: 'Articles & Nouns' },
+  { id: 'grammatik', labelTr: 'Fiil Çekimi & Cümle', labelEn: 'Verbs & Syntax' },
+  { id: 'alltag', labelTr: 'Günlük İletişim', labelEn: 'Daily Communication' },
+  { id: 'verstehen', labelTr: 'Okuma & Dinleme', labelEn: 'Reading & Listening' },
 ];
 
 export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) => {
-  const { progress, recordActivityAnswer } = useAppState();
+  const { progress, uiLanguage, recordActivityAnswer } = useAppState();
+  const isEn = uiLanguage === 'en';
   const [topicFilter, setTopicFilter] = useState<TopicOption>('all');
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [xpFeedback, setXpFeedback] = useState<Record<string, string>>({});
@@ -127,11 +138,11 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
                 aria-pressed={active}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                   active
-                    ? 'bg-[#111113] text-[#F6F6F4] dark:bg-[#D9A13B] dark:text-[#111113]'
-                    : 'text-[#52525B] hover:text-[#111113] dark:text-[#A1A1AA] dark:hover:text-[#F4F4F5]'
+                    ? 'bg-[#0D0D0D] text-[#FFFFFF] dark:bg-[#D4AF37] dark:text-[#0D0D0D]'
+                    : 'text-[#52525B] hover:text-[#0D0D0D] dark:text-[#A1A1AA] dark:hover:text-[#FFFFFF]'
                 }`}
               >
-                {f.labelTr}
+                {isEn ? f.labelEn : f.labelTr}
               </button>
             );
           })}
@@ -190,11 +201,16 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
                 <p className="text-sm font-medium text-[#52525B] dark:text-[#A1A1AA]">
                   {q.questionTr}
                 </p>
-                <p className="font-display text-base sm:text-lg font-semibold text-[#111113] dark:text-[#F4F4F5]">
+                <p className="font-display text-base sm:text-lg font-semibold text-[#0D0D0D] dark:text-[#FFFFFF]">
                   {q.promptDe}
                 </p>
-                {q.audioTextDe && (
-                  <ModelAudioBar textDe={q.audioTextDe} labelTr="Dinle (de-DE)" compact />
+                {(q.audioTextDe || q.promptDe) && (
+                  <ModelAudioBar
+                    textDe={q.audioTextDe ?? q.promptDe.replace(/___+/g, '...')}
+                    labelTr="Almanca İfadeyi Dinle (de-DE)"
+                    labelEn="Listen to German Prompt (de-DE)"
+                    compact
+                  />
                 )}
               </div>
 
@@ -247,6 +263,20 @@ export const QuizCenterView: React.FC<QuizCenterViewProps> = ({ onNavigate }) =>
                     </p>
                   )}
                   <p className="text-[#52525B] dark:text-[#A1A1AA]">{q.explanationTr}</p>
+                  <div className="pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(TOPIC_TO_SKILL[q.topic].route)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7A1C24] hover:underline dark:text-[#D4AF37]"
+                    >
+                      <span>
+                        {isEn
+                          ? TOPIC_TO_SKILL[q.topic].labelEn
+                          : TOPIC_TO_SKILL[q.topic].labelTr}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </article>

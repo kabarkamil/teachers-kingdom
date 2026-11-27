@@ -532,6 +532,12 @@ export function reconcileCloudAndLocal(
   const remoteChanged =
     mergedA1.xp !== remote.progressA1.xp ||
     mergedA2.xp !== remote.progressA2.xp ||
+    mergedA1.activityMasteredIds.length !== remote.progressA1.activityMasteredIds.length ||
+    mergedA2.activityMasteredIds.length !== remote.progressA2.activityMasteredIds.length ||
+    mergedA1.arenaBestStreak !== remote.progressA1.arenaBestStreak ||
+    mergedA2.a2ArenaBestStreak !== remote.progressA2.a2ArenaBestStreak ||
+    mergedA1.examBestScorePercent !== remote.progressA1.examBestScorePercent ||
+    mergedA2.a2ExamBestScorePercent !== remote.progressA2.a2ExamBestScorePercent ||
     mergedA1.teachingClasses.length !== remote.progressA1.teachingClasses.length ||
     mergedA1.teachingAssignments.length !== remote.progressA1.teachingAssignments.length ||
     mergedA1.studioDrafts.length !== remote.progressA1.studioDrafts.length ||
@@ -540,6 +546,12 @@ export function reconcileCloudAndLocal(
   const localChanged =
     mergedA1.xp !== local.progressA1.xp ||
     mergedA2.xp !== local.progressA2.xp ||
+    mergedA1.activityMasteredIds.length !== local.progressA1.activityMasteredIds.length ||
+    mergedA2.activityMasteredIds.length !== local.progressA2.activityMasteredIds.length ||
+    mergedA1.arenaBestStreak !== local.progressA1.arenaBestStreak ||
+    mergedA2.a2ArenaBestStreak !== local.progressA2.a2ArenaBestStreak ||
+    mergedA1.examBestScorePercent !== local.progressA1.examBestScorePercent ||
+    mergedA2.a2ExamBestScorePercent !== local.progressA2.a2ExamBestScorePercent ||
     mergedA1.teachingClasses.length !== local.progressA1.teachingClasses.length ||
     mergedA1.teachingAssignments.length !== local.progressA1.teachingAssignments.length ||
     mergedA1.studioDrafts.length !== local.progressA1.studioDrafts.length ||

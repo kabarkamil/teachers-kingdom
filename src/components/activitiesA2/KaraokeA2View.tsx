@@ -26,10 +26,16 @@ interface KaraokeA2ViewProps {
 }
 
 export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
-  const { a2Progress, rolePreview, recordA2KaraokeCompletion } = useAppState();
+  const { a2Progress, rolePreview, speechSpeed, uiLanguage, recordA2KaraokeCompletion } =
+    useAppState();
+  const isEn = uiLanguage === 'en';
   const [selectedTrackId, setSelectedTrackId] = useState<string>(GERMAN_A2_KARAOKE_TRACKS[0].id);
-  const [rateMode, setRateMode] = useState<'slow' | 'normal'>('normal');
+  const [rateMode, setRateMode] = useState<'slow' | 'normal'>(speechSpeed);
   const [showTranslations, setShowTranslations] = useState(false);
+
+  useEffect(() => {
+    setRateMode(speechSpeed);
+  }, [speechSpeed]);
 
   // Playback state strictly confirmed via src/utils/speech.ts onStart / onEnd
   const [startingLineIndex, setStartingLineIndex] = useState<number | null>(null);
@@ -75,7 +81,7 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
     setStartingLineIndex(index);
     setIsSequenceMode(continueSequence);
 
-    const explicitRate = rateMode === 'slow' ? 0.8 : 1.0;
+    const explicitRate = rateMode === 'slow' ? 0.78 : 0.96;
     const result = speakGermanText(
       line.textDe,
       rateMode,
@@ -298,22 +304,28 @@ export const KaraokeA2View: React.FC<KaraokeA2ViewProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 aria-pressed={rateMode === 'slow'}
-                onClick={() => setRateMode('slow')}
+                onClick={() => {
+                  stopPlayback();
+                  setRateMode('slow');
+                }}
                 className={`rounded-md px-2.5 py-1.5 font-mono text-xs font-medium transition-colors whitespace-nowrap ${
                   rateMode === 'slow'
-                    ? 'bg-[#111113] text-white dark:bg-[#D9A13B] dark:text-[#111113]'
+                    ? 'bg-[#0D0D0D] text-white dark:bg-[#D4AF37] dark:text-[#0D0D0D]'
                     : 'text-[#52525B] dark:text-[#A1A1AA]'
                 }`}
               >
-                0.8× Yavaş
+                {isEn ? '0.8× Slow' : '0.8× Yavaş'}
               </button>
               <button
                 type="button"
                 aria-pressed={rateMode === 'normal'}
-                onClick={() => setRateMode('normal')}
+                onClick={() => {
+                  stopPlayback();
+                  setRateMode('normal');
+                }}
                 className={`rounded-md px-2.5 py-1.5 font-mono text-xs font-medium transition-colors whitespace-nowrap ${
                   rateMode === 'normal'
-                    ? 'bg-[#111113] text-white dark:bg-[#D9A13B] dark:text-[#111113]'
+                    ? 'bg-[#0D0D0D] text-white dark:bg-[#D4AF37] dark:text-[#0D0D0D]'
                     : 'text-[#52525B] dark:text-[#A1A1AA]'
                 }`}
               >

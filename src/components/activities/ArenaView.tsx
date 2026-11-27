@@ -368,9 +368,16 @@ export const ArenaView: React.FC<ArenaViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setPhase('ready')}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#111113] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-sm font-medium text-[#0D0D0D] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#0D0D0D] dark:text-[#FFFFFF]"
             >
               <span>Mod Seçimine Dön</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('ogrenme-yolum')}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-sm font-medium text-[#7A1C24] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#D4AF37]"
+            >
+              <span>İlerlememi Gör</span>
             </button>
           </div>
         </section>

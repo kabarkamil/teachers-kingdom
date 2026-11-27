@@ -311,7 +311,8 @@ interface AppStateContextValue {
     kind: Exclude<ActivitySubKind, 'karaoke'>,
     label: string,
     isCorrect: boolean,
-    streakAfterAnswer?: number
+    streakAfterAnswer?: number,
+    countsTowardAccuracy?: boolean
   ) => number;
   recordExamSubmission: (
     results: Array<{ itemId: string; isCorrect: boolean }>,
@@ -1410,7 +1411,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       kind: Exclude<ActivitySubKind, 'karaoke'>,
       label: string,
       isCorrect: boolean,
-      streakAfterAnswer?: number
+      streakAfterAnswer?: number,
+      countsTowardAccuracy = true
     ): number => {
       const modeMap: Record<Exclude<ActivitySubKind, 'karaoke'>, ActivityMode> = {
         charades: 'activity-charades',
@@ -1445,8 +1447,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         return {
           ...prev,
-          activityAttempts: prev.activityAttempts + 1,
-          activityCorrect: prev.activityCorrect + (isCorrect ? 1 : 0),
+          activityAttempts: countsTowardAccuracy ? prev.activityAttempts + 1 : prev.activityAttempts,
+          activityCorrect:
+            countsTowardAccuracy && isCorrect ? prev.activityCorrect + 1 : prev.activityCorrect,
           activityMasteredIds,
           arenaBestStreak: nextBestStreak,
           xp: prev.xp + xpEarned,

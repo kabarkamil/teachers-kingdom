@@ -26,10 +26,15 @@ interface KaraokeStudioViewProps {
 }
 
 export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate }) => {
-  const { progress, rolePreview, recordKaraokeCompletion } = useAppState();
+  const { progress, rolePreview, speechSpeed, uiLanguage, recordKaraokeCompletion } = useAppState();
+  const isEn = uiLanguage === 'en';
   const [selectedTrackId, setSelectedTrackId] = useState<string>(GERMAN_A1_KARAOKE_TRACKS[0].id);
-  const [rateMode, setRateMode] = useState<'slow' | 'normal'>('normal');
+  const [rateMode, setRateMode] = useState<'slow' | 'normal'>(speechSpeed);
   const [showTranslations, setShowTranslations] = useState(false);
+
+  useEffect(() => {
+    setRateMode(speechSpeed);
+  }, [speechSpeed]);
 
   // Playback state strictly confirmed via speech.ts onStart / onEnd
   const [startingLineIndex, setStartingLineIndex] = useState<number | null>(null);
@@ -327,10 +332,21 @@ export const KaraokeStudioView: React.FC<KaraokeStudioViewProps> = ({ onNavigate
           </div>
         </div>
 
+        {!speechSupported && !audioErrorText && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-[#D4AF37]/50 bg-[#FEF9EB] p-3.5 text-xs text-[#78350F] dark:border-[#D4AF37]/40 dark:bg-[#231D10] dark:text-[#F6D693]">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {isEn
+                ? 'This browser does not support Web Speech API (de-DE). You can still practice aloud following the rhythm cues.'
+                : 'Bu tarayıcıda Web Speech API (de-DE) seslendirmesi desteklenmiyor. Satırları ritim işaretleriyle yüksek sesle okuyarak A1 çalışmasını tamamlayabilirsiniz.'}
+            </span>
+          </div>
+        )}
+
         {audioErrorText && (
           <div
             role="status"
-            className="flex items-start gap-2.5 rounded-lg border border-[#D9A13B]/50 bg-[#FFFBEB] p-3.5 text-xs text-[#78350F] dark:border-[#D9A13B]/40 dark:bg-[#231D10] dark:text-[#F6D693]"
+            className="flex items-start gap-2.5 rounded-lg border border-[#D4AF37]/50 bg-[#FEF9EB] p-3.5 text-xs text-[#78350F] dark:border-[#D4AF37]/40 dark:bg-[#231D10] dark:text-[#F6D693]"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{audioErrorText}</span>

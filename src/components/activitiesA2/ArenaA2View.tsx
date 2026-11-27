@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { A2_ARENA_IDS, GERMAN_A2_ARENA_ITEMS } from '../../data/germanA2Activities';
-import type { NavRouteId } from '../../types';
+import type { ArenaItem, NavRouteId } from '../../types';
 import { ModelAudioBar } from '../speaking/ModelAudioBar';
 import { ActivityA2SubNav } from './ActivityA2SubNav';
 
@@ -24,10 +24,21 @@ type ArenaPhase = 'lobby' | 'playing' | 'summary';
 
 const TIMED_ROUND_SECONDS = 60;
 
+function shuffleA2Items(items: ArenaItem[]): ArenaItem[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
-  const { a2Progress, recordA2ActivityAnswer } = useAppState();
+  const { a2Progress, uiLanguage, recordA2ActivityAnswer } = useAppState();
+  const isEn = uiLanguage === 'en';
   const [format, setFormat] = useState<ArenaFormat>('streak');
   const [phase, setPhase] = useState<ArenaPhase>('lobby');
+  const [deck, setDeck] = useState<ArenaItem[]>(GERMAN_A2_ARENA_ITEMS);
   const [questionIdx, setQuestionIdx] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -38,7 +49,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
   const [lastXpAwarded, setLastXpAwarded] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(TIMED_ROUND_SECONDS);
 
-  const currentItem = GERMAN_A2_ARENA_ITEMS[questionIdx];
+  const currentItem = deck[questionIdx];
   const masteredCount = A2_ARENA_IDS.filter((id) =>
     a2Progress.activityMasteredIds.includes(id)
   ).length;
@@ -63,6 +74,7 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
 
   const startRound = (chosenFormat: ArenaFormat) => {
     setFormat(chosenFormat);
+    setDeck(shuffleA2Items(GERMAN_A2_ARENA_ITEMS));
     setPhase('playing');
     setQuestionIdx(0);
     setSelectedIdx(null);
@@ -129,18 +141,31 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
+        <div className="flex flex-wrap items-center gap-6 border-t border-[#ECECE8] pt-4 md:border-t-0 md:pt-0 dark:border-[#24242C]">
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">A2 En İyi Seri</p>
-            <p className="font-mono text-xl font-semibold text-[#7C1D2E] dark:text-[#D9A13B] tabular-nums">
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {isEn ? 'A2 Best Streak' : 'A2 En İyi Seri'}
+            </p>
+            <p className="font-mono text-xl font-semibold text-[#7A1C24] dark:text-[#D4AF37] tabular-nums">
               {a2Progress.a2ArenaBestStreak}
             </p>
           </div>
           <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
           <div>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Ustalaşılan A2 Soru</p>
-            <p className="font-mono text-xl font-semibold text-[#111113] dark:text-[#F4F4F5] tabular-nums">
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {isEn ? 'Mastered A2' : 'Ustalaşılan A2 Soru'}
+            </p>
+            <p className="font-mono text-xl font-semibold text-[#0D0D0D] dark:text-[#FFFFFF] tabular-nums">
               {masteredCount} / {GERMAN_A2_ARENA_ITEMS.length}
+            </p>
+          </div>
+          <div className="h-8 w-px bg-[#D9D9D3] dark:bg-[#282830]" aria-hidden="true" />
+          <div>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              {isEn ? 'Total A2 XP' : 'Toplam A2 XP'}
+            </p>
+            <p className="font-mono text-xl font-semibold text-[#0D0D0D] dark:text-[#D4AF37] tabular-nums">
+              {a2Progress.xp}
             </p>
           </div>
         </div>
@@ -379,9 +404,16 @@ export const ArenaA2View: React.FC<ArenaA2ViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setPhase('lobby')}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs sm:text-sm font-medium text-[#111113] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#111113] dark:text-[#F4F4F5]"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#FFFFFF] px-4 text-xs sm:text-sm font-medium text-[#0D0D0D] hover:bg-[#F6F6F4] dark:border-[#282830] dark:bg-[#0D0D0D] dark:text-[#FFFFFF]"
             >
-              <span>Mod Seçimine Dön</span>
+              <span>{isEn ? 'Back to Modes' : 'Mod Seçimine Dön'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('ogrenme-yolum')}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D9D9D3] bg-[#F6F6F4] px-4 text-xs sm:text-sm font-medium text-[#7A1C24] hover:bg-[#ECECE8] dark:border-[#282830] dark:bg-[#16161A] dark:text-[#D4AF37]"
+            >
+              <span>{isEn ? 'View Progress' : 'İlerlememi Gör'}</span>
             </button>
           </div>
         </section>
